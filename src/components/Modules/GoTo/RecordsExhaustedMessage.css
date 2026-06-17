@@ -1,0 +1,40 @@
+.records-exhausted-container {
+    margin: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border: 1px solid var(--hover);
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 50px;
+}
+
+.divIcon {
+    background-color: #00ff00;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.check-message {
+    margin-top: -1px;
+    cursor: default;
+}
+
+.message {
+    text-align: center;
+    margin: 10px 0;
+}
+
+.explorer-link {
+    color: gray;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.explorer-link:hover {
+    color: gray;
+}

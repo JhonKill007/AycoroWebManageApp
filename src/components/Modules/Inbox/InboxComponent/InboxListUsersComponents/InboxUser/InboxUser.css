@@ -1,0 +1,380 @@
+.InboxUser {
+    width: 90%;
+    height: 70px;
+    margin: auto;
+    display: flex;
+    background-color: var(--contrast);
+    color: var(--little_mjs);
+    border-radius: 20px;
+    margin-bottom: 3px;
+    cursor: pointer;
+}
+
+
+
+.imgboxconversation {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    margin-top: 10px;
+    margin-left: 20px;
+    cursor: pointer;
+}
+
+.imgboxconversation img {
+    margin: auto;
+    width: 50px;
+    height: 50px;
+    object-fit: cover;
+    object-position: center center;
+    border-radius: 50%;
+    background: linear-gradient(to bottom left,
+            rgb(202, 5, 13),
+            rgb(66, 73, 174));
+    padding: 3px;
+}
+
+
+.nameconversationuser {
+    height: 50px;
+    width: 250px;
+    margin-top: 15px;
+    margin-left: 15px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.nameconversationuser span {
+    margin-top: -5px;
+    position: relative;
+}
+
+.dateconversation {
+    font-size: 13px;
+    text-align: right;
+}
+
+.greenPointconversation {
+    width: 11px;
+    height: 11px;
+    background-color: rgb(20, 145, 20);
+    border-radius: 50%;
+    margin-top: -10px;
+    margin-left: 35px;
+    z-index: 1;
+    position: relative;
+    border: 2px solid var(--background);
+}
+
+.d-play {
+    width: 250px;
+    display: flex;
+}
+
+.d-message {
+    width: 190px;
+    height: 25px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.d-date {
+    width: 60px;
+    height: 25px;
+}
+
+
+@media (max-width: 1430px) {
+    .nameconversationuser {
+        width: 230px;
+    }
+
+    .d-play {
+        width: 230px;
+    }
+
+    .d-message {
+        width: 170px;
+    }
+}
+
+@media (max-width: 1353px) {
+    .nameconversationuser {
+        width: 210px;
+    }
+
+    .d-play {
+        width: 210px;
+    }
+
+    .d-message {
+        width: 150px;
+    }
+}
+
+@media (max-width: 1266px) {
+    .nameconversationuser {
+        width: 170px;
+    }
+
+    .d-play {
+        width: 170px;
+    }
+
+    .d-message {
+        width: 125px;
+    }
+}
+
+
+@media (max-width: 1171px) {
+    .nameconversationuser {
+        width: 720px;
+    }
+
+    .d-play {
+        width: 720px;
+    }
+
+    .d-message {
+        width: 680px;
+    }
+}
+
+@media (max-width: 1096px) {
+    .nameconversationuser {
+        width: 680px;
+    }
+
+    .d-play {
+        width: 680;
+    }
+
+    .d-message {
+        width: 630px;
+    }
+}
+
+
+@media (max-width: 1026px) {
+    .nameconversationuser {
+        width: 630px;
+    }
+
+    .d-play {
+        width: 630;
+    }
+
+    .d-message {
+        width: 580px;
+    }
+}
+
+
+@media (max-width: 959px) {
+    .nameconversationuser {
+        width: 580px;
+    }
+
+    .d-play {
+        width: 580;
+    }
+
+    .d-message {
+        width: 530px;
+    }
+}
+
+
+@media (max-width: 887px) {
+    .nameconversationuser {
+        width: 530px;
+    }
+
+    .d-play {
+        width: 530;
+    }
+
+    .d-message {
+        width: 480px;
+    }
+}
+
+@media (max-width: 823px) {
+    .nameconversationuser {
+        width: 480px;
+    }
+
+    .d-play {
+        width: 480;
+    }
+
+    .d-message {
+        width: 430px;
+    }
+}
+
+
+
+
+@media (max-width: 768px) {
+    .nameconversationuser {
+        width: 580px;
+    }
+
+    .d-play {
+        width: 580;
+    }
+
+    .d-message {
+        width: 530px;
+    }
+}
+
+
+/* @media (max-width: 741px) {
+    .nameconversationuser {
+        width: 610px;
+    }
+
+    .d-play {
+        width: 610;
+    }
+
+    .d-message {
+        width: 560px;
+    }
+} */
+
+/* @media (max-width: 824px) {
+    .nameconversationuser {
+        width: 560px;
+    }
+
+    .d-play {
+        width: 560;
+    }
+
+    .d-message {
+        width: 510px;
+    }
+} */
+
+@media (max-width: 739px) {
+    .nameconversationuser {
+        width: 510px;
+    }
+
+    .d-play {
+        width: 510;
+    }
+
+    .d-message {
+        width: 460px;
+    }
+}
+
+@media (max-width: 665px) {
+    .nameconversationuser {
+        width: 460px;
+    }
+
+    .d-play {
+        width: 460;
+    }
+
+    .d-message {
+        width: 410px;
+    }
+}
+
+@media (max-width: 614px) {
+    .nameconversationuser {
+        width: 410px;
+    }
+
+    .d-play {
+        width: 410;
+    }
+
+    .d-message {
+        width: 360px;
+    }
+}
+
+
+@media (max-width: 555px) {
+    .nameconversationuser {
+        width: 360px;
+    }
+
+    .d-play {
+        width: 360;
+    }
+
+    .d-message {
+        width: 310px;
+    }
+}
+
+@media (max-width: 500px) {
+    .nameconversationuser {
+        width: 310px;
+    }
+
+    .d-play {
+        width: 310;
+    }
+
+    .d-message {
+        width: 260px;
+    }
+}
+
+
+@media (max-width: 442px) {
+    .nameconversationuser {
+        width: 260px;
+    }
+
+    .d-play {
+        width: 260;
+    }
+
+    .d-message {
+        width: 210px;
+    }
+}
+
+@media (max-width: 385px) {
+    .nameconversationuser {
+        width: 210px;
+    }
+
+    .d-play {
+        width: 210;
+    }
+
+    .d-message {
+        width: 160px;
+    }
+}
+
+@media (max-width: 339px) {
+    .nameconversationuser {
+        width: 160px;
+    }
+
+    .d-play {
+        width: 160;
+    }
+
+    .d-message {
+        width: 110px;
+    }
+}
+
+
+

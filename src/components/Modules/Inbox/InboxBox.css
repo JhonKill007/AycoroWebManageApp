@@ -1,0 +1,29 @@
+.InboxBox {
+    display: flex;
+    height: 87vh;
+    border: 1px solid #ccc;
+    margin: auto;
+    overflow: hidden;
+}
+
+.v-line {
+    border-left: 1px solid #ccc;
+    height: 100%;
+}
+
+.InboxBox-max-widt {
+    display: none;
+}
+
+@media (max-width: 1171px) {
+    .InboxBox {
+        display: none;
+    }
+
+    .InboxBox-max-widt {
+        display: block;
+        height: 87vh;
+        border: 1px solid #ccc;
+        margin: auto;
+    }
+}

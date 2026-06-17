@@ -1,0 +1,181 @@
+._progressBar {
+  width: 100%;
+  height: 5px;
+  background: radial-gradient(circle, rgb(202, 5, 13) 0%, rgb(66, 73, 174) 44%, rgb(66, 73, 174) 79%);
+  margin-bottom: 10px;
+  border-radius: 10px;
+  position: relative;
+  animation: coresDancantes 1s linear infinite;
+}
+
+
+@keyframes coresDancantes {
+  100% {
+    filter: hue-rotate(360deg)
+  }
+}
+
+
+.disable-div {
+  pointer-events: none;
+}
+
+.disable-div img {
+  position: relative;
+  opacity: .2;
+  z-index: 0;
+}
+
+
+.publication {
+  /* margin: auto; */
+  border: 1px solid var(--hover);
+  background-color: var(--background);
+  border-radius: 15px;
+  padding: 25px;
+}
+
+.square {
+  aspect-ratio: 1 / 1;
+}
+
+.ImageBoxCharger {
+  width: 100%;
+  aspect-ratio: 1.7;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-self: center;
+}
+
+
+#icon_Heart_like {
+  font-size: 70px;
+  position: absolute;
+  width: 100%;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.like {
+  animation: like 1s ease-in-out;
+  opacity: 0;
+  transform-origin: center;
+}
+
+@keyframes like {
+  0% {
+    opacity: 0;
+    transform: scale(0);
+  }
+
+  15% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+
+  30% {
+    transform: scale(0.95);
+  }
+
+  45%,
+  80% {
+    transform: scale(1);
+  }
+
+  100% {
+    transform: scale(0);
+    opacity: 0;
+  }
+}
+
+.InteratorPostCharger {
+  width: 100%;
+  display: flex;
+}
+
+.LikeComentIcon {
+  width: 200px;
+  display: flex;
+}
+
+.settingIcon {
+  width: 50px;
+  height: 50px;
+  margin: 0 0 0 auto;
+  font-size: inherit;
+  text-align: center;
+  cursor: pointer;
+}
+
+.LikeIcon {
+  width: 50px;
+  height: 50px;
+}
+
+.ComentnIcon {
+  width: 50px;
+  height: 50px;
+}
+
+.InteratorIcon {
+  font-size: 30px;
+  margin-top: 10px;
+  align-items: center;
+  cursor: pointer;
+}
+
+.statePublicationCharger {
+  width: 150px;
+  height: 10px;
+  border-radius: 10px;
+}
+
+.space {
+  margin-bottom: 6px;
+}
+
+
+.NumComent {
+  cursor: pointer;
+}
+
+.comentInputBox {
+  width: 100%;
+  margin-bottom: 5px;
+  justify-content: space-between;
+  background-color: white;
+  border-radius: 25px;
+  border: 1px solid #ccc;
+  margin-top: 25px;
+}
+
+.userPublication {
+  cursor: pointer;
+}
+
+.InputComent input {
+  width: 100%;
+  height: 38px;
+  border: 1px solid white;
+  font-size: 16px;
+  border-radius: 25px;
+  outline: none;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.2s ease;
+  opacity: 1;
+  pointer-events: auto;
+  box-sizing: border-box;
+  padding: 0 0 3px 15px;
+}
+
+.texto-publi {
+  margin-top: 6px;
+  cursor: pointer;
+}
+
+.coment-spinner {
+  width: 26px;
+  height: 26px;
+}

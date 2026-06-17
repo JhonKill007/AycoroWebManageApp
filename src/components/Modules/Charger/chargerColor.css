@@ -1,0 +1,53 @@
+.color-changing {
+    background-color: var(--chargingPrimry);
+    animation: colorChange 2s infinite alternate;
+}
+
+@keyframes colorChange {
+    0% {
+        background-color: var(--chargingPrimry);
+    }
+
+    25% {
+        background-color: var(--chargingBackground);
+    }
+
+    50% {
+        background-color: var(--chargingPrimry);
+    }
+
+    75% {
+        background-color: var(--chargingBackground);
+    }
+
+    100% {
+        background-color: var(--chargingPrimry);
+    }
+}
+
+.color-changing-icon {
+    color: var(--chargingPrimry);
+    animation: colorChangeIcon 2s infinite alternate;
+}
+
+@keyframes colorChangeIcon {
+    0% {
+        color: var(--chargingPrimry);
+    }
+
+    25% {
+        color: var(--chargingBackground);
+    }
+
+    50% {
+        color: var(--chargingPrimry);
+    }
+
+    75% {
+        color: var(--chargingBackground);
+    }
+
+    100% {
+        color: var(--chargingPrimry);
+    }
+}

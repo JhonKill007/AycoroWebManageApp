@@ -1,0 +1,71 @@
+.InputDiv {
+  position: relative;
+  z-index: 90;
+}
+
+.ErrorLegensDiv {
+  height: 13px;
+}
+
+.ErrorLegens {
+  font-size: 12px;
+  color: #e75e69;
+  position: relative;
+  bottom: 5px;
+}
+
+.IconValidation {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  z-index: 100;
+  font-size: 18px;
+  opacity: 1;
+}
+
+.input-div-signup{
+  position: relative;
+  margin: auto;
+}
+
+.input-signup{
+  width: 100%;
+  box-sizing: border-box;
+  padding: 15px 15px 15px 15px;
+  border: 1px solid #ccc;
+  font-size: 16px;
+  border-radius: 20px;
+  outline: none;
+  transition: all 0.2s ease;
+  height: 35px;
+}
+
+
+
+.pass-input-div-signup{
+  position: relative;
+  margin: auto;
+}
+
+.pass-input-signup{
+  width: 100%;
+  box-sizing: border-box;
+  padding: 15px 35px 15px 15px;
+  border: 1px solid #ccc;
+  font-size: 16px;
+  border-radius: 20px;
+  outline: none;
+  transition: all 0.2s ease;
+  height: 35px;
+}
+
+.icon-view-pass-signup{
+  color: grey;
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+}

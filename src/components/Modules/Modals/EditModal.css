@@ -1,0 +1,96 @@
+.modal_box_coment {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgb(35, 35, 39, 0.9);
+    z-index: 2;
+}
+
+.modal_container_coment {
+    margin: auto;
+    margin-top: 7%;
+    width: 90%;
+    max-width: 400px;
+    max-height: 90%;
+    background-color: var(--hover);
+    border-radius: 6px;
+    padding: 1em 3em 2.5em 2.5em;
+    display: grid;
+    gap: 1em;
+}
+
+.modal_button_coment {
+    display: flex;
+    justify-content: space-between;
+}
+
+.modal_button_coment div {
+    cursor: pointer;
+}
+
+.coment-box {
+    display: flex;
+    justify-content: space-between;
+}
+
+.tex-area-coment-edit {
+    position: relative;
+    margin: auto;
+}
+
+.tex-area-coment-edit textarea {
+    width: 100%;
+    height: 200px;
+    box-sizing: border-box;
+    padding: 40px 15px 15px 25px;
+    border: 1px solid #ccc;
+    font-size: 16px;
+    border-radius: 20px 0 0 20px;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.tex-area-coment-edit textarea::-webkit-scrollbar {
+    width: 5px;
+}
+
+.tex-area-coment-edit textarea::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 4px;
+}
+
+.tex-area-coment-edit textarea::-webkit-scrollbar-thumb:hover {
+    background: #b3b3b3;
+    box-shadow: 0 0 2px 1px rgba(0, 0, 0, 0.2);
+}
+
+.tex-area-coment-edit textarea::-webkit-scrollbar-thumb:active {
+    background-color: #999999;
+}
+
+.tex-area-coment-edit img {
+    width: 25px;
+    height: 25px;
+    border-radius: 50%;
+    margin-left: 15px;
+    margin-top: 10px;
+}
+
+.tex-area-coment-edit-name {
+    width: 100px;
+    margin-left: 5px;
+    margin-top: 10px;
+}
+
+.tex-area-coment-edit-container {
+    width: 280px;
+    height: 33px;
+    position: absolute;
+    display: flex;
+    background-color: var(--background);
+    left: 20px;
+    border-radius: 20px;
+    top: 0.5px;
+}

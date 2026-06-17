@@ -1,0 +1,58 @@
+import { createContext } from "react";
+import { HistoryListItemModel } from "../Models/History/HistoryListItemModel";
+import { MessageParams } from "../Models/Message/MessageParams";
+import { PostModel } from "../Models/Post/PostModel";
+import { PostParams } from "../Models/Post/PostParams";
+import { UserPerfilModel } from "../Models/User/UserPerfilModel";
+
+interface IAppContext {
+  searchVisible: boolean;
+  buttonsVisible: boolean;
+  setButtonsVisible_F: (b: boolean) => void;
+  historyList: HistoryListItemModel[] | undefined;
+  setHistoryList_F: (h: HistoryListItemModel[]) => void;
+  myhistorys: HistoryListItemModel[] | undefined;
+  ConcatMyHistorys: (h: HistoryListItemModel[]) => void;
+  setMyHistorys_F: (h: HistoryListItemModel[]) => void;
+  setPhoto: (p: any) => void;
+  setOnLoadPhoto: (OnLoadP: PostParams) => void;
+  setFooterViewer_F: (b: boolean) => void;
+  footerViewer: boolean;
+  BdPost: PostModel[] | undefined;
+  OnLoadPost: PostParams | undefined;
+  setBdPost_F: (p: PostModel[]) => void;
+  usersConnecting: any[];
+  messages: MessageParams[];
+  lastMessageState: MessageParams | undefined;
+  setMessages_F: (m: any) => void;
+  closeConnection: () => void;
+  perfilPost: PostModel[];
+  setPerfilPost: (m: any) => void;
+  perfiluser: UserPerfilModel | undefined;
+  getPerfilPost: (username: string) => void;
+  getPerfilDta: (username: string) => void;
+  cantOfFollow: number | undefined;
+  setCantOfFollow: (f: any) => void;
+  cantOfFollowings: number | undefined;
+  setCantOfFollowings: (f: any) => void;
+  isActiveSpinner: boolean;
+  isPostCharging: boolean;
+  isfollow: boolean;
+  setIsFollow: (b: boolean) => void;
+  chargingPost: boolean;
+  chargingMyHistory: boolean;
+  chargingOthersHistorys: boolean;
+  goToExplorerFromIndex: boolean;
+  tendenciasCharger: boolean;
+  tendencias: PostModel[] | undefined;
+  setTendencias_F: (model: PostModel[]) => void;
+  mosaicosCharger: boolean;
+  mosaicos: PostModel[] | undefined;
+  setMosaicos_F: (model: PostModel[]) => void;
+  users: any[] | undefined;
+  searchImage: (id: string) => any[];
+  handleImageBank: (image: any) => void;
+  isOnline: (Id: string, User: string) => void;
+}
+
+export const AppContext = createContext<IAppContext | undefined>(undefined);

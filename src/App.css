@@ -1,0 +1,59 @@
+.App {
+  /* color: var(--text-primary);
+  background-color: var(--background); */
+  height: 100vh;
+  overflow: auto;
+}
+.App::-webkit-scrollbar {
+  width: 5px;
+}
+
+.App::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 4px;
+}
+
+.App::-webkit-scrollbar-thumb:hover {
+  background: #b3b3b3;
+  box-shadow: 0 0 2px 1px rgba(0, 0, 0, 0.2);
+}
+
+.App::-webkit-scrollbar-thumb:active {
+  background-color: #999999;
+}
+
+.nav-landing{
+  background-color: var(--background)
+}
+
+.UserHorizontalCard{
+  border: 1px solid var(--hover);
+}
+
+.sugerencias_container {
+  height: 90vh;
+  overflow: auto;
+  direction: rtl;
+}
+
+.sugerencias_container > * {
+  direction: ltr;
+}
+
+.sugerencias_container::-webkit-scrollbar {
+  width: 5px;
+}
+
+.sugerencias_container::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 4px;
+}
+
+.sugerencias_container::-webkit-scrollbar-thumb:hover {
+  background: #b3b3b3;
+  box-shadow: 0 0 2px 1px rgba(0, 0, 0, 0.2);
+}
+
+.sugerencias_container::-webkit-scrollbar-thumb:active {
+  background-color: #999999;
+}

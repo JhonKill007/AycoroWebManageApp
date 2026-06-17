@@ -1,0 +1,49 @@
+.PublicationModalBox {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgb(35, 35, 39, 0.9);
+    z-index: 2;
+    display: flex;
+    overflow-x: hidden;
+    overflow-y: scroll;
+}
+
+.PublicationModalContainer {
+    margin: auto;
+    width: 90%;
+    display: grid;
+    gap: 1em;
+}
+
+.div_view_container {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+}
+
+
+.ViewPublicationModal {
+    width: 90%;
+}
+
+
+/* .P_modal_box::-webkit-scrollbar {
+    width: 5px;
+}
+
+.P_modal_box::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 4px;
+}
+
+.P_modal_box::-webkit-scrollbar-thumb:hover {
+    background: #b3b3b3;
+    box-shadow: 0 0 2px 1px rgba(0, 0, 0, 0.2);
+}
+
+.P_modal_box::-webkit-scrollbar-thumb:active {
+    background-color: #999999;
+} */

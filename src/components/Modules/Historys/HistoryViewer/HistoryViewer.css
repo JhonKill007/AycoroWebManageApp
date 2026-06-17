@@ -1,0 +1,213 @@
+.HYmodal_box {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgb(35, 35, 39, 0.9);
+    z-index: 2;
+    display: flex;
+}
+
+.HYmodal_container {
+    margin: auto;
+    width: 90%;
+    max-width: 600px;
+    display: grid;
+    gap: 1em;
+}
+
+.div_view_container {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+}
+
+.ViewModalHY {
+    width: 90%;
+    max-width: 400px;
+}
+
+.ViewModalHYContainer {
+    width: 56vh;
+    height: 90vh;
+    background-color: #000000;
+    margin: auto;
+}
+
+.ViewModalHYContainer img {
+    width: 100%;
+    height: 100%;
+}
+
+
+.progresbar_mother_box {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+}
+
+.container_progresbar_box {
+    width: 100%;
+    display: flex;
+}
+
+.progresbar_box {
+    width: 90%;
+    background-color: white;
+    border-radius: 5px;
+    height: 4px;
+}
+
+.progresbar_box_othersDiv {
+    width: 5%;
+}
+
+.closeIcon {
+    font-size: 20px;
+    margin-top: 10px;
+    margin-right: 10px;
+    color: white;
+    cursor: pointer;
+}
+
+.arrow_rigth_box_ {
+    font-size: 40px;
+}
+
+.arrow_left_box {
+    font-size: 30px;
+    cursor: pointer;
+    color: white;
+}
+
+.chevron_box {
+    width: 25px;
+}
+
+.usersHyContainert {
+    width: 60%;
+    display: flex;
+    justify-content: space-between;
+    margin: auto;
+    padding: 5px;
+}
+
+.userHy {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    margin: auto;
+}
+
+.userHy img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.center_user_hy {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+}
+
+.center_user_hy img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: linear-gradient(to bottom left,
+            rgb(202, 5, 13),
+            rgb(66, 73, 174));
+    padding: 3px;
+}
+
+.HyInterator {
+    width: 56vh;
+    position: absolute;
+    display: flex;
+}
+
+.LikeIcon {
+    margin-left: 10px;
+}
+
+.nameHy {
+    color: white;
+    text-align: center;
+    margin: 0 0 0 auto;
+}
+
+.nameHyP {
+    cursor: pointer;
+}
+
+.DateHyP {
+    font-size: 10px;
+    margin-top: -15px;
+}
+
+.ViewsDiv {
+    margin-top: 10px;
+    margin-left: 10px;
+    color: white;
+}
+
+.chevronup {
+    position: absolute;
+    width: 56vh;
+    margin-top: 84vh;
+}
+
+.chevronup-box {
+    width: 30px;
+    margin: auto;
+}
+
+.chevrondown {
+    position: absolute;
+    width: 56vh;
+}
+
+.userhistoryconteiner {
+    width: 56vh;
+    height: 83vh;
+    position: absolute;
+    margin-top: 45px;
+}
+
+.historyuserbox {
+    width: 56vh;
+    height: 50px;
+    display: flex;
+}
+
+.historyuserProfile {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    margin-left: 5px;
+}
+
+.historyuserProfile img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+}
+
+.iconHy {
+    margin-left: 68%;
+    margin-top: -55%;
+}
+
+.historyuserName {
+    width: 46vh;
+    height: 25px;
+    margin-left: 5px;
+    margin-top: 10px;
+}
+
+.lettle_HY {
+    text-align: center;
+}

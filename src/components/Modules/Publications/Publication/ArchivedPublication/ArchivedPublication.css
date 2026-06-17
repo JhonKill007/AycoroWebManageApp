@@ -1,0 +1,106 @@
+.AP_modal_box {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgb(35, 35, 39, 0.9);
+    z-index: 2;
+    display: flex;
+    overflow-x: hidden;
+    overflow-y: scroll;
+    color: var(--text-primary);
+    background-color: var(--background);
+}
+
+.AP_modal_container {
+    margin: auto;
+    width: 90%;
+    display: grid;
+    gap: 1em;
+}
+
+.AP_div_view_container {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+}
+
+.AP_modal_container_tittle {
+    text-align: center;
+}
+
+.AP_closeIcon {
+    font-size: 20px;
+    margin-top: 10px;
+    margin-right: 10px;
+    cursor: pointer;
+}
+
+.AP_modal_box::-webkit-scrollbar {
+    width: 5px;
+}
+
+.AP_modal_box::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 4px;
+}
+
+.AP_modal_box::-webkit-scrollbar-thumb:hover {
+    background: #b3b3b3;
+    box-shadow: 0 0 2px 1px rgba(0, 0, 0, 0.2);
+}
+
+.AP_modal_box::-webkit-scrollbar-thumb:active {
+    background-color: #999999;
+}
+
+.puntos-container {
+    margin: auto;
+    position: relative;
+    width: 60px;
+    height: 20px;
+}
+
+.punto {
+    position: absolute;
+    top: 0;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: linear-gradient(
+    to bottom left,
+    rgb(202, 5, 13),
+    rgb(66, 73, 174)
+  );
+    animation: puntoAnimacion 1.5s infinite;
+}
+
+.punto:nth-child(1) {
+    left: 0;
+    animation-delay: 0s;
+}
+
+.punto:nth-child(2) {
+    left: 25px;
+    animation-delay: 0.5s;
+}
+
+.punto:nth-child(3) {
+    left: 50px;
+    animation-delay: 1s;
+}
+
+@keyframes puntoAnimacion {
+    0% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0;
+    }
+
+    100% {
+        opacity: 1;
+    }
+}

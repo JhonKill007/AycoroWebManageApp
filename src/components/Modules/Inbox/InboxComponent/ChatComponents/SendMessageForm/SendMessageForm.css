@@ -1,0 +1,11 @@
+
+.messageInput {
+    height: 42px;
+    border: 1px solid #ccc;
+    padding: 0 13px;
+    font-size: 16px;
+    border-radius: 5px;
+    outline: none;
+    transition: all 0.2s ease;
+    margin-left: 15px;
+}

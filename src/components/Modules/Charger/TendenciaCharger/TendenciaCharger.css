@@ -1,0 +1,56 @@
+.popular-content-card {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    overflow: hidden;
+    margin: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    cursor: pointer;
+}
+
+.card-image {
+    width: 100%;
+    aspect-ratio: 1;
+}
+
+.usercharge {
+    width: 70%;
+    height: 20px;
+    border-radius: 5px;
+    margin-bottom: 10px;
+    margin-top: 5px;
+}
+
+.card-info {
+    padding: 16px;
+}
+
+.card-title {
+    font-size: 18px;
+    margin-bottom: 8px;
+}
+
+.interaction-info {
+    display: flex;
+    justify-content: space-between;
+}
+
+.likes,
+.comments {
+    display: flex;
+    align-items: center;
+    color: #333;
+    font-size: 14px;
+}
+
+.likes i,
+.comments i {
+    margin-right: 4px;
+    color: #ff4500;
+}
+
+.tendencia {
+    margin-top: 5px;
+    width: 80%;
+    height: 15px;
+    border-radius: 5px;
+}

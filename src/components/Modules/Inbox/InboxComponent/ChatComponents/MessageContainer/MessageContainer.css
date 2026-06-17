@@ -1,0 +1,128 @@
+
+.chat-box {
+    height: 67vh;
+    overflow: auto;
+    padding: 10px 30px 20px 30px;
+    box-shadow: inset 0 32px 32px -32px rgb(0 0 0 / 5%),
+        inset 0 -32px 32px -32px rgb(0 0 0 / 5%);
+}
+
+.chat-box .chat {
+    margin: 5px 0;
+}
+
+.chat-box .chat p {
+    word-wrap: break-word;
+    padding: 8px 16px;
+    box-shadow: 0 0 32 rgb(0 0 0 / 8%), 0 16px 16px -16px rgb(0 0 0 / 10%);
+}
+
+.chat-box .outgoing {
+    display: flex;
+}
+
+.outgoing .details {
+    margin-left: auto;
+    max-width: calc(100% - 130px);
+    margin-bottom: -15px;
+}
+
+.outgoing .details p {
+    background: #333;
+    color: #fff;
+    border-radius: 18px 18px 0 18px;
+}
+
+.chat-box .incoming {
+    display: flex;
+    align-items: flex-end;
+}
+
+.incoming img {
+    /* border-radius: 50%; */
+}
+
+.letter-comver {
+    text-align: center;
+}
+
+/* .chat-box .incoming img {
+    height: 35px;
+    width: 35px;
+} */
+
+.incoming .details {
+    margin-left: 10px;
+    margin-right: auto;
+    max-width: calc(100% - 130px);
+    height: auto;
+    margin-bottom: -15px;
+}
+
+.incoming .details p {
+    color: #333;
+    background: #e9ecef;
+    border-radius: 18px 18px 18px 0;
+}
+
+.time_date {
+    color: rgb(92, 92, 92);
+    font-size: 12px;
+}
+
+.outtime {
+    text-align: right;
+}
+
+:is(.chat-box, .users-list)::-webkit-scrollbar {
+    width: 5px;
+}
+
+:is(.chat-box, .users-list)::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 4px;
+}
+
+:is(.chat-box, .users-list)::-webkit-scrollbar-thumb:hover {
+    background: #b3b3b3;
+    box-shadow: 0 0 2px 1px rgba(0, 0, 0, 0.2);
+}
+
+:is(.chat-box, .users-list)::-webkit-scrollbar-thumb:active {
+    background-color: #999999;
+}
+
+.dateContain {
+    width: 100px;
+    text-align: center;
+    margin: auto;
+    border-radius: 15px;
+    color: #333;
+    background: #e9ecef;
+}
+
+.dateContain.hoy {
+    width: 50px;
+}
+
+.dateContain.year {
+    width: 150px;
+}
+
+.disNone {
+    display: none;
+}
+
+.Tittle_message_Initial {
+    text-align: center
+}
+
+.peerfiluserchat{
+    width: 200px;
+    height: 200px;
+}
+
+.peerfiluserchat img{
+    width: 100%;
+    height: 100%;
+}

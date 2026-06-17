@@ -1,0 +1,128 @@
+.cont {
+  width: 90%;
+  height: 100vh;
+  margin: auto;
+}
+
+.UserPerfi {
+  display: flex;
+  padding: 0;
+  text-align: left;
+}
+
+.PerfilUser {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  margin-left: 7%;
+}
+
+.PerfilUser img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: linear-gradient(
+    to bottom left,
+    rgb(202, 5, 13),
+    rgb(66, 73, 174)
+  );
+  padding: 5px;
+}
+
+.InfoUserPerfil {
+  width: 300px;
+  margin-top: 10px;
+  margin-left: 50px;
+}
+
+.NOfollowBox {
+  width: 150px;
+  justify-content: space-between;
+}
+
+.followBox {
+  width: 220px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.follow {
+  width: 100px;
+  text-align: center;
+  background: linear-gradient(
+    to bottom left,
+    rgb(202, 5, 13),
+    rgb(66, 73, 174)
+  );
+  border-radius: 15px;
+  cursor: pointer;
+}
+
+.buttonsFolloed {
+  width: 115px;
+  justify-content: space-between;
+  cursor: pointer;
+  align-items: center;
+}
+
+.follow b {
+  color: black;
+}
+
+.followed {
+  width: 100px;
+  text-align: center;
+  background: linear-gradient(
+    to bottom left,
+    rgb(202, 5, 13),
+    rgb(66, 73, 174)
+  );
+  border-radius: 15px;
+  cursor: pointer;
+}
+
+#editportadaicon {
+  font-size: 15px;
+  color: blue;
+  float: right;
+  margin-top: 175px;
+  margin-left: -25px;
+  position: relative;
+  cursor: pointer;
+  left: -7px;
+}
+
+#editperfilicon {
+  font-size: 15px;
+  color: blue;
+  float: right;
+  margin-top: 130px;
+  margin-left: -20px;
+  position: relative;
+  cursor: pointer;
+}
+
+#settingsicon {
+  font-size: 15px;
+  float: right;
+  margin-top: 250px;
+  margin-left: -25px;
+  position: relative;
+  cursor: pointer;
+  left: -7px;
+}
+
+.iconfollow {
+  font-size: 15px;
+  color: black;
+}
+
+.iconMsgPerfil {
+  font-size: 20px;
+  color: grey;
+}
+
+.sendMsg {
+  font-size: 12px;
+  margin-left: 5px;
+}

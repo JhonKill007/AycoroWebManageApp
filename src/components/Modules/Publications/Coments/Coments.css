@@ -1,0 +1,81 @@
+.Coment {
+    background-color: rgb(206, 203, 203);
+    padding: 10px;
+    width: 100%;
+    margin-bottom: 5px;
+    text-align: left;
+    border-radius: 15px;
+}
+
+.headComent {
+    display: flex;
+}
+
+.coment_container {
+    width: 95%;
+    display: flex;
+}
+
+.coment_options {
+    width: 15px;
+    margin-left: 15px;
+    cursor: pointer;
+}
+
+.PerfilComent {
+    width: 25px;
+    height: 25px;
+    border-radius: 50%;
+    margin-right: 3px;
+}
+
+.PerfilComent img {
+    width: 25px;
+    height: 25px;
+    border-radius: 50%;
+    object-fit: cover;
+    object-position: center center;
+}
+
+.CometBody {
+    width: 95%;
+    display: flex;
+}
+
+.nameAndBodyOfComent {
+    width: 95%;
+    word-wrap: break-word;
+}
+
+.likesComents {
+    width: 25px;
+    display: flex;
+    text-align: left;
+    margin-left: 5px;
+}
+
+.LikeComent {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    align-items: center;
+}
+
+.iconLikeComent {
+    font-size: 15px;
+}
+
+.CantOfLikesComents {
+    font-size: 13px;
+}
+
+.lettle-like {
+    width: 100px;
+}
+
+.likeContainer {
+    width: 150px;
+    display: flex;
+    height: 30px;
+    margin-left: 25px;
+}
