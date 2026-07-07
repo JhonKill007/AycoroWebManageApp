@@ -11,6 +11,7 @@ export class AycoroAuthUserModel {
     public gender: string | undefined;
     public status: number | undefined;
     public role: string | undefined;
+    public roleName: string | undefined;
     public permissions: string[] | undefined;
     public verify: number | undefined;
     public validate: boolean | undefined;

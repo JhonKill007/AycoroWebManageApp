@@ -12,6 +12,8 @@ import { NotificationModel } from "../Models/Notification/NotificationModel";
 import chatService from "../Services/Chat/ChatService";
 import { useUserContext } from "./UserContext";
 
+const chatUrl = process.env.REACT_APP_CHAT_URL || "https://api.aycoro.com/aycoroHubs";
+
 interface HubsContextProps {
   JoinApp: (Id: string, User: string) => void;
   usersConnecting: any[];
@@ -53,7 +55,7 @@ export const HubsProvider: React.FC<HubsProviderProps> = ({ children }) => {
   const JoinApp = async (Id: string, User: string) => {
     try {
       const connection = new HubConnectionBuilder()
-        .withUrl("https://api.aycoro.com/aycoroHubs", {
+        .withUrl(chatUrl, {
           transport:
             HttpTransportType.WebSockets | HttpTransportType.LongPolling,
         })

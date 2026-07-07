@@ -1,28 +1,33 @@
-# # Etapa 1: build
-# FROM node:lts-bullseye AS builder
-# WORKDIR /app
-# COPY package*.json ./
-# RUN npm install
-# COPY . .
-# ENV GENERATE_SOURCEMAP=false
-# RUN npm run build
-
-# # Etapa 2: servidor Nginx
-# FROM nginx:alpine
-# COPY --from=builder /app/build /usr/share/nginx/html
-# # Bloquear source maps opcionalmente
-# RUN rm -f /usr/share/nginx/html/*.map
-
-# # Configuración básica de Nginx
-# COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-# EXPOSE 80
-# CMD ["nginx", "-g", "daemon off;"]
-
 FROM node:lts-bullseye AS builder
 WORKDIR /app
+
+ARG REACT_APP_API_URL
+ARG REACT_APP_MANAGE_API_URL
+ARG REACT_APP_CHAT_URL
+ARG REACT_APP_TITTLE_BASE
+ARG REACT_APP_SYSTEM_LOGIN_KEY
+ARG REACT_APP_SYSTEM_LOGIN_PASSWORD
+
+ENV GENERATE_SOURCEMAP=false
+ENV REACT_APP_API_URL=$REACT_APP_API_URL
+ENV REACT_APP_MANAGE_API_URL=$REACT_APP_MANAGE_API_URL
+ENV REACT_APP_CHAT_URL=$REACT_APP_CHAT_URL
+ENV REACT_APP_TITTLE_BASE=$REACT_APP_TITTLE_BASE
+ENV REACT_APP_SYSTEM_LOGIN_KEY=$REACT_APP_SYSTEM_LOGIN_KEY
+ENV REACT_APP_SYSTEM_LOGIN_PASSWORD=$REACT_APP_SYSTEM_LOGIN_PASSWORD
+
 COPY package*.json ./
-RUN npm install
+RUN npm ci
+
 COPY . .
 RUN npm run build
-CMD ["npm", "start"]
+
+FROM nginx:alpine
+
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=builder /app/build /usr/share/nginx/html
+
+RUN find /usr/share/nginx/html -name "*.map" -type f -delete
+
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]

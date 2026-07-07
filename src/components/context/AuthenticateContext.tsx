@@ -27,7 +27,7 @@ export const AuthenticateProvider: React.FC<AuthenticateProviderProps> = ({
 
   useEffect(() => {
     try {
-      const storedtoken = localStorage.getItem("Us-Ac");
+      const storedtoken = localStorage.getItem("internalToken");
       if (storedtoken) {
         setAuthenticateProp(true);
       }
@@ -41,7 +41,7 @@ export const AuthenticateProvider: React.FC<AuthenticateProviderProps> = ({
   };
 
   const clearAuthenticate = () => {
-    setAuthenticateProp(true);
+    setAuthenticateProp(false);
   };
 
   return (

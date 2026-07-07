@@ -578,6 +578,7 @@ const RolesTab = ({ c, theme }: { c: any; theme: string }) => {
       >
         {/* Header */}
         <div
+          className="roles-table-header"
           style={{
             display: "grid",
             gridTemplateColumns: "1fr 100px 80px 100px 80px",
@@ -634,6 +635,7 @@ const RolesTab = ({ c, theme }: { c: any; theme: string }) => {
             return (
               <div
                 key={role?._id || Math.random()}
+                className="role-row"
                 style={{
                   display: "grid",
                   gridTemplateColumns: "1fr 100px 80px 100px 80px",

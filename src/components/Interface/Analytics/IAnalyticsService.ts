@@ -6,5 +6,6 @@ export interface IAnalyticsService {
   getDashboardStats(): Promise<any>;
   getDeviceData(): Promise<any>;
   getGenderData(): Promise<any>;
+  getSessionAccess(days?: number): Promise<any>;
   getGrowthDataByMonth(year: number, month: number): Promise<any>;
 }

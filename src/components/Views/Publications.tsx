@@ -3,6 +3,8 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Colors } from "../constants/Colors";
 import { PostStatus } from "../constants/Status";
+import { Permissions } from "../constants/Permissions";
+import { usePermissions } from "../hooks/usePermissions";
 import { useThemeContext } from "../context/ThemeContext";
 import { useToast } from "../context/ToastContext";
 import { PostModel } from "../Models/Post/PostModel";
@@ -47,6 +49,18 @@ const getAvatarColor = (name: string = "") =>
 const fmtNum = (n: number = 0) => {
   if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
   return String(n);
+};
+
+const isVideoPublication = (pub: PostModel) => {
+  const mediaType = pub.MediaType?.toLowerCase() || "";
+  const mimeType = pub.MediaMimeType?.toLowerCase() || "";
+  const mediaUrl = pub.MediaData?.toLowerCase() || "";
+
+  return (
+    mediaType.includes("video") ||
+    mimeType.startsWith("video/") ||
+    /\.(mp4|webm|mov|m4v|avi|mkv)(\?|#|$)/i.test(mediaUrl)
+  );
 };
 
 // ─── Debounce helper ───────────────────────────────────────────────────
@@ -103,6 +117,7 @@ function UserAvatar({ username, photoUrl, size = 32 }: any) {
 
 // ─── Modal detalle ────────────────────────────────────────────────────
 function PublicationModal({ pub, c, theme, onClose, onAction }: any) {
+  const { can } = usePermissions();
   const navigate = useNavigate();
   if (!pub) return null;
 
@@ -185,6 +200,7 @@ function PublicationModal({ pub, c, theme, onClose, onAction }: any) {
   };
 
   const statusCfg = POST_STATUS_CONFIG[pub.Status || 2];
+  const isVideo = isVideoPublication(pub);
 
   return (
     <div
@@ -293,24 +309,41 @@ function PublicationModal({ pub, c, theme, onClose, onAction }: any) {
             gap: "16px",
           }}
         >
-          {/* Imagen principal */}
+          {/* Media principal */}
           {pub.MediaData && (
             <div
               style={{
                 width: "100%",
                 borderRadius: "16px",
                 overflow: "hidden",
-                background: c.accentSoft,
+                background: isVideo ? "#05050b" : c.accentSoft,
               }}
             >
-              <img
-                src={pub.MediaData}
-                alt="Post"
-                style={{ width: "100%", height: "auto", display: "block" }}
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = "none";
-                }}
-              />
+              {isVideo ? (
+                <video
+                  src={pub.MediaData}
+                  controls
+                  playsInline
+                  preload="metadata"
+                  style={{
+                    width: "100%",
+                    maxHeight: "68vh",
+                    display: "block",
+                    background: "#05050b",
+                  }}
+                >
+                  Tu navegador no puede reproducir este video.
+                </video>
+              ) : (
+                <img
+                  src={pub.MediaData}
+                  alt="Post"
+                  style={{ width: "100%", height: "auto", display: "block" }}
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = "none";
+                  }}
+                />
+              )}
             </div>
           )}
 
@@ -434,7 +467,7 @@ function PublicationModal({ pub, c, theme, onClose, onAction }: any) {
             flexWrap: "wrap",
           }}
         >
-          {getAvailableActions().map((a) => (
+          {can(Permissions.DELETE_POSTS) && getAvailableActions().map((a) => (
             <button
               key={a.key}
               onClick={() => {
@@ -731,6 +764,7 @@ const Publications = () => {
       >
         {/* Banner */}
         <div
+          className="responsive-page-banner"
           style={{
             background:
               theme === "dark"

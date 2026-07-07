@@ -350,6 +350,7 @@ export const ManagersTab = ({ c, theme }: { c: any; theme: string }) => {
       >
         {/* Header tabla */}
         <div
+          className="managers-table-header"
           style={{
             display: "grid",
             gridTemplateColumns: "1fr 120px 110px 80px 90px",
@@ -384,6 +385,7 @@ export const ManagersTab = ({ c, theme }: { c: any; theme: string }) => {
           return (
             <div
               key={m._id}
+              className="manager-row"
               style={{
                 display: "grid",
                 gridTemplateColumns: "1fr 120px 110px 80px 90px",

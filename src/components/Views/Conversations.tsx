@@ -1242,6 +1242,7 @@ const Conversations = () => {
 
           {/* Columnas header */}
           <div
+            className="conversations-table-header"
             style={{
               display: "grid",
               gridTemplateColumns: "1fr 120px 100px 90px 110px 110px",
@@ -1309,6 +1310,7 @@ const Conversations = () => {
                 }}
               >
                 <div
+                  className="conversation-row-grid"
                   style={{
                     display: "grid",
                     gridTemplateColumns: "1fr 120px 100px 90px 110px 110px",

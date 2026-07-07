@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Permissions } from "../constants/Permissions";
+import { usePermissions } from "../hooks/usePermissions";
 import UserProfile from "../assets/UserProfile.jpeg";
 import { Colors } from "../constants/Colors";
 import { useThemeContext } from "../context/ThemeContext";
@@ -146,6 +148,7 @@ function RequestDetailModal({
   isWorking: boolean;
 }) {
   const navigate = useNavigate();
+  const { can } = usePermissions();
   const [showMessageComposer, setShowMessageComposer] = useState(false);
   const [message, setMessage] = useState("");
   const [previewDocument, setPreviewDocument] = useState<{
@@ -301,7 +304,7 @@ function RequestDetailModal({
 
         </div>
 
-        <div className="request-actions">
+        <div className="request-actions" style={{ display: can(Permissions.MODERATE) ? undefined : "none" }}>
           <button
             className="action-button secondary"
             onClick={() => setShowMessageComposer(true)}
@@ -709,6 +712,40 @@ const Requests = () => {
         .action-button.success{background:rgba(22,163,74,0.12);color:#16a34a;border-color:rgba(22,163,74,0.25);}
         .empty-state{padding:46px;text-align:center;color:${c.textMuted};font-size:13px;font-weight:800;}
         @media(max-width:900px){.stats-grid{grid-template-columns:repeat(2,1fr)}.requests-table-head,.request-row{grid-template-columns:80px 150px 1fr 110px}.hide-mobile{display:none}.metadata-grid,.documents-grid{grid-template-columns:1fr}}
+        @media(max-width:768px){
+          .request-panel{overflow:visible;background:transparent;border:0;}
+          .request-panel .toolbar{background:${c.card};border:1.5px solid ${c.border};border-radius:16px;margin-bottom:12px;}
+          .requests-table-head{display:none;}
+          .request-row{
+            display:grid;
+            grid-template-columns:minmax(0,1fr) auto;
+            gap:10px 12px;
+            min-width:0;
+            margin-bottom:10px;
+            padding:14px;
+            border:1px solid ${c.border};
+            border-radius:16px;
+            background:${c.card};
+            align-items:center;
+          }
+          .request-row:hover{background:${c.accentSoft};}
+          .request-row .hide-mobile{display:block;}
+          .request-row>div{min-width:0;}
+          .request-row>div:nth-child(1){grid-column:1;grid-row:3;font-size:11px!important;}
+          .request-row>div:nth-child(2){grid-column:1;grid-row:2;}
+          .request-row>div:nth-child(3){grid-column:1 / -1;grid-row:1;padding-bottom:10px;border-bottom:1px solid ${c.border};}
+          .request-row>div:nth-child(4){grid-column:1 / -1;grid-row:4;white-space:normal!important;overflow:visible!important;padding:10px;border-radius:10px;background:${c.accentSoft};line-height:1.5;}
+          .request-row>div:nth-child(5){grid-column:2;grid-row:2;justify-self:end;}
+          .request-row>div:nth-child(6){grid-column:2;grid-row:3;justify-self:end;}
+          .request-row>div:nth-child(1)::before,
+          .request-row>div:nth-child(4)::before,
+          .request-row>div:nth-child(6)::before{
+            display:block;margin-bottom:4px;color:${c.textMuted};font-size:8px;font-weight:900;letter-spacing:.07em;text-transform:uppercase;
+          }
+          .request-row>div:nth-child(1)::before{content:'ID';}
+          .request-row>div:nth-child(4)::before{content:'Descripción';}
+          .request-row>div:nth-child(6)::before{content:'Creado';text-align:right;}
+        }
       `}</style>
 
       <main className="requests-main">

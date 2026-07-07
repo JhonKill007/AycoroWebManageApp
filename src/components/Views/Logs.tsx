@@ -1,1526 +1,1203 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Colors } from "../constants/Colors";
 import { useThemeContext } from "../context/ThemeContext";
+import {
+  ErrorLogGroup,
+  ErrorLogModel,
+  ErrorLogResponse,
+} from "../Models/ErrorLog/ErrorLogModel";
+import { Pagination } from "../Modules/Common/Components/Pagination";
+import errorLogService from "../Services/ErrorLog/ErrorLogService";
 
-// ─── Datos mock ───────────────────────────────────────────────────────
-const generateLogs = () => {
-  const entries = [
-    // Sistema
-    {
-      id: "LOG-001",
-      level: "info",
-      category: "sistema",
-      source: "api-gateway",
-      message: "Servidor iniciado correctamente en puerto 3000",
-      user: null,
-      ip: null,
-      date: "2025-02-26",
-      time: "09:00:01",
-      duration: null,
-      code: 200,
-    },
-    {
-      id: "LOG-002",
-      level: "info",
-      category: "sistema",
-      source: "database",
-      message: "Conexión a PostgreSQL establecida (pool: 20 conexiones)",
-      user: null,
-      ip: null,
-      date: "2025-02-26",
-      time: "09:00:03",
-      duration: null,
-      code: null,
-    },
-    {
-      id: "LOG-003",
-      level: "warning",
-      category: "sistema",
-      source: "memory-monitor",
-      message:
-        "Uso de memoria al 78% — por encima del umbral recomendado (70%)",
-      user: null,
-      ip: null,
-      date: "2025-02-26",
-      time: "09:04:22",
-      duration: null,
-      code: null,
-    },
-    {
-      id: "LOG-004",
-      level: "info",
-      category: "sistema",
-      source: "cache",
-      message: "Redis cache inicializado — 0 claves precargadas",
-      user: null,
-      ip: null,
-      date: "2025-02-26",
-      time: "09:00:05",
-      duration: null,
-      code: null,
-    },
-    {
-      id: "LOG-005",
-      level: "error",
-      category: "sistema",
-      source: "cron-scheduler",
-      message: "Job 'purge_deleted_posts' falló: timeout después de 30s",
-      user: null,
-      ip: null,
-      date: "2025-02-26",
-      time: "09:05:00",
-      duration: "30s",
-      code: 500,
-    },
-
-    // Autenticación
-    {
-      id: "LOG-006",
-      level: "info",
-      category: "auth",
-      source: "auth-service",
-      message: "Login exitoso",
-      user: "lucia_v",
-      ip: "187.33.12.45",
-      date: "2025-02-26",
-      time: "09:14:08",
-      duration: "42ms",
-      code: 200,
-    },
-    {
-      id: "LOG-007",
-      level: "warning",
-      category: "auth",
-      source: "auth-service",
-      message: "Intento de login fallido (contraseña incorrecta)",
-      user: "unknown",
-      ip: "45.33.88.12",
-      date: "2025-02-26",
-      time: "09:14:55",
-      duration: "18ms",
-      code: 401,
-    },
-    {
-      id: "LOG-008",
-      level: "error",
-      category: "auth",
-      source: "auth-service",
-      message: "Brute force detectado: 12 intentos fallidos en 2 minutos",
-      user: "unknown",
-      ip: "103.55.200.4",
-      date: "2025-02-26",
-      time: "09:16:01",
-      duration: null,
-      code: 429,
-    },
-    {
-      id: "LOG-009",
-      level: "info",
-      category: "auth",
-      source: "auth-service",
-      message: "Login exitoso desde nuevo dispositivo — notificación enviada",
-      user: "carlos_m",
-      ip: "201.123.45.67",
-      date: "2025-02-26",
-      time: "09:20:14",
-      duration: "55ms",
-      code: 200,
-    },
-    {
-      id: "LOG-010",
-      level: "info",
-      category: "auth",
-      source: "auth-service",
-      message: "Sesión cerrada correctamente",
-      user: "sofia_r",
-      ip: "189.45.67.89",
-      date: "2025-02-26",
-      time: "09:22:30",
-      duration: "10ms",
-      code: 200,
-    },
-
-    // API
-    {
-      id: "LOG-011",
-      level: "info",
-      category: "api",
-      source: "api-gateway",
-      message: "GET /api/v1/users — 1,247 registros devueltos",
-      user: "lucia_v",
-      ip: "187.33.12.45",
-      date: "2025-02-26",
-      time: "09:14:12",
-      duration: "84ms",
-      code: 200,
-    },
-    {
-      id: "LOG-012",
-      level: "info",
-      category: "api",
-      source: "api-gateway",
-      message: "POST /api/v1/publications — publicación creada",
-      user: "sofia_r",
-      ip: "189.45.67.89",
-      date: "2025-02-26",
-      time: "09:15:44",
-      duration: "120ms",
-      code: 201,
-    },
-    {
-      id: "LOG-013",
-      level: "warning",
-      category: "api",
-      source: "api-gateway",
-      message: "GET /api/v1/analytics — respuesta lenta (1,240ms > 1,000ms)",
-      user: "lucia_v",
-      ip: "187.33.12.45",
-      date: "2025-02-26",
-      time: "09:16:30",
-      duration: "1240ms",
-      code: 200,
-    },
-    {
-      id: "LOG-014",
-      level: "error",
-      category: "api",
-      source: "api-gateway",
-      message: "POST /api/v1/upload — archivo supera límite de 10MB",
-      user: "jorge_s",
-      ip: "80.44.23.11",
-      date: "2025-02-26",
-      time: "09:18:05",
-      duration: "22ms",
-      code: 413,
-    },
-    {
-      id: "LOG-015",
-      level: "info",
-      category: "api",
-      source: "api-gateway",
-      message: "DELETE /api/v1/publications/PUB-089 — contenido eliminado",
-      user: "carlos_m",
-      ip: "201.123.45.67",
-      date: "2025-02-26",
-      time: "09:20:55",
-      duration: "67ms",
-      code: 200,
-    },
-    {
-      id: "LOG-016",
-      level: "error",
-      category: "api",
-      source: "api-gateway",
-      message: "GET /api/v1/admin/config — acceso no autorizado rechazado",
-      user: "unknown",
-      ip: "91.200.10.55",
-      date: "2025-02-26",
-      time: "09:24:11",
-      duration: "5ms",
-      code: 403,
-    },
-
-    // Base de datos
-    {
-      id: "LOG-017",
-      level: "info",
-      category: "database",
-      source: "postgresql",
-      message: "Query completada: SELECT users (847ms, 1,247 filas)",
-      user: null,
-      ip: null,
-      date: "2025-02-26",
-      time: "09:14:11",
-      duration: "847ms",
-      code: null,
-    },
-    {
-      id: "LOG-018",
-      level: "warning",
-      category: "database",
-      source: "postgresql",
-      message: "Query lenta detectada (>500ms): JOIN en tabla messages",
-      user: null,
-      ip: null,
-      date: "2025-02-26",
-      time: "09:17:40",
-      duration: "1,120ms",
-      code: null,
-    },
-    {
-      id: "LOG-019",
-      level: "error",
-      category: "database",
-      source: "postgresql",
-      message: "Deadlock detectado en transacción — reintentando (intento 2/3)",
-      user: null,
-      ip: null,
-      date: "2025-02-26",
-      time: "09:19:22",
-      duration: null,
-      code: null,
-    },
-    {
-      id: "LOG-020",
-      level: "info",
-      category: "database",
-      source: "redis",
-      message: "Cache HIT: user:lucia_v:profile (ttl: 280s restantes)",
-      user: null,
-      ip: null,
-      date: "2025-02-26",
-      time: "09:14:14",
-      duration: "1ms",
-      code: null,
-    },
-    {
-      id: "LOG-021",
-      level: "warning",
-      category: "database",
-      source: "redis",
-      message: "Cache MISS: analytics:weekly — recalculando...",
-      user: null,
-      ip: null,
-      date: "2025-02-26",
-      time: "09:16:32",
-      duration: "890ms",
-      code: null,
-    },
-
-    // Moderación
-    {
-      id: "LOG-022",
-      level: "info",
-      category: "moderacion",
-      source: "mod-engine",
-      message: "Publicación PUB-089 eliminada por moderador @carlos_m",
-      user: "carlos_m",
-      ip: "201.123.45.67",
-      date: "2025-02-26",
-      time: "09:20:56",
-      duration: null,
-      code: null,
-    },
-    {
-      id: "LOG-023",
-      level: "warning",
-      category: "moderacion",
-      source: "mod-engine",
-      message: "Contenido flaggeado automáticamente (7 reportes): PUB-102",
-      user: null,
-      ip: null,
-      date: "2025-02-26",
-      time: "09:22:10",
-      duration: null,
-      code: null,
-    },
-    {
-      id: "LOG-024",
-      level: "error",
-      category: "moderacion",
-      source: "ai-filter",
-      message: "Falso positivo en detección de spam — revertido manualmente",
-      user: "lucia_v",
-      ip: "187.33.12.45",
-      date: "2025-02-26",
-      time: "09:23:40",
-      duration: null,
-      code: null,
-    },
-    {
-      id: "LOG-025",
-      level: "info",
-      category: "moderacion",
-      source: "mod-engine",
-      message: "Usuario @troll_2024 baneado definitivamente",
-      user: "lucia_v",
-      ip: "187.33.12.45",
-      date: "2025-02-26",
-      time: "09:25:00",
-      duration: null,
-      code: null,
-    },
-
-    // Notificaciones
-    {
-      id: "LOG-026",
-      level: "info",
-      category: "notificaciones",
-      source: "notif-service",
-      message: "Email enviado a lucia@aycoro.app — Reporte crítico MOD-001",
-      user: null,
-      ip: null,
-      date: "2025-02-26",
-      time: "09:14:20",
-      duration: "310ms",
-      code: 250,
-    },
-    {
-      id: "LOG-027",
-      level: "error",
-      category: "notificaciones",
-      source: "notif-service",
-      message: "Fallo al enviar push notification — token expirado",
-      user: "rosa_tt",
-      ip: null,
-      date: "2025-02-26",
-      time: "09:18:45",
-      duration: null,
-      code: null,
-    },
-    {
-      id: "LOG-028",
-      level: "info",
-      category: "notificaciones",
-      source: "notif-service",
-      message: "34 emails del digest semanal enviados correctamente",
-      user: null,
-      ip: null,
-      date: "2025-02-26",
-      time: "08:00:00",
-      duration: "4.2s",
-      code: null,
-    },
-
-    // Storage
-    {
-      id: "LOG-029",
-      level: "info",
-      category: "storage",
-      source: "cloudinary",
-      message: "Imagen subida: avatar_sofia_r_v2.jpg (840KB, optimizada 64%)",
-      user: "sofia_r",
-      ip: "189.45.67.89",
-      date: "2025-02-26",
-      time: "09:15:50",
-      duration: "1.8s",
-      code: 200,
-    },
-    {
-      id: "LOG-030",
-      level: "warning",
-      category: "storage",
-      source: "s3-bucket",
-      message: "Espacio de almacenamiento al 82% — 18GB libres de 100GB",
-      user: null,
-      ip: null,
-      date: "2025-02-26",
-      time: "09:01:00",
-      duration: null,
-      code: null,
-    },
-  ];
-  return entries;
+const emptyResponse: ErrorLogResponse = {
+  data: [],
+  pagination: {
+    total: 0,
+    page: 1,
+    limit: 12,
+    totalPages: 0,
+    hasNextPage: false,
+    hasPrevPage: false,
+  },
+  stats: {
+    total: 0,
+    errors: 0,
+    warnings: 0,
+    unresolved: 0,
+    resolved: 0,
+  },
+  groups: [],
+  filters: {
+    levels: [],
+    sources: [],
+    platforms: [],
+  },
 };
 
-const ALL_LOGS = generateLogs();
-
-// ─── Configs ──────────────────────────────────────────────────────────
-const LEVEL_CFG: any = {
-  info: { label: "INFO", color: "info", dot: "🔵", bg: null },
-  warning: { label: "WARN", color: "warning", dot: "🟡", bg: null },
-  error: { label: "ERROR", color: "danger", dot: "🔴", bg: null },
-  debug: { label: "DEBUG", color: "muted", dot: "⚫", bg: null },
+const statusLabel: Record<number, string> = {
+  1: "Abierto",
+  2: "Resuelto",
 };
 
-const CAT_CFG: any = {
-  sistema: { label: "Sistema", emoji: "⚙️", color: "accent" },
-  auth: { label: "Auth", emoji: "🔐", color: "warning" },
-  api: { label: "API", emoji: "🌐", color: "info" },
-  database: { label: "DB", emoji: "🗄️", color: "accent" },
-  moderacion: { label: "Moderación", emoji: "🛡️", color: "danger" },
-  notificaciones: { label: "Notif.", emoji: "🔔", color: "success" },
-  storage: { label: "Storage", emoji: "💾", color: "warning" },
+const levelLabel: Record<string, string> = {
+  error: "Error",
+  warning: "Warning",
+  warn: "Warning",
+  info: "Info",
+  debug: "Debug",
+  fatal: "Fatal",
 };
 
-const CODE_CFG: any = {
-  200: { color: "success" },
-  201: { color: "success" },
-  250: { color: "success" },
-  401: { color: "warning" },
-  403: { color: "danger" },
-  404: { color: "warning" },
-  413: { color: "danger" },
-  429: { color: "danger" },
-  500: { color: "danger" },
+const getLevelColor = (level: string | undefined, c: any) => {
+  const normalized = String(level || "").toLowerCase();
+  if (normalized === "error" || normalized === "fatal") return c.danger;
+  if (normalized === "warning" || normalized === "warn") return c.warning;
+  if (normalized === "info") return c.accent;
+  return c.textMuted;
 };
 
-const AVATAR_PAL = [
-  "#7b83f5",
-  "#f87171",
-  "#34d399",
-  "#fbbf24",
-  "#60a5fa",
-  "#a78bfa",
-  "#fb923c",
-  "#e879f9",
-];
-const getAC = (n = "") => AVATAR_PAL[n.charCodeAt(0) % AVATAR_PAL.length];
+const shortId = (id = "") => id.slice(-8) || "-";
 
-// ─── Sub-componentes ──────────────────────────────────────────────────
-function KpiCard({ emoji, label, value, colorKey, c }: any) {
-  const map: any = {
-    success: { bg: c.successSoft, text: c.success },
-    warning: { bg: c.warningSoft, text: c.warning },
-    danger: { bg: c.dangerSoft, text: c.danger },
-    info: { bg: c.infoSoft, text: c.info },
-    accent: { bg: c.accentSoft, text: c.accent },
-  };
-  const col = map[colorKey] || map.accent;
+const formatDateTime = (value?: string | null) => {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return new Intl.DateTimeFormat("es-DO", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+};
+
+const safeText = (value: unknown, fallback = "-") => {
+  const text = String(value || "").trim();
+  return text || fallback;
+};
+
+const formatDateInput = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+function StatCard({
+  label,
+  value,
+  color,
+  c,
+}: {
+  label: string;
+  value: number;
+  color: string;
+  c: any;
+}) {
   return (
     <div
       style={{
         background: c.card,
         border: `1.5px solid ${c.border}`,
-        borderRadius: "16px",
-        padding: "18px 20px",
-        display: "flex",
-        alignItems: "center",
-        gap: "14px",
-        boxShadow: "0 2px 12px rgba(107,115,240,0.06)",
+        borderRadius: 16,
+        padding: "16px 18px",
+        minWidth: 0,
+        boxShadow: "0 2px 16px rgba(107,115,240,0.06)",
       }}
     >
       <div
         style={{
-          width: 44,
-          height: 44,
-          borderRadius: "12px",
-          background: col.bg,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: "20px",
-          flexShrink: 0,
+          color,
+          fontSize: 24,
+          fontWeight: 900,
+          letterSpacing: "-0.04em",
         }}
       >
-        {emoji}
+        {value}
       </div>
-      <div>
-        <div
-          style={{
-            fontSize: "22px",
-            fontWeight: "800",
-            color: col.text,
-            letterSpacing: "-0.02em",
-          }}
-        >
-          {value}
-        </div>
-        <div
-          style={{ fontSize: "11px", fontWeight: "600", color: c.textMuted }}
-        >
-          {label}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Avatar({ username, size = 24 }: any) {
-  const bg = getAC(username);
-  return (
-    <div
-      style={{
-        width: size,
-        height: size,
-        borderRadius: "50%",
-        background: `${bg}22`,
-        border: `1.5px solid ${bg}55`,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontSize: size * 0.35,
-        fontWeight: "800",
-        color: bg,
-        flexShrink: 0,
-      }}
-    >
-      {(username || "?").slice(0, 2).toUpperCase()}
-    </div>
-  );
-}
-
-// ─── Log row ─────────────────────────────────────────────────────────
-function LogRow({ log, c, theme, onClick, selected }: any) {
-  const level: any = LEVEL_CFG[log.level] || LEVEL_CFG.info;
-  const cat = CAT_CFG[log.category] || CAT_CFG.sistema;
-  const colorMap: any = {
-    success: c.success,
-    warning: c.warning,
-    danger: c.danger,
-    info: c.info,
-    accent: c.accent,
-    muted: c.textMuted,
-  };
-  const levelColor = colorMap[level.color] || c.accent;
-
-  const rowBg = selected
-    ? theme === "dark"
-      ? "rgba(123,131,245,0.10)"
-      : "rgba(107,115,240,0.06)"
-    : log.level === "error"
-      ? theme === "dark"
-        ? "rgba(248,113,113,0.04)"
-        : "rgba(248,113,113,0.02)"
-      : "transparent";
-
-  return (
-    <div
-      onClick={onClick}
-      style={{
-        display: "grid",
-        gridTemplateColumns: "6px 56px 80px 110px 1fr 90px 60px",
-        gap: "10px",
-        padding: "9px 16px",
-        borderBottom: `1px solid ${c.border}`,
-        alignItems: "center",
-        cursor: "pointer",
-        background: rowBg,
-        borderLeft: selected
-          ? `3px solid ${c.accent}`
-          : log.level === "error"
-            ? `3px solid ${c.danger}`
-            : log.level === "warning"
-              ? `3px solid ${c.warning}`
-              : "3px solid transparent",
-        transition: "background 0.12s",
-        fontFamily: "'DM Mono', monospace",
-      }}
-      onMouseEnter={(e) => {
-        if (!selected)
-          e.currentTarget.style.background =
-            theme === "dark" ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)";
-      }}
-      onMouseLeave={(e) => {
-        if (!selected) e.currentTarget.style.background = rowBg;
-      }}
-    >
-      {/* Dot */}
       <div
         style={{
-          width: 6,
-          height: 6,
-          borderRadius: "50%",
-          background: levelColor,
-          boxShadow: log.level === "error" ? `0 0 5px ${levelColor}88` : "none",
-        }}
-      />
-
-      {/* Hora */}
-      <div
-        style={{
-          fontSize: "10px",
           color: c.textMuted,
-          letterSpacing: "-0.01em",
-        }}
-      >
-        {log.time}
-      </div>
-
-      {/* Level badge */}
-      <span
-        style={{
-          fontSize: "9px",
-          fontWeight: "700",
-          padding: "2px 7px",
-          borderRadius: "6px",
-          background: levelColor + "22",
-          color: levelColor,
-          letterSpacing: "0.08em",
-          textAlign: "center",
-          border: `1px solid ${levelColor}33`,
-        }}
-      >
-        {level.label}
-      </span>
-
-      {/* Categoría */}
-      <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
-        <span style={{ fontSize: "11px" }}>{cat.emoji}</span>
-        <span
-          style={{
-            fontSize: "10px",
-            color: c.textMuted,
-            fontFamily: "'Plus Jakarta Sans', sans-serif",
-          }}
-        >
-          {log.source}
-        </span>
-      </div>
-
-      {/* Mensaje */}
-      <div
-        style={{
-          fontSize: "11px",
-          color:
-            log.level === "error"
-              ? c.danger
-              : log.level === "warning"
-                ? c.warning
-                : c.text,
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-          fontFamily: "'DM Mono', monospace",
-        }}
-      >
-        {log.message}
-      </div>
-
-      {/* Usuario */}
-      <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
-        {log.user && log.user !== "unknown" ? (
-          <>
-            <Avatar username={log.user} size={18} />
-            <span
-              style={{
-                fontSize: "9px",
-                color: c.textMuted,
-                fontFamily: "'Plus Jakarta Sans', sans-serif",
-              }}
-            >
-              @{log.user.split("_")[0]}
-            </span>
-          </>
-        ) : log.ip ? (
-          <span style={{ fontSize: "9px", color: c.textMuted }}>
-            {log.ip.split(".").slice(0, 2).join(".")}…
-          </span>
-        ) : (
-          <span style={{ fontSize: "9px", color: c.border }}>—</span>
-        )}
-      </div>
-
-      {/* Código HTTP */}
-      <div>
-        {log.code ? (
-          <span
-            style={{
-              fontSize: "10px",
-              fontWeight: "700",
-              color: colorMap[(CODE_CFG[log.code] || {}).color] || c.textMuted,
-            }}
-          >
-            {log.code}
-          </span>
-        ) : log.duration ? (
-          <span style={{ fontSize: "9px", color: c.textMuted }}>
-            {log.duration}
-          </span>
-        ) : (
-          <span style={{ fontSize: "9px", color: c.border }}>—</span>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ─── Panel de detalle ─────────────────────────────────────────────────
-function LogDetail({ log, c, theme, onClose }: any) {
-  if (!log)
-    return (
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          height: "100%",
-          gap: "12px",
-          opacity: 0.35,
-        }}
-      >
-        <div style={{ fontSize: "40px" }}>📋</div>
-        <div
-          style={{
-            fontSize: "13px",
-            fontWeight: "700",
-            color: c.textMuted,
-            fontFamily: "'Plus Jakarta Sans', sans-serif",
-          }}
-        >
-          Selecciona un log para ver el detalle
-        </div>
-      </div>
-    );
-
-  const level = LEVEL_CFG[log.level] || LEVEL_CFG.info;
-  const cat = CAT_CFG[log.category] || CAT_CFG.sistema;
-  const colorMap: any = {
-    success: c.success,
-    warning: c.warning,
-    danger: c.danger,
-    info: c.info,
-    accent: c.accent,
-    muted: c.textMuted,
-  };
-  const levelColor = colorMap[level.color] || c.accent;
-  const catColor = colorMap[cat.color] || c.accent;
-
-  const field = (label: any, value: any, mono = false) => (
-    <div style={{ padding: "10px 0", borderBottom: `1px solid ${c.border}` }}>
-      <div
-        style={{
-          fontSize: "9px",
-          fontWeight: "700",
-          color: c.textMuted,
-          letterSpacing: "0.1em",
+          fontSize: 11,
+          fontWeight: 800,
+          letterSpacing: "0.04em",
           textTransform: "uppercase",
-          marginBottom: "4px",
         }}
       >
         {label}
       </div>
-      <div
-        style={{
-          fontSize: "12px",
-          color: c.text,
-          fontFamily: mono
-            ? "'DM Mono',monospace"
-            : "'Plus Jakarta Sans',sans-serif",
-          lineHeight: 1.5,
-          wordBreak: "break-all",
-        }}
-      >
-        {value || "—"}
-      </div>
-    </div>
-  );
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      {/* Header */}
-      <div
-        style={{
-          padding: "16px 18px",
-          background:
-            theme === "dark"
-              ? "linear-gradient(135deg,#1a1a30,#0f0f22)"
-              : "linear-gradient(135deg,#ededff,#f5f0ff)",
-          borderBottom: `1.5px solid ${c.border}`,
-          flexShrink: 0,
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: "10px",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <span
-              style={{
-                fontSize: "9px",
-                fontWeight: "700",
-                padding: "3px 8px",
-                borderRadius: "6px",
-                background: levelColor + "22",
-                color: levelColor,
-                border: `1px solid ${levelColor}33`,
-                letterSpacing: "0.08em",
-                fontFamily: "DM Mono,monospace",
-              }}
-            >
-              {level.label}
-            </span>
-            <span
-              style={{
-                fontSize: "10px",
-                fontWeight: "700",
-                padding: "3px 9px",
-                borderRadius: "20px",
-                background: catColor + "22",
-                color: catColor,
-                fontFamily: "'Plus Jakarta Sans',sans-serif",
-              }}
-            >
-              {cat.emoji} {cat.label}
-            </span>
-          </div>
-          <button
-            onClick={onClose}
-            style={{
-              width: 24,
-              height: 24,
-              borderRadius: "7px",
-              border: `1.5px solid ${c.border}`,
-              background: c.card,
-              cursor: "pointer",
-              fontSize: "11px",
-              color: c.textMuted,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            ✕
-          </button>
-        </div>
-        <div
-          style={{
-            fontSize: "12px",
-            color: c.text,
-            fontFamily: "DM Mono,monospace",
-            lineHeight: 1.6,
-            wordBreak: "break-word",
-          }}
-        >
-          {log.message}
-        </div>
-        <div
-          style={{
-            fontSize: "10px",
-            color: c.textMuted,
-            marginTop: "6px",
-            fontFamily: "DM Mono,monospace",
-          }}
-        >
-          {log.id} · {log.date} {log.time}
-        </div>
-      </div>
-
-      {/* Fields */}
-      <div style={{ flex: 1, overflowY: "auto", padding: "4px 18px 16px" }}>
-        {field("Source / Servicio", log.source, true)}
-        {field("Categoría", `${cat.emoji} ${cat.label}`)}
-        {log.user && field("Usuario", log.user, true)}
-        {log.ip && field("IP", log.ip, true)}
-        {log.code && field("HTTP Code", String(log.code), true)}
-        {log.duration && field("Duración", log.duration, true)}
-        {field("Fecha", `${log.date} ${log.time}`, true)}
-        {field("Log ID", log.id, true)}
-
-        {/* Raw */}
-        <div style={{ marginTop: "12px" }}>
-          <div
-            style={{
-              fontSize: "9px",
-              fontWeight: "700",
-              color: c.textMuted,
-              letterSpacing: "0.1em",
-              textTransform: "uppercase",
-              marginBottom: "8px",
-              fontFamily: "'Plus Jakarta Sans',sans-serif",
-            }}
-          >
-            Raw JSON
-          </div>
-          <div
-            style={{
-              background:
-                theme === "dark" ? "rgba(0,0,0,0.5)" : "rgba(0,0,0,0.04)",
-              border: `1.5px solid ${c.border}`,
-              borderRadius: "10px",
-              padding: "12px 14px",
-              fontSize: "10px",
-              color: theme === "dark" ? "#a0f0c0" : "#1a5c3a",
-              fontFamily: "DM Mono,monospace",
-              lineHeight: 1.8,
-              overflowX: "auto",
-              whiteSpace: "pre",
-            }}
-          >
-            {JSON.stringify(
-              {
-                id: log.id,
-                level: log.level,
-                category: log.category,
-                source: log.source,
-                message: log.message,
-                user: log.user,
-                ip: log.ip,
-                date: log.date,
-                time: log.time,
-                duration: log.duration,
-                code: log.code,
-              },
-              null,
-              2,
-            )}
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
 
-// ─── Componente principal ─────────────────────────────────────────────
+function LogRow({
+  log,
+  selected,
+  onClick,
+  c,
+}: {
+  log: ErrorLogModel;
+  selected: boolean;
+  onClick: () => void;
+  c: any;
+}) {
+  const levelColor = getLevelColor(log.Level, c);
+  const status = Number(log.Status || 1);
+
+  return (
+    <div
+      className="log-row"
+      onClick={onClick}
+      style={{
+        display: "grid",
+        gridTemplateColumns: "8px 120px 92px 140px minmax(0,1fr) 140px 110px",
+        gap: 12,
+        alignItems: "center",
+        padding: "12px 16px",
+        borderBottom: `1px solid ${c.border}`,
+        background: selected ? c.accentSoft : "transparent",
+        cursor: "pointer",
+      }}
+    >
+      <span
+        style={{
+          width: 8,
+          height: 8,
+          borderRadius: "50%",
+          background: levelColor,
+          boxShadow: `0 0 0 4px ${levelColor}22`,
+        }}
+      />
+      <span style={{ color: c.textMuted, fontSize: 12, fontWeight: 700 }}>
+        {formatDateTime(log.CreateDate)}
+      </span>
+      <span
+        style={{
+          color: levelColor,
+          background: `${levelColor}18`,
+          border: `1px solid ${levelColor}33`,
+          borderRadius: 999,
+          padding: "6px 10px",
+          fontSize: 11,
+          fontWeight: 900,
+          textAlign: "center",
+          textTransform: "uppercase",
+        }}
+      >
+        {levelLabel[String(log.Level || "").toLowerCase()] || safeText(log.Level)}
+      </span>
+      <span style={{ color: c.textMuted, fontSize: 12, fontWeight: 800 }}>
+        {safeText(log.Source)} / {safeText(log.Platform)}
+      </span>
+      <span
+        style={{
+          color: c.text,
+          fontSize: 13,
+          fontWeight: 700,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {log.Message}
+      </span>
+      <span style={{ color: c.textMuted, fontSize: 12, overflowWrap: "anywhere" }}>
+        {log.IdUser ? `User ${shortId(log.IdUser)}` : "Sin usuario"}
+      </span>
+      <span
+        style={{
+          color: status === 2 ? c.success : c.warning,
+          background: `${status === 2 ? c.success : c.warning}18`,
+          borderRadius: 999,
+          padding: "6px 10px",
+          textAlign: "center",
+          fontSize: 11,
+          fontWeight: 900,
+        }}
+      >
+        {statusLabel[status] || `Status ${status}`}
+      </span>
+    </div>
+  );
+}
+
+function GroupPanel({
+  groups,
+  c,
+}: {
+  groups: ErrorLogGroup[];
+  c: any;
+}) {
+  const max = Math.max(...groups.map((group) => group.count), 1);
+
+  return (
+    <div
+      style={{
+        display: "grid",
+        gap: 10,
+      }}
+    >
+      {groups.length === 0 ? (
+        <div style={{ color: c.textMuted, fontSize: 13 }}>
+          No hay grupos para los filtros actuales.
+        </div>
+      ) : (
+        groups.map((group) => (
+          <div
+            key={String(group.key)}
+            style={{
+              border: `1px solid ${c.border}`,
+              borderRadius: 14,
+              padding: 12,
+              background: c.inputBackground,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 12,
+                marginBottom: 8,
+              }}
+            >
+              <strong
+                style={{
+                  color: c.text,
+                  fontSize: 13,
+                  overflowWrap: "anywhere",
+                }}
+              >
+                {safeText(group.key)}
+              </strong>
+              <span style={{ color: c.accent, fontSize: 12, fontWeight: 900 }}>
+                {group.count}
+              </span>
+            </div>
+            <div
+              style={{
+                height: 8,
+                borderRadius: 999,
+                background: c.border,
+                overflow: "hidden",
+                marginBottom: 8,
+              }}
+            >
+              <div
+                style={{
+                  width: `${Math.max(6, (group.count / max) * 100)}%`,
+                  height: "100%",
+                  background: c.accent,
+                }}
+              />
+            </div>
+            <div style={{ color: c.textMuted, fontSize: 11, fontWeight: 700 }}>
+              {group.errors} errores · {group.warnings} warnings · ultimo{" "}
+              {formatDateTime(group.latest)}
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+  );
+}
+
+function DetailPanel({
+  log,
+  c,
+  onResolve,
+  resolving,
+}: {
+  log: ErrorLogModel | null;
+  c: any;
+  onResolve: () => void;
+  resolving: boolean;
+}) {
+  if (!log) {
+    return (
+      <div style={{ color: c.textMuted, fontSize: 13 }}>
+        Selecciona un registro para ver stack, endpoint, dispositivo y contexto.
+      </div>
+    );
+  }
+
+  const status = Number(log.Status || 1);
+  const details = [
+    ["ID", log._id],
+    ["Fecha", formatDateTime(log.CreateDate)],
+    ["Usuario", log.IdUser],
+    ["Pantalla", log.Screen],
+    ["Accion", log.Action],
+    ["Endpoint", log.Endpoint],
+    ["Metodo", log.Method],
+    ["Codigo", log.StatusCode],
+    ["Version", log.AppVersion],
+    ["Dispositivo", log.DeviceModel],
+    ["OS", log.OsVersion],
+    ["Resuelto", formatDateTime(log.ResolvedDate)],
+  ];
+
+  return (
+    <div style={{ display: "grid", gap: 14 }}>
+      <div>
+        <div
+          style={{
+            color: getLevelColor(log.Level, c),
+            fontSize: 11,
+            fontWeight: 900,
+            textTransform: "uppercase",
+            marginBottom: 6,
+          }}
+        >
+          {safeText(log.Level)}
+        </div>
+        <h3 style={{ margin: 0, color: c.text, fontSize: 17, lineHeight: 1.4 }}>
+          {log.Message}
+        </h3>
+      </div>
+
+      {status !== 2 && (
+        <button
+          onClick={onResolve}
+          disabled={resolving}
+          className="pill-cta"
+          style={{
+            justifyContent: "center",
+            background: c.success,
+            boxShadow: "none",
+            opacity: resolving ? 0.7 : 1,
+          }}
+        >
+          {resolving ? "Guardando..." : "Marcar como resuelto"}
+        </button>
+      )}
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(2,minmax(0,1fr))",
+          gap: 10,
+        }}
+      >
+        {details.map(([label, value]) => (
+          <div
+            key={label}
+            style={{
+              border: `1px solid ${c.border}`,
+              borderRadius: 12,
+              padding: 10,
+              minWidth: 0,
+            }}
+          >
+            <div
+              style={{
+                color: c.textMuted,
+                fontSize: 10,
+                fontWeight: 900,
+                letterSpacing: "0.05em",
+                textTransform: "uppercase",
+                marginBottom: 4,
+              }}
+            >
+              {label}
+            </div>
+            <div
+              style={{
+                color: c.text,
+                fontSize: 12,
+                fontWeight: 700,
+                overflowWrap: "anywhere",
+              }}
+            >
+              {safeText(value)}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {log.Stack && (
+        <pre
+          style={{
+            margin: 0,
+            padding: 12,
+            maxHeight: 220,
+            overflow: "auto",
+            border: `1px solid ${c.border}`,
+            borderRadius: 12,
+            background: c.inputBackground,
+            color: c.text,
+            fontSize: 11,
+            whiteSpace: "pre-wrap",
+          }}
+        >
+          {log.Stack}
+        </pre>
+      )}
+
+      {log.Extra && (
+        <pre
+          style={{
+            margin: 0,
+            padding: 12,
+            maxHeight: 180,
+            overflow: "auto",
+            border: `1px solid ${c.border}`,
+            borderRadius: 12,
+            background: c.inputBackground,
+            color: c.textMuted,
+            fontSize: 11,
+            whiteSpace: "pre-wrap",
+          }}
+        >
+          {log.Extra}
+        </pre>
+      )}
+
+      {log.Breadcrumbs && log.Breadcrumbs.length > 0 && (
+        <div style={{ display: "grid", gap: 8 }}>
+          <strong style={{ color: c.text, fontSize: 12 }}>Breadcrumbs</strong>
+          {log.Breadcrumbs.map((item, index) => (
+            <div
+              key={`${item}-${index}`}
+              style={{
+                color: c.textMuted,
+                fontSize: 12,
+                borderLeft: `3px solid ${c.accent}`,
+                paddingLeft: 10,
+                overflowWrap: "anywhere",
+              }}
+            >
+              {item}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DetailModal({
+  log,
+  c,
+  onClose,
+  onResolve,
+  resolving,
+}: {
+  log: ErrorLogModel;
+  c: any;
+  onClose: () => void;
+  onResolve: () => void;
+  resolving: boolean;
+}) {
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  return (
+    <div
+      className="log-modal-backdrop"
+      role="presentation"
+      onMouseDown={onClose}
+    >
+      <section
+        className="log-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="error-log-detail-title"
+        onMouseDown={(event) => event.stopPropagation()}
+        style={{ background: c.card, border: `1px solid ${c.border}` }}
+      >
+        <header
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: 16,
+            padding: "18px 20px",
+            borderBottom: `1px solid ${c.border}`,
+          }}
+        >
+          <div>
+            <h2
+              id="error-log-detail-title"
+              style={{ margin: 0, color: c.text, fontSize: 18 }}
+            >
+              Detalle del ErrorLog
+            </h2>
+            <div style={{ color: c.textMuted, fontSize: 11, marginTop: 4 }}>
+              ID {log._id}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Cerrar detalle"
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: "50%",
+              border: `1px solid ${c.border}`,
+              background: c.inputBackground,
+              color: c.text,
+              cursor: "pointer",
+              fontSize: 20,
+            }}
+          >
+            ×
+          </button>
+        </header>
+        <div className="log-modal-content">
+          <DetailPanel
+            log={log}
+            c={c}
+            onResolve={onResolve}
+            resolving={resolving}
+          />
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function ExportModal({
+  c,
+  onClose,
+  onExport,
+}: {
+  c: any;
+  onClose: () => void;
+  onExport: (
+    dateFrom: string,
+    dateTo: string,
+    format: "json" | "csv",
+  ) => Promise<void>;
+}) {
+  const today = new Date();
+  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+  const [dateFrom, setDateFrom] = useState(formatDateInput(monthStart));
+  const [dateTo, setDateTo] = useState(formatDateInput(today));
+  const [format, setFormat] = useState<"json" | "csv">("csv");
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState("");
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !exporting) onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [exporting, onClose]);
+
+  const handleExport = async () => {
+    if (!dateFrom || !dateTo) {
+      setExportError("Selecciona ambas fechas.");
+      return;
+    }
+    if (dateFrom > dateTo) {
+      setExportError("La fecha desde no puede ser posterior a la fecha hasta.");
+      return;
+    }
+
+    setExporting(true);
+    setExportError("");
+    try {
+      await onExport(dateFrom, dateTo, format);
+      onClose();
+    } catch (error) {
+      setExportError(
+        error instanceof Error
+          ? error.message
+          : "No se pudo exportar los registros.",
+      );
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  return (
+    <div
+      className="log-modal-backdrop"
+      role="presentation"
+      onMouseDown={() => !exporting && onClose()}
+    >
+      <section
+        className="log-modal export-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="error-log-export-title"
+        onMouseDown={(event) => event.stopPropagation()}
+        style={{ background: c.card, border: `1px solid ${c.border}` }}
+      >
+        <header
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: 16,
+            padding: "18px 20px",
+            borderBottom: `1px solid ${c.border}`,
+          }}
+        >
+          <div>
+            <h2
+              id="error-log-export-title"
+              style={{ margin: 0, color: c.text, fontSize: 18 }}
+            >
+              Exportar ErrorLog
+            </h2>
+            <div style={{ color: c.textMuted, fontSize: 12, marginTop: 4 }}>
+              Se aplicarán también los filtros activos de la tabla.
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={exporting}
+            aria-label="Cerrar exportación"
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: "50%",
+              border: `1px solid ${c.border}`,
+              background: c.inputBackground,
+              color: c.text,
+              cursor: exporting ? "not-allowed" : "pointer",
+              fontSize: 20,
+            }}
+          >
+            ×
+          </button>
+        </header>
+
+        <div className="log-modal-content" style={{ display: "grid", gap: 18 }}>
+          <div className="export-date-grid">
+            <label style={{ display: "grid", gap: 7 }}>
+              <span style={{ color: c.textMuted, fontSize: 11, fontWeight: 900 }}>
+                DESDE
+              </span>
+              <input
+                className="log-search"
+                type="date"
+                value={dateFrom}
+                max={dateTo || undefined}
+                onChange={(event) => setDateFrom(event.target.value)}
+              />
+            </label>
+            <label style={{ display: "grid", gap: 7 }}>
+              <span style={{ color: c.textMuted, fontSize: 11, fontWeight: 900 }}>
+                HASTA
+              </span>
+              <input
+                className="log-search"
+                type="date"
+                value={dateTo}
+                min={dateFrom || undefined}
+                max={formatDateInput(today)}
+                onChange={(event) => setDateTo(event.target.value)}
+              />
+            </label>
+          </div>
+
+          <div>
+            <div
+              style={{
+                color: c.textMuted,
+                fontSize: 11,
+                fontWeight: 900,
+                marginBottom: 8,
+              }}
+            >
+              TIPO DE DOCUMENTO
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              {(["csv", "json"] as const).map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => setFormat(item)}
+                  style={{
+                    padding: "14px 16px",
+                    borderRadius: 12,
+                    border: `1.5px solid ${
+                      format === item ? c.accent : c.border
+                    }`,
+                    background:
+                      format === item ? c.accentSoft : c.inputBackground,
+                    color: format === item ? c.accent : c.text,
+                    cursor: "pointer",
+                    fontWeight: 900,
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div
+            style={{
+              color: c.textMuted,
+              background: c.inputBackground,
+              border: `1px solid ${c.border}`,
+              borderRadius: 12,
+              padding: 12,
+              fontSize: 12,
+              lineHeight: 1.6,
+            }}
+          >
+            La descarga será un archivo ZIP. Dentro encontrarás documentos
+            numerados con un máximo de 500 registros cada uno.
+          </div>
+
+          {exportError && (
+            <div
+              role="alert"
+              style={{
+                color: c.danger,
+                background: `${c.danger}12`,
+                border: `1px solid ${c.danger}33`,
+                borderRadius: 12,
+                padding: 12,
+                fontSize: 12,
+                fontWeight: 800,
+              }}
+            >
+              {exportError}
+            </div>
+          )}
+        </div>
+
+        <footer
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: 10,
+            padding: "16px 20px",
+            borderTop: `1px solid ${c.border}`,
+          }}
+        >
+          <button
+            type="button"
+            className="pill-cta"
+            onClick={onClose}
+            disabled={exporting}
+            style={{ background: c.inputBackground, color: c.text, boxShadow: "none" }}
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            className="pill-cta"
+            onClick={handleExport}
+            disabled={exporting}
+            style={{ opacity: exporting ? 0.7 : 1 }}
+          >
+            {exporting ? "Preparando archivos..." : `Exportar ${format.toUpperCase()}`}
+          </button>
+        </footer>
+      </section>
+    </div>
+  );
+}
+
 const Logs = () => {
   const { theme } = useThemeContext();
   const colors = theme === "dark" ? Colors.dark : Colors.light;
   const c = colors.colors;
 
-  const [logs] = useState(ALL_LOGS);
-  const [selected, setSelected] = useState<any>(null);
+  const [response, setResponse] = useState<ErrorLogResponse>(emptyResponse);
+  const [selected, setSelected] = useState<ErrorLogModel | null>(null);
   const [search, setSearch] = useState("");
-  const [filterLevel, setFilterLevel] = useState("todos");
-  const [filterCat, setFilterCat] = useState("todos");
-  const [liveTail, setLiveTail] = useState(false);
-  const [liveCount, setLiveCount] = useState(0);
-  const [showDetail, setShowDetail] = useState(false);
-  const tableRef: any = useRef(null);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [level, setLevel] = useState("todos");
+  const [source, setSource] = useState("todos");
+  const [platform, setPlatform] = useState("todos");
+  const [status, setStatus] = useState("todos");
+  const [groupBy, setGroupBy] = useState("day");
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [resolving, setResolving] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
 
-  // Simular live tail
   useEffect(() => {
-    if (!liveTail) return;
-    const t = setInterval(
-      () => setLiveCount((n) => n + Math.floor(Math.random() * 3)),
-      2000,
-    );
-    return () => clearInterval(t);
-  }, [liveTail]);
+    const timer = window.setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 350);
 
-  // Auto-scroll live
+    return () => window.clearTimeout(timer);
+  }, [search]);
+
   useEffect(() => {
-    if (liveTail && tableRef.current) tableRef.current.scrollTop = 0;
-  }, [liveCount, liveTail]);
+    setPage(1);
+  }, [level, source, platform, status, groupBy]);
 
-  const stats = useMemo(
-    () => ({
-      total: logs.length,
-      errors: logs.filter((l) => l.level === "error").length,
-      warnings: logs.filter((l) => l.level === "warning").length,
-      infos: logs.filter((l) => l.level === "info").length,
-      apiCalls: logs.filter((l) => l.category === "api").length,
-      slow: logs.filter((l) => l.duration && parseInt(l.duration) > 500).length,
-    }),
-    [logs],
-  );
+  useEffect(() => {
+    let alive = true;
+    setLoading(true);
+    setError("");
 
-  const filtered = useMemo(() => {
-    return logs
-      .filter((l) => filterLevel === "todos" || l.level === filterLevel)
-      .filter((l) => filterCat === "todos" || l.category === filterCat)
-      .filter(
-        (l) =>
-          search === "" ||
-          l.message.toLowerCase().includes(search.toLowerCase()) ||
-          l.source.toLowerCase().includes(search.toLowerCase()) ||
-          (l.user || "").toLowerCase().includes(search.toLowerCase()) ||
-          (l.ip || "").includes(search) ||
-          l.id.toLowerCase().includes(search.toLowerCase()),
-      );
-  }, [logs, filterLevel, filterCat, search]);
+    errorLogService
+      .getAll({
+        page,
+        limit: 12,
+        search: debouncedSearch,
+        level,
+        source,
+        platform,
+        status,
+        groupBy,
+      })
+      .then((data) => {
+        if (!alive) return;
+        setResponse(data);
+        setSelected((current) => {
+          if (!current) return null;
+          return data.data.find((item) => item._id === current._id) || null;
+        });
+      })
+      .catch(() => {
+        if (!alive) return;
+        setError("No se pudieron cargar los ErrorLog.");
+        setResponse(emptyResponse);
+        setSelected(null);
+      })
+      .finally(() => {
+        if (alive) setLoading(false);
+      });
 
-  const ChipFilter = ({ k, label, active, onClick }:any) => (
-    <button
-      onClick={onClick}
-      style={{
-        padding: "5px 12px",
-        borderRadius: "20px",
-        border: `1.5px solid ${active ? c.accent + "44" : c.border}`,
-        background: active ? c.accentMedium : "transparent",
-        color: active ? c.accent : c.textMuted,
-        fontSize: "11px",
-        fontWeight: "700",
-        cursor: "pointer",
-        fontFamily: "'Plus Jakarta Sans',sans-serif",
-        transition: "all 0.15s",
-        whiteSpace: "nowrap",
-      }}
-    >
-      {label}
-    </button>
-  );
+    return () => {
+      alive = false;
+    };
+  }, [page, debouncedSearch, level, source, platform, status, groupBy]);
+
+  const groupTitle = useMemo(() => {
+    const labels: Record<string, string> = {
+      day: "Agrupado por dia",
+      level: "Agrupado por nivel",
+      source: "Agrupado por source",
+      platform: "Agrupado por plataforma",
+      status: "Agrupado por estado",
+      screen: "Agrupado por pantalla",
+    };
+    return labels[groupBy] || "Agrupaciones";
+  }, [groupBy]);
+
+  const resolveSelected = async () => {
+    if (!selected) return;
+    setResolving(true);
+    try {
+      await errorLogService.resolve(selected._id);
+      const next = await errorLogService.getAll({
+        page,
+        limit: 12,
+        search: debouncedSearch,
+        level,
+        source,
+        platform,
+        status,
+        groupBy,
+      });
+      setResponse(next);
+      setSelected(next.data.find((item) => item._id === selected._id) || null);
+    } finally {
+      setResolving(false);
+    }
+  };
+
+  const exportLogs = async (
+    dateFrom: string,
+    dateTo: string,
+    format: "json" | "csv",
+  ) => {
+    const from = new Date(`${dateFrom}T00:00:00.000`);
+    const to = new Date(`${dateTo}T23:59:59.999`);
+    const blob = await errorLogService.export({
+      dateFrom: from.toISOString(),
+      dateTo: to.toISOString(),
+      format,
+      search: debouncedSearch,
+      level,
+      source,
+      platform,
+      status,
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `error-logs_${dateFrom}_${dateTo}_${format}.zip`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
 
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
         * { box-sizing: border-box; }
-
         .pill-cta {
-          display:inline-flex; align-items:center; gap:6px;
-          padding:8px 18px; border-radius:22px;
+          display:inline-flex; align-items:center; gap:8px;
+          padding:9px 16px; border-radius:999px;
           background:${c.accent}; color:#fff; border:none;
-          font-size:12px; font-weight:700; cursor:pointer;
+          font-size:12px; font-weight:800; cursor:pointer;
           font-family:'Plus Jakarta Sans',sans-serif;
-          box-shadow:0 4px 16px rgba(107,115,240,0.35);
-          transition:opacity 0.15s,transform 0.15s;
+          box-shadow:0 4px 16px rgba(107,115,240,0.22);
         }
-        .pill-cta:hover{opacity:0.9;transform:translateY(-1px);}
-
-        .log-search {
+        .log-search, .select-f {
           background:${c.inputBackground};
           border:1.5px solid ${c.inputBorder};
-          border-radius:10px; padding:8px 14px 8px 36px;
-          font-size:12px; color:${c.text};
-          font-family:'DM Mono',monospace;
-          outline:none; width:260px; transition:border-color 0.2s;
+          color:${c.text};
+          border-radius:12px;
+          padding:10px 12px;
+          font:700 12px 'Plus Jakarta Sans',sans-serif;
+          outline:none;
+          min-height:42px;
         }
-        .log-search::placeholder{color:${c.textMuted};}
-        .log-search:focus{border-color:${c.accent};}
-
-        .select-f {
-          background:${c.inputBackground};
-          border:1.5px solid ${c.inputBorder};
-          border-radius:9px; padding:6px 10px;
-          font-size:11px; font-weight:600; color:${c.textMuted};
-          font-family:'Plus Jakarta Sans',sans-serif;
-          outline:none; cursor:pointer;
-          transition:border-color 0.2s;
+        .log-search { min-width:260px; }
+        .select-f { cursor:pointer; }
+        .logs-shell {
+          flex:1; overflow:hidden; display:flex; flex-direction:column;
+          gap:16px; padding:26px; font-family:'Plus Jakarta Sans',sans-serif;
         }
-        .select-f:focus{border-color:${c.accent};}
-
-        @keyframes blink {
-          0%,100%{opacity:1} 50%{opacity:0.3}
+        .logs-toolbar {
+          display:flex; align-items:center; gap:10px; flex-wrap:wrap;
         }
-        @keyframes slide-in {
-          from{transform:translateX(20px);opacity:0}
-          to{transform:translateX(0);opacity:1}
+        .logs-grid {
+          flex:1; min-height:0; display:grid;
+          grid-template-columns:minmax(0,1fr) 340px;
+          gap:16px;
+        }
+        .logs-panel {
+          background:${c.card}; border:1.5px solid ${c.border};
+          border-radius:18px; overflow:hidden; min-width:0;
+          box-shadow:0 2px 20px rgba(107,115,240,0.06);
+        }
+        .logs-scroll { overflow:auto; min-height:0; }
+        .logs-table-header {
+          display:grid; grid-template-columns:8px 120px 92px 140px minmax(0,1fr) 140px 110px;
+          gap:12px; padding:10px 16px; border-bottom:1px solid ${c.border};
+          color:${c.textMuted}; font-size:10px; font-weight:900; letter-spacing:.08em; text-transform:uppercase;
+        }
+        .log-modal-backdrop {
+          position:fixed; inset:0; z-index:2000;
+          display:flex; align-items:center; justify-content:center;
+          padding:20px; background:rgba(2,6,23,.68);
+          backdrop-filter:blur(5px);
+        }
+        .log-modal {
+          width:min(760px,100%); max-height:min(88dvh,900px);
+          display:flex; flex-direction:column; overflow:hidden;
+          border-radius:20px; box-shadow:0 30px 90px rgba(0,0,0,.38);
+        }
+        .log-modal.export-modal { width:min(560px,100%); }
+        .log-modal-content { padding:20px; overflow:auto; min-height:0; }
+        .export-date-grid {
+          display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px;
+        }
+        .export-date-grid .log-search { width:100%; min-width:0; }
+        @media (max-width: 1100px) {
+          .logs-grid { grid-template-columns:minmax(0,1fr); }
+        }
+        @media (max-width: 768px) {
+          .logs-shell { padding:14px; overflow:auto; }
+          .logs-toolbar { align-items:stretch; flex-direction:column; }
+          .logs-toolbar > * { width:100%; }
+          .log-modal-backdrop { padding:10px; align-items:flex-end; }
+          .log-modal { max-height:92dvh; border-radius:18px 18px 0 0; }
+          .export-date-grid { grid-template-columns:1fr; }
         }
       `}</style>
 
-      <main
-        style={{
-          flex: 1,
-          overflow: "hidden",
-          display: "flex",
-          flexDirection: "column",
-          padding: "26px",
-          gap: "16px",
-          fontFamily: "'Plus Jakarta Sans',sans-serif",
-        }}
-      >
-        {/* ── Banner ── */}
-        <div
+      <main className="logs-shell">
+        <section
+          className="responsive-page-banner"
           style={{
             background:
               theme === "dark"
                 ? "linear-gradient(135deg,#0f1520,#1a1a30)"
                 : "linear-gradient(135deg,#f0f4ff,#ededff)",
             border: `1.5px solid ${c.accentMedium}`,
-            borderRadius: "20px",
-            padding: "20px 28px",
+            borderRadius: 20,
+            padding: "20px 24px",
             display: "flex",
-            alignItems: "center",
             justifyContent: "space-between",
-            gap: "16px",
-            boxShadow: "0 4px 24px rgba(107,115,240,0.09)",
+            alignItems: "center",
+            gap: 16,
             flexShrink: 0,
           }}
         >
           <div>
-            <div
-              style={{
-                fontSize: "18px",
-                fontWeight: "800",
-                color: c.text,
-                marginBottom: "5px",
-              }}
-            >
-              📋 Sistema de Logs
-            </div>
-            <div
-              style={{ fontSize: "13px", color: c.textMuted, lineHeight: 1.5 }}
-            >
-              <strong style={{ color: c.accent }}>
-                {stats.total} entradas
-              </strong>{" "}
-              ·{" "}
-              <strong style={{ color: c.danger }}>
-                {stats.errors} errores
-              </strong>{" "}
-              ·{" "}
-              <strong style={{ color: c.warning }}>
-                {stats.warnings} avisos
-              </strong>
-            </div>
+            <h2 style={{ margin: 0, color: c.text, fontSize: 20 }}>
+              ErrorLog
+            </h2>
+            <p style={{ margin: "6px 0 0", color: c.textMuted, fontSize: 13 }}>
+              Registros tecnicos de errores, estados, pantalla, endpoint y dispositivo.
+            </p>
           </div>
-          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-            {/* Live tail toggle */}
-            <button
-              onClick={() => setLiveTail((v) => !v)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                padding: "8px 16px",
-                borderRadius: "20px",
-                border: `1.5px solid ${liveTail ? c.danger + "44" : c.border}`,
-                background: liveTail ? c.danger : "transparent",
-                color: liveTail ? c.danger : c.textMuted,
-                fontSize: "12px",
-                fontWeight: "700",
-                cursor: "pointer",
-                fontFamily: "'Plus Jakarta Sans',sans-serif",
-                transition: "all 0.2s",
-              }}
-            >
-              <div
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: "50%",
-                  background: liveTail ? c.danger : c.textMuted,
-                  animation: liveTail ? "blink 1s infinite" : "none",
-                }}
-              />
-              {liveTail ? `Live · +${liveCount}` : "Live tail"}
-            </button>
-            <button className="pill-cta">📤 Exportar logs</button>
-          </div>
-        </div>
+          <button
+            className="pill-cta"
+            onClick={() => setShowExportModal(true)}
+          >
+            Exportar
+          </button>
+        </section>
 
-        {/* ── KPI Cards ── */}
-        <div
+        <section
+          className="stats-grid"
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fill,minmax(145px,1fr))",
-            gap: "12px",
+            gridTemplateColumns: "repeat(5,minmax(0,1fr))",
+            gap: 12,
             flexShrink: 0,
           }}
         >
-          <KpiCard
-            emoji="📋"
-            label="Total entradas"
-            value={stats.total}
-            colorKey="accent"
-            c={c}
-          />
-          <KpiCard
-            emoji="🔴"
-            label="Errores"
-            value={stats.errors}
-            colorKey="danger"
-            c={c}
-          />
-          <KpiCard
-            emoji="🟡"
-            label="Avisos"
-            value={stats.warnings}
-            colorKey="warning"
-            c={c}
-          />
-          <KpiCard
-            emoji="🌐"
-            label="Llamadas API"
-            value={stats.apiCalls}
-            colorKey="info"
-            c={c}
-          />
-          <KpiCard
-            emoji="🐢"
-            label="Requests lentos"
-            value={stats.slow}
-            colorKey="warning"
-            c={c}
-          />
-        </div>
+          <StatCard label="Total" value={response.stats.total} color={c.accent} c={c} />
+          <StatCard label="Errores" value={response.stats.errors} color={c.danger} c={c} />
+          <StatCard label="Warnings" value={response.stats.warnings} color={c.warning} c={c} />
+          <StatCard label="Abiertos" value={response.stats.unresolved} color={c.warning} c={c} />
+          <StatCard label="Resueltos" value={response.stats.resolved} color={c.success} c={c} />
+        </section>
 
-        {/* ── Tabla + Detalle ── */}
-        <div
-          style={{
-            flex: 1,
-            display: "grid",
-            gridTemplateColumns: selected && showDetail ? "1fr 340px" : "1fr",
-            gap: "16px",
-            minHeight: 0,
-          }}
-        >
-          {/* Panel principal */}
+        <section className="logs-toolbar">
+          <input
+            className="log-search"
+            placeholder="Buscar mensaje, stack, usuario, endpoint..."
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+          <select className="select-f" value={level} onChange={(event) => setLevel(event.target.value)}>
+            <option value="todos">Todos los niveles</option>
+            {response.filters.levels.map((item) => (
+              <option key={item} value={item}>
+                {item}
+              </option>
+            ))}
+          </select>
+          <select className="select-f" value={source} onChange={(event) => setSource(event.target.value)}>
+            <option value="todos">Todos los sources</option>
+            {response.filters.sources.map((item) => (
+              <option key={item} value={item}>
+                {item}
+              </option>
+            ))}
+          </select>
+          <select className="select-f" value={platform} onChange={(event) => setPlatform(event.target.value)}>
+            <option value="todos">Todas las plataformas</option>
+            {response.filters.platforms.map((item) => (
+              <option key={item} value={item}>
+                {item}
+              </option>
+            ))}
+          </select>
+          <select className="select-f" value={status} onChange={(event) => setStatus(event.target.value)}>
+            <option value="todos">Todos los estados</option>
+            <option value="1">Abiertos</option>
+            <option value="2">Resueltos</option>
+          </select>
+          <select className="select-f" value={groupBy} onChange={(event) => setGroupBy(event.target.value)}>
+            <option value="day">Agrupar por dia</option>
+            <option value="level">Agrupar por nivel</option>
+            <option value="source">Agrupar por source</option>
+            <option value="platform">Agrupar por plataforma</option>
+            <option value="status">Agrupar por estado</option>
+            <option value="screen">Agrupar por pantalla</option>
+          </select>
+        </section>
+
+        {error && (
           <div
             style={{
-              background: c.card,
-              border: `1.5px solid ${c.border}`,
-              borderRadius: "18px",
-              overflow: "hidden",
-              display: "flex",
-              flexDirection: "column",
-              boxShadow: "0 2px 20px rgba(107,115,240,0.06)",
+              color: c.danger,
+              background: `${c.danger}12`,
+              border: `1px solid ${c.danger}33`,
+              borderRadius: 14,
+              padding: 12,
+              fontWeight: 800,
             }}
           >
-            {/* Toolbar */}
-            <div
-              style={{
-                padding: "12px 16px",
-                borderBottom: `1.5px solid ${c.border}`,
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
-                flexWrap: "wrap",
-                flexShrink: 0,
-              }}
-            >
-              {/* Search */}
-              <div style={{ position: "relative" }}>
-                <span
-                  style={{
-                    position: "absolute",
-                    left: "11px",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    fontSize: "13px",
-                    color: c.textMuted,
-                  }}
-                >
-                  🔍
-                </span>
-                <input
-                  className="log-search"
-                  placeholder="Buscar mensaje, IP, source…"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-              </div>
+            {error}
+          </div>
+        )}
 
-              {/* Level chips */}
-              <div style={{ display: "flex", gap: "5px", flexWrap: "wrap" }}>
-                {[
-                  { k: "todos", label: "Todo" },
-                  { k: "error", label: "🔴 Error" },
-                  { k: "warning", label: "🟡 Warn" },
-                  { k: "info", label: "🔵 Info" },
-                ].map((f) => (
-                  <ChipFilter
-                    key={f.k}
-                    k={f.k}
-                    label={f.label}
-                    active={filterLevel === f.k}
-                    onClick={() => setFilterLevel(f.k)}
-                  />
-                ))}
-              </div>
-
-              {/* Category select */}
-              <select
-                className="select-f"
-                value={filterCat}
-                onChange={(e) => setFilterCat(e.target.value)}
-              >
-                <option value="todos">🗂 Todas las categorías</option>
-                {Object.entries(CAT_CFG).map(([k, v]:any) => (
-                  <option key={k} value={k}>
-                    {v.emoji} {v.label}
-                  </option>
-                ))}
-              </select>
-
-              {/* Count */}
-              <div
-                style={{
-                  marginLeft: "auto",
-                  fontSize: "11px",
-                  color: c.textMuted,
-                  fontFamily: "DM Mono,monospace",
-                }}
-              >
-                <strong style={{ color: c.text }}>{filtered.length}</strong> /{" "}
-                {logs.length}
-              </div>
+        <section className="logs-grid logs-responsive-layout">
+          <div className="logs-panel" style={{ display: "flex", flexDirection: "column" }}>
+            <div className="logs-table-header">
+              <span />
+              <span>Fecha</span>
+              <span>Nivel</span>
+              <span>Source</span>
+              <span>Mensaje</span>
+              <span>Usuario</span>
+              <span>Estado</span>
             </div>
-
-            {/* Table header */}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "6px 56px 80px 110px 1fr 90px 60px",
-                gap: "10px",
-                padding: "7px 16px",
-                background:
-                  theme === "dark"
-                    ? "rgba(255,255,255,0.015)"
-                    : "rgba(0,0,0,0.02)",
-                borderBottom: `1px solid ${c.border}`,
-                flexShrink: 0,
-              }}
-            >
-              {[
-                "",
-                "Hora",
-                "Nivel",
-                "Source",
-                "Mensaje",
-                "Usuario",
-                "Cód.",
-              ].map((h) => (
-                <div
-                  key={h}
-                  style={{
-                    fontSize: "9px",
-                    fontWeight: "700",
-                    color: c.textMuted,
-                    letterSpacing: "0.1em",
-                    textTransform: "uppercase",
-                    fontFamily: "'Plus Jakarta Sans',sans-serif",
-                  }}
-                >
-                  {h}
+            <div className="logs-scroll" style={{ flex: 1 }}>
+              {loading ? (
+                <div style={{ padding: 40, color: c.textMuted, textAlign: "center", fontWeight: 800 }}>
+                  Cargando ErrorLog...
                 </div>
-              ))}
-            </div>
-
-            {/* Rows */}
-            <div ref={tableRef} style={{ flex: 1, overflowY: "auto" }}>
-              {filtered.length === 0 ? (
-                <div style={{ padding: "52px", textAlign: "center" }}>
-                  <div
-                    style={{
-                      fontSize: "36px",
-                      opacity: 0.2,
-                      marginBottom: "10px",
-                    }}
-                  >
-                    📭
-                  </div>
-                  <div
-                    style={{
-                      fontSize: "13px",
-                      fontWeight: "700",
-                      color: c.textMuted,
-                      fontFamily: "'Plus Jakarta Sans',sans-serif",
-                    }}
-                  >
-                    Sin resultados
-                  </div>
+              ) : response.data.length === 0 ? (
+                <div style={{ padding: 40, color: c.textMuted, textAlign: "center", fontWeight: 800 }}>
+                  No hay registros con esos filtros.
                 </div>
               ) : (
-                filtered.map((log) => (
+                response.data.map((log) => (
                   <LogRow
-                    key={log.id}
+                    key={log._id}
                     log={log}
                     c={c}
-                    theme={theme}
-                    selected={selected?.id === log.id}
-                    onClick={() => {
-                      setSelected(log);
-                      setShowDetail(true);
-                    }}
+                    selected={selected?._id === log._id}
+                    onClick={() => setSelected(log)}
                   />
                 ))
               )}
-
-              {/* Live tail indicator */}
-              {liveTail && (
-                <div
-                  style={{
-                    padding: "12px 16px",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "10px",
-                    borderTop: `1px solid ${c.border}`,
-                    background:
-                      theme === "dark"
-                        ? "rgba(248,113,113,0.04)"
-                        : "rgba(248,113,113,0.02)",
-                  }}
-                >
-                  <div
-                    style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: "50%",
-                      background: c.danger,
-                      animation: "blink 1s infinite",
-                    }}
-                  />
-                  <span
-                    style={{
-                      fontSize: "11px",
-                      color: c.danger,
-                      fontFamily: "DM Mono,monospace",
-                    }}
-                  >
-                    LIVE · esperando nuevas entradas…
-                  </span>
-                  <span
-                    style={{
-                      fontSize: "10px",
-                      color: c.textMuted,
-                      marginLeft: "auto",
-                    }}
-                  >
-                    +{liveCount} desde inicio
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {/* Footer */}
-            <div
-              style={{
-                padding: "10px 16px",
-                borderTop: `1px solid ${c.border}`,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                flexShrink: 0,
-              }}
-            >
-              <div style={{ display: "flex", gap: "14px" }}>
-                {[
-                  {
-                    label: "Errores",
-                    count: filtered.filter((l) => l.level === "error").length,
-                    color: c.danger,
-                  },
-                  {
-                    label: "Avisos",
-                    count: filtered.filter((l) => l.level === "warning").length,
-                    color: c.warning,
-                  },
-                  {
-                    label: "Info",
-                    count: filtered.filter((l) => l.level === "info").length,
-                    color: c.primary,
-                  },
-                ].map((item) => (
-                  <span
-                    key={item.label}
-                    style={{
-                      fontSize: "10px",
-                      fontWeight: "600",
-                      color: item.color,
-                      fontFamily: "DM Mono,monospace",
-                    }}
-                  >
-                    {item.count} {item.label.toLowerCase()}
-                  </span>
-                ))}
-              </div>
-              <span
-                style={{
-                  fontSize: "10px",
-                  color: c.textMuted,
-                  fontFamily: "DM Mono,monospace",
-                }}
-              >
-                {selected
-                  ? `Seleccionado: ${selected.id}`
-                  : "Haz clic para ver detalle"}
-              </span>
+          </div>
+            <div style={{ borderTop: `1px solid ${c.border}` }}>
+              <Pagination
+                page={page}
+                totalPages={Math.max(response.pagination.totalPages, 1)}
+                itemsPerPage={response.pagination.limit}
+                totalItems={response.pagination.total}
+                search={search}
+                setPage={setPage}
+                c={c}
+                theme={theme}
+              />
             </div>
           </div>
 
-          {/* Panel de detalle */}
-          {selected && showDetail && (
-            <div
-              style={{
-                background: c.card,
-                border: `1.5px solid ${c.border}`,
-                borderRadius: "18px",
-                overflow: "hidden",
-                boxShadow: "0 2px 20px rgba(107,115,240,0.06)",
-                animation: "slide-in 0.2s ease",
-                display: "flex",
-                flexDirection: "column",
-              }}
-            >
-              <LogDetail
-                log={selected}
-                c={c}
-                theme={theme}
-                onClose={() => {
-                  setShowDetail(false);
-                  setSelected(null);
-                }}
-              />
+          <aside className="logs-panel logs-scroll" style={{ padding: 16 }}>
+            <div style={{ marginBottom: 18 }}>
+              <h3 style={{ margin: "0 0 10px", color: c.text, fontSize: 15 }}>
+                {groupTitle}
+              </h3>
+              <GroupPanel groups={response.groups} c={c} />
             </div>
-          )}
-        </div>
+          </aside>
+        </section>
       </main>
+      {selected && (
+        <DetailModal
+          log={selected}
+          c={c}
+          onClose={() => setSelected(null)}
+          onResolve={resolveSelected}
+          resolving={resolving}
+        />
+      )}
+      {showExportModal && (
+        <ExportModal
+          c={c}
+          onClose={() => setShowExportModal(false)}
+          onExport={exportLogs}
+        />
+      )}
     </>
   );
 };

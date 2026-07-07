@@ -78,12 +78,6 @@ const PERMS_MATRIX: Permission[] = [
     description: "Aprobar/rechazar contenido",
   },
   {
-    id: "p11",
-    group: "Sistema",
-    label: "Ver logs",
-    description: "Registros del sistema",
-  },
-  {
     id: "p12",
     group: "Sistema",
     label: "Cambiar configuración",
@@ -100,6 +94,18 @@ const PERMS_MATRIX: Permission[] = [
     group: "Sistema",
     label: "Zona de peligro",
     description: "Acciones críticas del sistema",
+  },
+  {
+    id: "p15",
+    group: "Sistema",
+    label: "Ver ErrorLog",
+    description: "Registros de errores capturados por la app",
+  },
+  {
+    id: "p16",
+    group: "Sistema",
+    label: "Ver SessionLog",
+    description: "Registros de entradas y sesiones de usuarios",
   },
 ];
 
@@ -338,7 +344,7 @@ const EditRolModal = ({
         alignItems: "center",
         justifyContent: "center",
         backdropFilter: "blur(8px)",
-        padding: "20px",
+        padding: "12px",
         animation: "fadeIn 0.2s ease",
       }}
     >
@@ -346,12 +352,14 @@ const EditRolModal = ({
         onClick={(e) => e.stopPropagation()}
         style={{
           background: c.card,
-          borderRadius: 28,
+          borderRadius: 24,
           width: "100%",
-          maxWidth: 800,
-          maxHeight: "85vh",
+          maxWidth: 1000,
+          height: "calc(100dvh - 32px)",
+          maxHeight: "calc(100dvh - 32px)",
           display: "flex",
           flexDirection: "column",
+          overflow: "hidden",
           boxShadow: "0 30px 60px rgba(0,0,0,0.4)",
           animation: "slideUp 0.25s ease",
         }}
@@ -359,17 +367,18 @@ const EditRolModal = ({
         {/* Header */}
         <div
           style={{
-            padding: "24px 28px",
+            padding: "18px 24px",
             borderBottom: `1px solid ${c.border}`,
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
+            flexShrink: 0,
           }}
         >
           <div>
             <h2
               style={{
-                fontSize: "22px",
+                fontSize: "20px",
                 fontWeight: "600",
                 color: c.text,
                 marginBottom: "4px",
@@ -379,7 +388,7 @@ const EditRolModal = ({
             </h2>
             <p
               style={{
-                fontSize: "14px",
+                fontSize: "13px",
                 color: c.textMuted,
                 marginTop: "2px",
               }}
@@ -419,20 +428,21 @@ const EditRolModal = ({
         {/* Editor de nombre del rol, descripción y estado */}
         <div
           style={{
-            padding: "20px 28px",
+            padding: "14px 24px",
             borderBottom: `1px solid ${c.border}`,
             background:
               theme === "dark" ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.01)",
+            flexShrink: 0,
           }}
         >
           {/* Fila 1: Nombre y Estado */}
           <div
             style={{
               display: "flex",
-              gap: "20px",
+              gap: "16px",
               alignItems: "flex-start",
               flexWrap: "wrap",
-              marginBottom: "20px",
+              marginBottom: "12px",
             }}
           >
             {/* Nombre del rol */}
@@ -440,10 +450,10 @@ const EditRolModal = ({
               <label
                 style={{
                   display: "block",
-                  fontSize: "13px",
+                  fontSize: "12px",
                   fontWeight: 600,
                   color: c.textMuted,
-                  marginBottom: "8px",
+                  marginBottom: "6px",
                   letterSpacing: "0.3px",
                   textTransform: "uppercase",
                 }}
@@ -528,7 +538,7 @@ const EditRolModal = ({
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
-                    padding: "10px 14px",
+                    padding: "8px 12px",
                     background:
                       theme === "dark"
                         ? "rgba(255,255,255,0.05)"
@@ -582,10 +592,10 @@ const EditRolModal = ({
               <label
                 style={{
                   display: "block",
-                  fontSize: "13px",
+                  fontSize: "12px",
                   fontWeight: 600,
                   color: c.textMuted,
-                  marginBottom: "8px",
+                  marginBottom: "6px",
                   letterSpacing: "0.3px",
                   textTransform: "uppercase",
                 }}
@@ -600,7 +610,7 @@ const EditRolModal = ({
                   alignItems: "center",
                   gap: "12px",
                   cursor: "pointer",
-                  padding: "8px 0",
+                  padding: "4px 0",
                 }}
               >
                 <div
@@ -664,10 +674,10 @@ const EditRolModal = ({
             <label
               style={{
                 display: "block",
-                fontSize: "13px",
+                fontSize: "12px",
                 fontWeight: 600,
                 color: c.textMuted,
-                marginBottom: "8px",
+                marginBottom: "6px",
                 letterSpacing: "0.3px",
                 textTransform: "uppercase",
               }}
@@ -759,7 +769,7 @@ const EditRolModal = ({
                   display: "flex",
                   alignItems: "flex-start",
                   justifyContent: "space-between",
-                  padding: "10px 14px",
+                  padding: "8px 12px",
                   background:
                     theme === "dark"
                       ? "rgba(255,255,255,0.05)"
@@ -768,7 +778,7 @@ const EditRolModal = ({
                   border: `1px solid ${c.border}`,
                   cursor: "pointer",
                   transition: "all 0.2s",
-                  minHeight: "60px",
+                  minHeight: "44px",
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.borderColor = Colors.detailAppColor;
@@ -819,12 +829,13 @@ const EditRolModal = ({
         {/* Barra de búsqueda y acciones rápidas */}
         <div
           style={{
-            padding: "16px 28px",
+            padding: "10px 24px",
             borderBottom: `1px solid ${c.border}`,
             display: "flex",
             gap: "12px",
             alignItems: "center",
             flexWrap: "wrap",
+            flexShrink: 0,
           }}
         >
           <div style={{ flex: 1, position: "relative" }}>
@@ -888,13 +899,13 @@ const EditRolModal = ({
         </div>
 
         {/* Tabla de permisos agrupada */}
-        <div style={{ flex: 1, overflow: "auto", padding: "0 28px" }}>
+        <div style={{ flex: 1, overflow: "auto", padding: "12px 24px", minHeight: 0 }}>
           <div
             style={{
               borderRadius: 16,
               border: `1px solid ${c.border}`,
               overflow: "hidden",
-              margin: "20px 0",
+              margin: 0,
             }}
           >
             {/* Header */}
@@ -908,7 +919,10 @@ const EditRolModal = ({
                     ? "rgba(255,255,255,0.04)"
                     : "rgba(0,0,0,0.03)",
                 borderBottom: `1px solid ${c.border}`,
-                padding: "12px 16px",
+                padding: "10px 14px",
+                position: "sticky",
+                top: 0,
+                zIndex: 2,
               }}
             >
               <div
@@ -958,7 +972,7 @@ const EditRolModal = ({
                           ? "rgba(255,255,255,0.02)"
                           : "rgba(0,0,0,0.01)",
                       borderBottom: `1px solid ${c.border}`,
-                      padding: "12px 16px",
+                      padding: "10px 14px",
                       cursor: "pointer",
                       transition: "background 0.15s",
                     }}
@@ -1039,7 +1053,7 @@ const EditRolModal = ({
                       >
                         <div
                           style={{
-                            padding: "12px 16px 12px 32px",
+                            padding: "10px 14px 10px 28px",
                             display: "flex",
                             flexDirection: "column",
                             gap: "4px",
@@ -1093,13 +1107,14 @@ const EditRolModal = ({
         {/* Footer */}
         <div
           style={{
-            padding: "20px 28px",
+            padding: "14px 24px",
             borderTop: `1px solid ${c.border}`,
             display: "flex",
             justifyContent: "flex-end",
             gap: "12px",
             background:
               theme === "dark" ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.01)",
+            flexShrink: 0,
           }}
         >
           <button

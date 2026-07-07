@@ -215,7 +215,7 @@ const Security = () => {
       <main style={{ flex:1, overflow:"auto", padding:"26px", fontFamily:"'Plus Jakarta Sans', sans-serif" }}>
 
         {/* ── Banner ── */}
-        <div style={{
+        <div className="responsive-page-banner" style={{
           background: theme==="dark"?"linear-gradient(135deg,#0f1a18,#0d1420)":"linear-gradient(135deg,#edfaf5,#edf5ff)",
           border:`1.5px solid ${c.success}44`,
           borderRadius:"20px", padding:"22px 28px", marginBottom:"22px",
@@ -236,7 +236,7 @@ const Security = () => {
         </div>
 
         {/* ── Score + Quick config ── */}
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"16px", marginBottom:"22px" }}>
+        <div className="security-responsive-grid" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"16px", marginBottom:"22px" }}>
           {/* Score */}
           <div style={{
             background: theme==="dark"?"linear-gradient(135deg,#1a1a30,#0f0f22)":"linear-gradient(135deg,#ededff,#f0f0ff)",
@@ -305,7 +305,7 @@ const Security = () => {
 
         {/* ══ SESIONES ══ */}
         {activeTab==="sesiones" && (
-          <div style={{ background:c.card, border:`1.5px solid ${c.border}`, borderRadius:"18px", overflow:"hidden", boxShadow:"0 2px 16px rgba(107,115,240,0.06)" }}>
+          <div className="responsive-table-card" style={{ background:c.card, border:`1.5px solid ${c.border}`, borderRadius:"18px", overflow:"hidden", boxShadow:"0 2px 16px rgba(107,115,240,0.06)" }}>
             <div style={{ padding:"16px 20px", borderBottom:`1px solid ${c.border}`, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
               <div>
                 <div style={{ fontSize:"14px", fontWeight:"800", color:c.text }}>💻 Sesiones activas</div>
@@ -344,7 +344,7 @@ const Security = () => {
 
         {/* ══ LOG ══ */}
         {activeTab==="log" && (
-          <div style={{ background:c.card, border:`1.5px solid ${c.border}`, borderRadius:"18px", overflow:"hidden", boxShadow:"0 2px 16px rgba(107,115,240,0.06)" }}>
+          <div className="responsive-table-card" style={{ background:c.card, border:`1.5px solid ${c.border}`, borderRadius:"18px", overflow:"hidden", boxShadow:"0 2px 16px rgba(107,115,240,0.06)" }}>
             <div style={{ padding:"16px 20px", borderBottom:`1px solid ${c.border}`, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
               <div>
                 <div style={{ fontSize:"14px", fontWeight:"800", color:c.text }}>📋 Log de auditoría</div>
@@ -368,7 +368,7 @@ const Security = () => {
             </div>
 
             {/* Header */}
-            <div style={{ display:"grid", gridTemplateColumns:"10px 100px 120px 130px 1fr 120px 80px", gap:"12px", padding:"8px 20px", background:theme==="dark"?"rgba(255,255,255,0.02)":"rgba(0,0,0,0.02)", borderBottom:`1px solid ${c.border}` }}>
+            <div className="security-log-header" style={{ display:"grid", gridTemplateColumns:"10px 100px 120px 130px 1fr 120px 80px", gap:"12px", padding:"8px 20px", background:theme==="dark"?"rgba(255,255,255,0.02)":"rgba(0,0,0,0.02)", borderBottom:`1px solid ${c.border}` }}>
               {["","Acción","Tipo","Usuario","Detalle","IP","Hora"].map(h=>(
                 <div key={h} style={{ fontSize:"9px", fontWeight:"700", color:c.textMuted, letterSpacing:"0.1em", textTransform:"uppercase" }}>{h}</div>
               ))}
@@ -378,7 +378,7 @@ const Security = () => {
               const lc = LOG_MAP[log.action]||{label:log.action,emoji:"📌"};
               const dotColor = log.severity==="danger"?c.danger:log.severity==="warning"?c.warning:c.accent;
               return (
-                <div key={log.id} className="row-hover" style={{ display:"grid", gridTemplateColumns:"10px 100px 120px 130px 1fr 120px 80px", gap:"12px", padding:"10px 20px", borderBottom:`1px solid ${c.border}`, alignItems:"center" }}>
+                <div key={log.id} className="row-hover security-log-row" style={{ display:"grid", gridTemplateColumns:"10px 100px 120px 130px 1fr 120px 80px", gap:"12px", padding:"10px 20px", borderBottom:`1px solid ${c.border}`, alignItems:"center" }}>
                   <div style={{ width:8, height:8, borderRadius:"50%", background:dotColor, boxShadow:log.severity==="danger"?`0 0 6px ${dotColor}88`:"none" }} />
                   <div style={{ display:"flex", alignItems:"center", gap:"5px" }}>
                     <span style={{ fontSize:"12px" }}>{lc.emoji}</span>

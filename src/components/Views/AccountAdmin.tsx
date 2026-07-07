@@ -721,6 +721,7 @@ const AccountAdmin = () => {
       >
         {/* Banner */}
         <div
+          className="responsive-page-banner"
           style={{
             background:
               theme === "dark"

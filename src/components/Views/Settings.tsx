@@ -1,22 +1,24 @@
 import { useState } from "react";
 import { Colors } from "../constants/Colors";
+import { Permissions } from "../constants/Permissions";
 import { useThemeContext } from "../context/ThemeContext";
+import { usePermissions } from "../hooks/usePermissions";
 import RolesTab from "../Modules/Settings/Role/Components/RolesTab";
 import { ManagersTab } from "../Modules/Settings/Team/Components/ManagersTab";
 import VersionsTab from "../Modules/Settings/Version/Components/VersionsTab";
 
 // ─── Secciones de configuración ───────────────────────────────────────
 const SECTIONS = [
-  { id: "general", label: "General", emoji: "⚙️" },
-  { id: "apariencia", label: "Apariencia", emoji: "🎨" },
-  { id: "comunidad", label: "Comunidad", emoji: "👥" },
-  { id: "moderacion", label: "Moderación", emoji: "🛡️" },
-  { id: "notificaciones", label: "Notificaciones", emoji: "🔔" },
-  { id: "seguridad", label: "Seguridad", emoji: "🔐" },
-  { id: "manager", label: "Manager", emoji: "👮" },
-  { id: "roles", label: "Roles", emoji: "🎭" },
-  { id: "versiones", label: "Versiones", emoji: "🚀" },
-  { id: "peligro", label: "Zona de peligro", emoji: "⚠️" },
+  { id: "general", label: "General", emoji: "⚙️", permission: Permissions.MANAGE_SETTINGS },
+  { id: "apariencia", label: "Apariencia", emoji: "🎨", permission: Permissions.MANAGE_SETTINGS },
+  { id: "comunidad", label: "Comunidad", emoji: "👥", permission: Permissions.MANAGE_SETTINGS },
+  { id: "moderacion", label: "Moderación", emoji: "🛡️", permission: Permissions.MANAGE_SETTINGS },
+  { id: "notificaciones", label: "Notificaciones", emoji: "🔔", permission: Permissions.MANAGE_SETTINGS },
+  { id: "seguridad", label: "Seguridad", emoji: "🔐", permission: Permissions.MANAGE_SETTINGS },
+  { id: "manager", label: "Manager", emoji: "👮", permission: Permissions.MANAGE_ADMINS },
+  { id: "roles", label: "Roles", emoji: "🎭", permission: Permissions.MANAGE_ADMINS },
+  { id: "versiones", label: "Versiones", emoji: "🚀", permission: Permissions.MANAGE_SETTINGS },
+  { id: "peligro", label: "Zona de peligro", emoji: "⚠️", permission: Permissions.DANGER_ZONE },
 ];
 
 // ─── Sub-componentes base ─────────────────────────────────────────────
@@ -1528,10 +1530,14 @@ function PeligroPanel({ c, theme, onDangerAction }: any) {
 // ─── Componente principal ─────────────────────────────────────────────
 const Settings = () => {
   const { theme } = useThemeContext();
+  const { can } = usePermissions();
   const colors = theme === "dark" ? Colors.dark : Colors.light;
   const c = colors.colors;
+  const visibleSections = SECTIONS.filter((section) => can(section.permission));
 
-  const [activeSection, setActiveSection] = useState("general");
+  const [activeSection, setActiveSection] = useState(
+    () => visibleSections[0]?.id || "general",
+  );
   const [confirmModal, setConfirmModal] = useState(null);
 
   const dangerMessages: any = {
@@ -1649,6 +1655,7 @@ const Settings = () => {
       >
         {/* ── Banner ── */}
         <div
+          className="responsive-page-banner"
           style={{
             background:
               theme === "dark"
@@ -1689,6 +1696,7 @@ const Settings = () => {
 
         {/* ── Layout: Sidebar + Panel ── */}
         <div
+          className="settings-responsive-layout"
           style={{
             display: "grid",
             gridTemplateColumns: "220px 1fr",
@@ -1708,13 +1716,14 @@ const Settings = () => {
               top: "0",
             }}
           >
-            {SECTIONS.map((s, i) => {
+            {visibleSections.map((s, i) => {
               const isDanger = s.id === "peligro";
               const isActive = activeSection === s.id;
               return (
                 <div key={s.id}>
-                  {i === SECTIONS.length - 1 && (
+                  {i === visibleSections.length - 1 && (
                     <div
+                      className="settings-nav-divider"
                       style={{
                         height: "1px",
                         background: c.border,

@@ -1,7 +1,6 @@
 import axios from "axios";
 
-// const API_URL = "https://api.aycoro.com";
-const API_URL = "http://localhost:4000";
+const API_URL = process.env.REACT_APP_MANAGE_API_URL || "https://manage.api.aycoro.com";
 
 const Http = axios.create({
   baseURL: API_URL,
@@ -38,8 +37,10 @@ Http.interceptors.response.use(
     if (error.response?.status === 401) {
       console.log("Error en el interceptor: ", error.response?.status);
       const token = localStorage.getItem("refreshToken");
-      localStorage.removeItem("Us-Ac");
-      // window.location.href = "/login";
+      localStorage.removeItem("internalToken");
+      localStorage.removeItem("refreshToken");
+      localStorage.removeItem("aycoroAuthToken");
+      window.location.href = "/login";
     }
     if (error.response?.status === 500) {
       console.log(error.response);

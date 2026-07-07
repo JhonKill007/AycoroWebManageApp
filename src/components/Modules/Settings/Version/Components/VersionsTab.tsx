@@ -54,6 +54,7 @@ const TableSkeleton = ({ rows = 5, c }: { rows?: number; c: any }) => {
       {Array.from({ length: rows }).map((_, index) => (
         <div
           key={index}
+          className="version-skeleton-row"
           style={{
             display: "grid",
             gridTemplateColumns: "100px 1fr 120px 100px 100px 120px 100px",
@@ -61,6 +62,7 @@ const TableSkeleton = ({ rows = 5, c }: { rows?: number; c: any }) => {
             padding: "14px 20px",
             borderBottom: `1px solid ${c.border}`,
             alignItems: "center",
+            background: c.card,
           }}
         >
           <div
@@ -510,6 +512,7 @@ const VersionsTab = ({ c, theme }: { c: any; theme: string }) => {
 
       {/* Toolbar */}
       <div
+        className="versions-toolbar"
         style={{
           display: "flex",
           alignItems: "center",
@@ -698,6 +701,7 @@ const VersionsTab = ({ c, theme }: { c: any; theme: string }) => {
 
       {/* Filtros rápidos (chips) */}
       <div
+        className="versions-quick-filters"
         style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}
       >
         <FilterChip
@@ -738,6 +742,7 @@ const VersionsTab = ({ c, theme }: { c: any; theme: string }) => {
 
       {/* Tabla de versiones */}
       <div
+        className="versions-table"
         style={{
           background: c.card,
           border: `1px solid ${c.border}`,
@@ -747,6 +752,7 @@ const VersionsTab = ({ c, theme }: { c: any; theme: string }) => {
       >
         {/* Header */}
         <div
+          className="versions-table-header"
           style={{
             display: "grid",
             gridTemplateColumns: "100px 1fr 120px 100px 100px 120px 100px",
@@ -821,6 +827,7 @@ const VersionsTab = ({ c, theme }: { c: any; theme: string }) => {
             return (
               <div
                 key={version._id || Math.random()}
+                className="version-row"
                 style={{
                   display: "grid",
                   gridTemplateColumns:
@@ -830,12 +837,13 @@ const VersionsTab = ({ c, theme }: { c: any; theme: string }) => {
                   borderBottom: `1px solid ${c.border}`,
                   alignItems: "center",
                   transition: "background 0.15s",
+                  background: c.card,
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.background = c.accentSoft;
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "transparent";
+                  e.currentTarget.style.background = c.card;
                 }}
               >
                 {/* Versión */}

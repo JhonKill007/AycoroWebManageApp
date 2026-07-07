@@ -7,6 +7,8 @@ import { useThemeContext } from "../../../context/ThemeContext";
 import { UserPerfilModel } from "../../../Models/User/UserPerfilModel";
 import { formatDate } from "../../Settings/Common/Utils";
 import UserStatusBadge from "./UserStatusBadge";
+import { Permissions } from "../../../constants/Permissions";
+import { usePermissions } from "../../../hooks/usePermissions";
 
 export const UserDetailModal = ({
   user,
@@ -18,6 +20,7 @@ export const UserDetailModal = ({
   onClose: () => void;
 }) => {
   const navigate = useNavigate();
+  const { can } = usePermissions();
   const { theme } = useThemeContext();
   const colors = theme === "dark" ? Colors.dark : Colors.light;
   const c = colors.colors;
@@ -406,7 +409,7 @@ export const UserDetailModal = ({
             flexWrap: "wrap",
           }}
         >
-          {ACTIONS.map((a) => (
+          {can(Permissions.SANCTION_USERS) && ACTIONS.map((a) => (
             <button
               key={a.key}
               onClick={() => {

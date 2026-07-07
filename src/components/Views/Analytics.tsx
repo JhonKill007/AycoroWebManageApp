@@ -15,6 +15,7 @@ import {
 } from "recharts";
 import { Colors } from "../constants/Colors";
 import { useThemeContext } from "../context/ThemeContext";
+import { SessionAccessAnalytics } from "../Models/SessionLog/SessionLogModel";
 import UsersByCountryChart from "../Modules/Card/UsersByCountryChart";
 import analyticsService from "../Services/Analytics/AnalyticsService";
 
@@ -63,15 +64,28 @@ const TOP_USERS = [
   { user: "elena_rq", posts: 76, likes: 1720, followers: 489, verified: true },
 ];
 
-const HOURLY_HEATMAP = [
-  { hora: "00h", L: 2, M: 3, X: 2, J: 4, V: 5, S: 8, D: 7 },
-  { hora: "03h", L: 1, M: 1, X: 1, J: 1, V: 2, S: 3, D: 4 },
-  { hora: "06h", L: 5, M: 6, X: 4, J: 7, V: 6, S: 4, D: 3 },
-  { hora: "09h", L: 18, M: 20, X: 17, J: 22, V: 19, S: 12, D: 10 },
-  { hora: "12h", L: 32, M: 35, X: 28, J: 38, V: 40, S: 45, D: 38 },
-  { hora: "15h", L: 28, M: 30, X: 25, J: 33, V: 48, S: 62, D: 54 },
-  { hora: "18h", L: 42, M: 44, X: 38, J: 52, V: 68, S: 78, D: 65 },
-  { hora: "21h", L: 35, M: 38, X: 32, J: 44, V: 72, S: 88, D: 74 },
+type HeatMetric =
+  | "total"
+  | "registrations"
+  | "likes"
+  | "posts"
+  | "stories"
+  | "comments"
+  | "chats";
+
+type HeatmapCell = Record<HeatMetric, number> & {
+  day: number;
+  hour: number;
+};
+
+const HEAT_METRICS: { key: HeatMetric; label: string }[] = [
+  { key: "total", label: "Toda" },
+  { key: "registrations", label: "Registros" },
+  { key: "likes", label: "Likes" },
+  { key: "posts", label: "Publicaciones" },
+  { key: "stories", label: "Historias" },
+  { key: "comments", label: "Comentarios" },
+  { key: "chats", label: "Chats" },
 ];
 
 const DAYS = ["L", "M", "X", "J", "V", "S", "D"];
@@ -105,9 +119,9 @@ function getAvatar(name: any) {
   return { bg: palette[name.charCodeAt(0) % palette.length] };
 }
 
-function heatColor(val: any, accent: any) {
+function heatColor(val: number, accent: string, max: number) {
   if (val === 0) return "transparent";
-  const opacity = Math.min(0.15 + (val / 88) * 0.8, 0.95);
+  const opacity = Math.min(0.15 + (val / Math.max(max, 1)) * 0.8, 0.95);
   return `${accent}${Math.round(opacity * 255)
     .toString(16)
     .padStart(2, "0")}`;
@@ -561,6 +575,15 @@ type WeeklyResume = {
   nuevos: number
 };
 
+const emptySessionAccess: SessionAccessAnalytics = {
+  days: 30,
+  totalSessions: 0,
+  uniqueUsers: 0,
+  averageSessionsPerUser: 0,
+  series: [],
+  topUsers: [],
+};
+
 // ─── Componente principal ─────────────────────────────────────────────
 const Analytics = () => {
   const { theme } = useThemeContext();
@@ -618,6 +641,11 @@ const Analytics = () => {
 
   const [activityPeriod, setActivityPeriod] = useState<string>("7d");
   const [newUsersPeriod, setNewUsersPeriod] = useState<string>("7d");
+  const [sessionAccessPeriod, setSessionAccessPeriod] = useState<number>(7);
+  const [sessionAccess, setSessionAccess] =
+    useState<SessionAccessAnalytics>(emptySessionAccess);
+  const [heatmap, setHeatmap] = useState<HeatmapCell[]>([]);
+  const [heatMetric, setHeatMetric] = useState<HeatMetric>("total");
 
   const [devices, setDevices] = useState<Device[]>([]);
   const [genderUsers, setGenderUsers] = useState<PieDatum[]>([]);
@@ -650,10 +678,25 @@ const Analytics = () => {
       const { data } = await analyticsService.getActivityResume();
       setWeeklyActivityResume(data.weekly);
       setMonthlyActivityResume(data.monthly);
+      setHeatmap(Array.isArray(data.heatmap) ? data.heatmap : []);
     };
 
     getActivityResume();
   }, []);
+
+  useEffect(() => {
+    const getSessionAccess = async () => {
+      const { data } = await analyticsService.getSessionAccess(sessionAccessPeriod);
+      setSessionAccess(data || emptySessionAccess);
+    };
+
+    getSessionAccess();
+  }, [sessionAccessPeriod]);
+
+  const heatmapMax = Math.max(
+    1,
+    ...heatmap.map((cell) => Number(cell[heatMetric]) || 0),
+  );
 
   useEffect(() => {
     const getMonthlyData = async () => {
@@ -762,6 +805,7 @@ const Analytics = () => {
       >
         {/* ── Header banner ── */}
         <div
+          className="responsive-page-banner"
           style={{
             background:
               theme === "dark"
@@ -1004,6 +1048,117 @@ const Analytics = () => {
             </SectionCard>
           </div>
 
+          <div className="span-2">
+            <SectionCard
+              title="Entradas a la app"
+              subtitle={`${sessionAccess.uniqueUsers.toLocaleString()} usuarios entraron ${sessionAccess.totalSessions.toLocaleString()} veces · promedio ${sessionAccess.averageSessionsPerUser} entradas por usuario`}
+              c={c}
+              action={
+                <div style={{ display: "flex", gap: "5px", flexWrap: "wrap" }}>
+                  {[7, 30, 90].map((days) => (
+                    <TabChip
+                      key={days}
+                      label={`${days}d`}
+                      active={sessionAccessPeriod === days}
+                      onClick={() => setSessionAccessPeriod(days)}
+                      c={c}
+                    />
+                  ))}
+                </div>
+              }
+            >
+              <ResponsiveContainer width="100%" height={230}>
+                <AreaChart
+                  data={sessionAccess.series}
+                  margin={{ top: 5, right: 10, bottom: 0, left: 0 }}
+                >
+                  <defs>
+                    <linearGradient id="sessionUsersGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={c.success} stopOpacity={0.25} />
+                      <stop offset="95%" stopColor={c.success} stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="sessionEntriesGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={c.accent} stopOpacity={0.25} />
+                      <stop offset="95%" stopColor={c.accent} stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid stroke={gridColor} vertical={false} />
+                  <XAxis
+                    dataKey="label"
+                    tick={{ fill: tickColor, fontSize: 11 }}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis
+                    tick={{ fill: tickColor, fontSize: 10 }}
+                    tickLine={false}
+                    axisLine={false}
+                    width={40}
+                  />
+                  <Tooltip content={<CustomTooltip c={c} />} />
+                  <Area
+                    type="monotone"
+                    dataKey="users"
+                    name="Usuarios que entraron"
+                    stroke={c.success}
+                    strokeWidth={2.5}
+                    fill="url(#sessionUsersGrad)"
+                    dot={false}
+                    activeDot={{ r: 5, fill: c.success }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="sessions"
+                    name="Veces que entraron"
+                    stroke={c.accent}
+                    strokeWidth={2.5}
+                    fill="url(#sessionEntriesGrad)"
+                    dot={false}
+                    activeDot={{ r: 5, fill: c.accent }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))",
+                  gap: 10,
+                  marginTop: 12,
+                }}
+              >
+                {sessionAccess.topUsers.slice(0, 4).map((item) => (
+                  <div
+                    key={item.idUser}
+                    style={{
+                      border: `1px solid ${c.border}`,
+                      borderRadius: 12,
+                      padding: 10,
+                      background: c.inputBackground,
+                      minWidth: 0,
+                    }}
+                  >
+                    <div
+                      style={{
+                        color: c.text,
+                        fontSize: 12,
+                        fontWeight: 900,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      @{item.user?.Username || item.user?.Name || item.idUser}
+                    </div>
+                    <div style={{ color: c.accent, fontSize: 12, fontWeight: 900 }}>
+                      {item.sessions} entradas
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </SectionCard>
+          </div>
+
           {/* 2. Actividad semanal */}
           <SectionCard
             title={activityPeriod === "7d" ? "Actividad semanal" : "Actividad Mensual"}
@@ -1241,8 +1396,30 @@ const Analytics = () => {
           {/* 5. Heatmap de actividad por hora */}
           <SectionCard
             title="Mapa de calor — Actividad"
-            subtitle="Usuarios activos por hora y día de la semana"
+            subtitle="Eventos reales de los últimos 30 días por hora y día"
             c={c}
+            action={
+              <select
+                value={heatMetric}
+                onChange={(event) => setHeatMetric(event.target.value as HeatMetric)}
+                style={{
+                  border: `1.5px solid ${c.border}`,
+                  background: c.inputBackground,
+                  color: c.text,
+                  borderRadius: 9,
+                  padding: "6px 9px",
+                  fontSize: 10,
+                  fontWeight: 700,
+                  outline: "none",
+                }}
+              >
+                {HEAT_METRICS.map((metric) => (
+                  <option key={metric.key} value={metric.key}>
+                    {metric.label}
+                  </option>
+                ))}
+              </select>
+            }
           >
             <div>
               {/* Header días */}
@@ -1270,9 +1447,11 @@ const Analytics = () => {
                 ))}
               </div>
               {/* Rows */}
-              {HOURLY_HEATMAP.map((row: any) => (
+              {Array.from({ length: 8 }).map((_, hourIndex) => {
+                const hour = hourIndex * 3;
+                return (
                 <div
-                  key={row.hora}
+                  key={hour}
                   style={{
                     display: "grid",
                     gridTemplateColumns: "36px repeat(7, 1fr)",
@@ -1289,27 +1468,34 @@ const Analytics = () => {
                       fontFamily: "monospace",
                     }}
                   >
-                    {row.hora}
+                    {String(hour).padStart(2, "0")}h
                   </div>
-                  {DAYS.map((d) => {
-                    const val = row[d];
+                  {DAYS.map((d, dayIndex) => {
+                    const cell = heatmap.find(
+                      (item) => item.day === dayIndex + 1 && item.hour === hour,
+                    );
+                    const val = Number(cell?.[heatMetric]) || 0;
+                    const detail = cell
+                      ? `Total: ${cell.total}\nRegistros: ${cell.registrations}\nLikes: ${cell.likes}\nPublicaciones: ${cell.posts}\nHistorias: ${cell.stories}\nComentarios: ${cell.comments}\nChats: ${cell.chats}`
+                      : "Sin actividad";
                     return (
                       <div
                         key={d}
-                        title={`${row.hora} ${d}: ${val} usuarios`}
+                        title={`${DAYS[dayIndex]} ${String(hour).padStart(2, "0")}:00 · ${val} eventos\n${detail}`}
                         style={{
                           height: "22px",
                           borderRadius: "5px",
-                          background: heatColor(val, accentHex),
+                          background: heatColor(val, accentHex, heatmapMax),
                           border: `1px solid ${theme === "dark" ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"}`,
                           transition: "background 0.2s",
-                          cursor: "default",
+                          cursor: "help",
                         }}
                       />
                     );
                   })}
                 </div>
-              ))}
+                );
+              })}
               {/* Leyenda */}
               <div
                 style={{

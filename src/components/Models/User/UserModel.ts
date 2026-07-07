@@ -11,11 +11,11 @@ export class UserModel {
   public Gender: string | undefined;
   public Status: number | undefined;
   public Verify: number | undefined;
-  public IP: string | undefined;
-  public City: string | undefined;
-  public Country: string | undefined;
+  public IP?: string;
+  public City?: string;
+  public Country?: string;
   public Validate: boolean | undefined;
   public PerfilData: UserPerfilData | undefined;
-  public ProfilePhoto: string | undefined;
+  public ProfilePhoto?: string;
   public CreateDate: Date | undefined;
 }

@@ -1,7 +1,10 @@
 export class MediaDataModel {
-  public Url: string | undefined;
-  public Key: string | undefined;
-  public Type: string | undefined;
+  // Legacy API shape.
+  public _id?: string;
+  public Value?: string;
+  public Url?: string;
+  public Key?: string;
+  public Type?: string;
   public MimeType?: string | undefined;
   public Size?: number | undefined;
   public IdUser?: string | undefined;

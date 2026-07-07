@@ -1,556 +1,214 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
-  Bar,
-  CartesianGrid,
   Cell,
-  ComposedChart,
-  LabelList,
+  Pie,
+  PieChart,
   ResponsiveContainer,
   Tooltip,
-  XAxis,
-  YAxis,
 } from "recharts";
 import { Colors } from "../../constants/Colors";
 import { useThemeContext } from "../../context/ThemeContext";
 import analyticsService from "../../Services/Analytics/AnalyticsService";
 
-// // ─── Datos: usuarios por país ─────────────────────────────────────────
-// const DATA = [
-//   { country: "🇲🇽 México", code: "MX", users: 4320, growth: +18 },
-//   { country: "🇺🇸 EE.UU.", code: "US", users: 3870, growth: +12 },
-//   { country: "🇨🇴 Colombia", code: "CO", users: 2940, growth: +31 },
-//   { country: "🇦🇷 Argentina", code: "AR", users: 2510, growth: +9 },
-//   { country: "🇪🇸 España", code: "ES", users: 2100, growth: +7 },
-//   { country: "🇨🇱 Chile", code: "CL", users: 1760, growth: +22 },
-//   { country: "🇵🇪 Perú", code: "PE", users: 1430, growth: +15 },
-//   { country: "🇻🇪 Venezuela", code: "VE", users: 1180, growth: +5 },
-//   { country: "🇧🇷 Brasil", code: "BR", users: 960, growth: +44 },
-//   { country: "🇩🇴 Rep. Dom.", code: "DO", users: 720, growth: +28 },
-// ];
-
-// const TOTAL = DATA.reduce((s, d) => s + d.users, 0);
-let TOTAL = 0;
-
-// Gradiente de color según ranking
-const BAR_COLORS_DARK = [
-  "#7b83f5",
-  "#8b7cf8",
-  "#9b74fa",
-  "#a46ef7",
-  "#af68f4",
-  "#b862f1",
-  "#c25cee",
-  "#cc56eb",
-  "#d650e8",
-  "#e04ae5",
-];
-const BAR_COLORS_LIGHT = [
-  "#6b73f0",
-  "#7a6def",
-  "#8a68ee",
-  "#9962ed",
-  "#a85cec",
-  "#b756eb",
-  "#c650ea",
-  "#d54ae9",
-  "#e444e8",
-  "#f33ee7",
-];
-
-// ─── Tooltip personalizado ────────────────────────────────────────────
-const CustomTooltip = ({ active, payload, dark }: any) => {
-  if (!active || !payload?.length) return null;
-  const d = payload[0].payload;
-  const c = dark ? Colors.dark.colors : Colors.light.colors;
-  const pct = ((d.users / TOTAL) * 100).toFixed(1);
-
-  return (
-    <div
-      style={{
-        background: c.card,
-        border: `1.5px solid ${c.accent}44`,
-        borderRadius: "14px",
-        padding: "12px 16px",
-        boxShadow: `0 8px 30px rgba(107,115,240,0.18)`,
-        minWidth: "160px",
-      }}
-    >
-      <div
-        style={{
-          fontSize: "14px",
-          fontWeight: "800",
-          color: c.text,
-          marginBottom: "8px",
-        }}
-      >
-        {d.country}
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-        <Row
-          label="Usuarios"
-          value={d.users.toLocaleString()}
-          color={c.accent}
-        />
-        <Row label="Del total" value={`${pct}%`} color={c.textMuted} />
-        <Row
-          label="Crecimiento"
-          value={`+${d.growth}%`}
-          color={
-            d.growth >= 20
-              ? c.success
-              : d.growth >= 10
-                ? c.warning
-                : c.textMuted
-          }
-        />
-      </div>
-    </div>
-  );
-};
-
-const Row = ({ label, value, color }: any) => {
-  return (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "space-between",
-        gap: "16px",
-        fontSize: "11px",
-      }}
-    >
-      <span style={{ color: "#8888a8" }}>{label}</span>
-      <span style={{ fontWeight: "700", color }}>{value}</span>
-    </div>
-  );
-};
-
 type CountryMetric = {
   country: string;
   users: number;
   growth: number;
+  currentMonthUsers: number;
+  previousMonthUsers: number;
 };
+
+const CHART_COLORS = [
+  "#6b73f0",
+  "#8b5cf6",
+  "#06b6d4",
+  "#10b981",
+  "#f59e0b",
+  "#f97316",
+  "#ec4899",
+  "#64748b",
+];
+
+const formatCountry = (country?: string) =>
+  !country || country === "N/A" ? "Sin especificar" : country;
 
 const UsersByCountryChart = () => {
   const { theme } = useThemeContext();
-  const [countries, setCountries] = useState<CountryMetric[]>([]);
-
-  useEffect(() => {
-    const getUsersByCountry = async () => {
-      const { data } = await analyticsService.getUsersByCountry();
-      setCountries(data);
-    };
-
-    getUsersByCountry();
-  }, []);
-
-  TOTAL = countries.reduce((s, d) => s + d.users, 0);
-
   const colors = theme === "dark" ? Colors.dark : Colors.light;
   const c = colors.colors;
+  const [countries, setCountries] = useState<CountryMetric[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showAll, setShowAll] = useState(false);
 
-  const [view, setView] = useState("bar"); // "bar" | "list"
-  const barColors = theme === "dark" ? BAR_COLORS_DARK : BAR_COLORS_LIGHT;
-  const top = countries[0];
+  useEffect(() => {
+    const loadCountries = async () => {
+      try {
+        const { data } = await analyticsService.getUsersByCountry();
+        setCountries(Array.isArray(data) ? data : []);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadCountries();
+  }, []);
+
+  const total = useMemo(
+    () => countries.reduce((sum, item) => sum + item.users, 0),
+    [countries],
+  );
+  const leader = countries[0];
+  const growthLeader = useMemo(
+    () =>
+      countries
+        .filter((item) => item.currentMonthUsers > 0)
+        .reduce<CountryMetric | undefined>(
+          (best, item) => (!best || item.growth > best.growth ? item : best),
+          undefined,
+        ),
+    [countries],
+  );
+  const chartData = useMemo(() => {
+    const visible = countries.slice(0, 7).map((item) => ({
+      ...item,
+      country: formatCountry(item.country),
+    }));
+    const remaining = countries.slice(7).reduce((sum, item) => sum + item.users, 0);
+    return remaining > 0
+      ? [...visible, { country: "Otros", users: remaining, growth: 0, currentMonthUsers: 0, previousMonthUsers: 0 }]
+      : visible;
+  }, [countries]);
+
   return (
-    <div
-      style={{
-        minHeight: "auto",
-        padding: 0,
-        fontFamily: "'Plus Jakarta Sans', sans-serif",
-        transition: "background 0.3s",
-      }}
-    >
+    <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-
-        .tab-btn {
-          padding: 6px 16px; border-radius: 20px;
-          border: 1.5px solid ${c.border};
-          background: transparent; cursor: pointer;
-          font-size: 12px; font-weight: 600;
-          font-family: 'Plus Jakarta Sans', sans-serif;
-          transition: all 0.18s;
-          color: ${c.textMuted};
-        }
-        .tab-btn.active {
-          background: ${c.accentMedium};
-          border-color: ${c.accent}44;
-          color: ${c.accent};
-        }
-        .tab-btn:not(.active):hover {
-          border-color: ${c.accent}44;
-          color: ${c.text};
-        }
-
-        .toggle-track {
-          width: 40px; height: 22px; border-radius: 11px;
-          background: ${theme === "dark" ? c.accentMedium : c.border};
-          border: 1.5px solid ${theme === "dark" ? c.accent : c.border};
-          position: relative; cursor: pointer; transition: all 0.3s;
-          flex-shrink: 0;
-        }
-        .toggle-thumb {
-          position: absolute; width: 16px; height: 16px; border-radius: 50%;
-          background: ${theme === "dark" ? c.accent : "#bbb"};
-          top: 1px; left: ${theme === "dark" ? "19px" : "1px"};
-          transition: left 0.3s; box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-        }
-
-        .rank-row {
-          display: flex; align-items: center; gap: 12px;
-          padding: 10px 14px; border-radius: 12px;
-          transition: background 0.15s; cursor: default;
-        }
-        .rank-row:hover { background: ${c.accentSoft}; }
-
-        .progress-bar {
-          height: 6px; border-radius: 3px;
-          background: ${theme === "dark" ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"};
-          overflow: hidden; flex: 1;
+        @media (max-width: 760px) {
+          .country-chart-grid { grid-template-columns: 1fr !important; }
         }
       `}</style>
-
-      {/* ── Card ── */}
-      <div
+      <section
         style={{
           background: c.card,
           border: `1.5px solid ${c.border}`,
-          borderRadius: "22px",
-          padding: "26px",
-          // maxWidth: "980px",
-          // margin: "0 auto",
-          boxShadow: `0 4px 30px rgba(107,115,240,0.08)`,
+          borderRadius: 20,
+          padding: 22,
+          boxShadow: "0 8px 30px rgba(15,23,42,0.06)",
         }}
       >
-        {/* Header */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "flex-start",
-            justifyContent: "space-between",
-            marginBottom: "22px",
-            gap: "12px",
-            flexWrap: "wrap",
-          }}
-        >
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "center", marginBottom: 18 }}>
           <div>
-            <div
-              style={{
-                fontSize: "17px",
-                fontWeight: "800",
-                color: c.text,
-                marginBottom: "3px",
-              }}
-            >
-              🌎 Usuarios por País
-            </div>
-            <div style={{ fontSize: "12px", color: c.textMuted }}>
-              {TOTAL.toLocaleString()} usuarios totales registrados
+            <div style={{ fontSize: 15, fontWeight: 800, color: c.text }}>Usuarios por país</div>
+            <div style={{ fontSize: 11, color: c.textMuted, marginTop: 3 }}>
+              Distribución geográfica de {total.toLocaleString()} usuarios
             </div>
           </div>
-
-          <div
+          <button
+            onClick={() => setShowAll(true)}
+            disabled={countries.length === 0}
             style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "10px",
-              flexWrap: "wrap",
+              border: `1.5px solid ${c.accent}44`,
+              background: c.accentSoft,
+              color: c.accent,
+              borderRadius: 12,
+              padding: "9px 14px",
+              fontSize: 11,
+              fontWeight: 800,
+              cursor: countries.length ? "pointer" : "default",
             }}
           >
-            {/* View tabs */}
-            <div style={{ display: "flex", gap: "6px" }}>
-              <button
-                className={`tab-btn${view === "bar" ? " active" : ""}`}
-                onClick={() => setView("bar")}
-              >
-                📊 Gráfico
-              </button>
-              <button
-                className={`tab-btn${view === "list" ? " active" : ""}`}
-                onClick={() => setView("list")}
-              >
-                📋 Lista
-              </button>
-            </div>
-          </div>
+            Ver todos los países
+          </button>
         </div>
 
-        {/* Top 3 pills */}
-        <div
-          style={{
-            display: "flex",
-            gap: "10px",
-            marginBottom: "22px",
-            flexWrap: "wrap",
-          }}
-        >
-          {countries.slice(0, 3).map((d, i) => (
-            <div
-              key={i}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                padding: "8px 14px",
-                borderRadius: "14px",
-                background: i === 0 ? c.accentMedium : c.accentSoft,
-                border: `1.5px solid ${i === 0 ? c.accent + "44" : c.border}`,
-              }}
-            >
-              <span
-                style={{
-                  fontSize: "11px",
-                  fontWeight: "800",
-                  color: i === 0 ? c.accent : c.textMuted,
-                }}
-              >
-                #{i + 1}
-              </span>
-              <span style={{ fontSize: "13px", color: "#fff" }}>
-                {d.country}
-              </span>
-              <span
-                style={{ fontSize: "12px", fontWeight: "700", color: c.accent }}
-              >
-                {d.users.toLocaleString()}
-              </span>
-            </div>
-          ))}
-        </div>
-
-        {/* ── BAR CHART VIEW ── */}
-        {view === "bar" && (
-          <ResponsiveContainer width="100%" height={320}>
-            <ComposedChart
-              data={countries}
-              layout="vertical"
-              margin={{ top: 0, right: 60, left: 10, bottom: 0 }}
-            >
-              <CartesianGrid
-                horizontal={false}
-                stroke={
-                  theme === "dark"
-                    ? "rgba(255,255,255,0.05)"
-                    : "rgba(0,0,0,0.05)"
-                }
-              />
-              <XAxis
-                type="number"
-                tick={{
-                  fill: c.textMuted,
-                  fontSize: 10,
-                  fontFamily: "'Plus Jakarta Sans'",
-                }}
-                tickLine={false}
-                axisLine={false}
-                tickFormatter={(v) =>
-                  v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v
-                }
-              />
-              <YAxis
-                type="category"
-                dataKey="country"
-                width={110}
-                tick={{
-                  fill: c.text,
-                  fontSize: 12,
-                  fontFamily: "'Plus Jakarta Sans'",
-                  fontWeight: 600,
-                }}
-                tickLine={false}
-                axisLine={false}
-              />
-              <Tooltip
-                content={
-                  <CustomTooltip dark={theme === "dark" ? true : false} />
-                }
-                cursor={{ fill: "transparent" }}
-              />
-              <Bar dataKey="users" radius={[0, 8, 8, 0]} maxBarSize={28}>
-                {countries.map((_, i) => (
-                  <Cell key={i} fill={barColors[i]} fillOpacity={0.9} />
-                ))}
-                <LabelList
-                  dataKey="users"
-                  position="right"
-                  formatter={(v: any) => v.toLocaleString()}
-                  style={{
-                    fill: c.textMuted,
-                    fontSize: 11,
-                    fontWeight: 600,
-                    fontFamily: "'Plus Jakarta Sans'",
-                  }}
-                />
-              </Bar>
-            </ComposedChart>
-          </ResponsiveContainer>
-        )}
-
-        {/* ── LIST VIEW ── */}
-        {view === "list" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-            {countries.map((d, i) => {
-              const pct = (d.users / countries[0].users) * 100;
-              const userPct = ((d.users / TOTAL) * 100).toFixed(1);
-              return (
-                <div key={i} className="rank-row">
-                  {/* Rank */}
-                  <div
-                    style={{
-                      width: "24px",
-                      height: "24px",
-                      borderRadius: "8px",
-                      background: i < 3 ? c.accentMedium : c.accentSoft,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: "10px",
-                      fontWeight: "800",
-                      color: i < 3 ? c.accent : c.textMuted,
-                      flexShrink: 0,
-                    }}
-                  >
-                    {i + 1}
-                  </div>
-
-                  {/* País */}
-                  <span
-                    style={{
-                      fontSize: "13px",
-                      fontWeight: "600",
-                      color: c.text,
-                      width: "130px",
-                      flexShrink: 0,
-                    }}
-                  >
-                    {d.country}
-                  </span>
-
-                  {/* Barra */}
-                  <div className="progress-bar">
-                    <div
-                      style={{
-                        height: "100%",
-                        width: `${pct}%`,
-                        background: barColors[i],
-                        borderRadius: "3px",
-                        transition: "width 0.6s ease",
-                      }}
-                    />
-                  </div>
-
-                  {/* Usuarios */}
-                  <span
-                    style={{
-                      fontSize: "12px",
-                      fontWeight: "700",
-                      color: c.text,
-                      width: "52px",
-                      textAlign: "right",
-                      flexShrink: 0,
-                    }}
-                  >
-                    {d.users.toLocaleString()}
-                  </span>
-
-                  {/* % total */}
-                  <span
-                    style={{
-                      fontSize: "10px",
-                      fontWeight: "600",
-                      color: c.textMuted,
-                      width: "38px",
-                      textAlign: "right",
-                      flexShrink: 0,
-                    }}
-                  >
-                    {userPct}%
-                  </span>
-
-                  {/* Growth */}
-                  <span
-                    style={{
-                      fontSize: "10px",
-                      fontWeight: "700",
-                      color:
-                        d.growth >= 20
-                          ? c.success
-                          : d.growth >= 10
-                            ? c.warning
-                            : c.textMuted,
-                      background:
-                        d.growth >= 20
-                          ? "rgba(34,197,94,0.12)"
-                          : d.growth >= 10
-                            ? "rgba(245,158,11,0.12)"
-                            : c.accentSoft,
-                      padding: "2px 7px",
-                      borderRadius: "20px",
-                      flexShrink: 0,
-                    }}
-                  >
-                    ↑ {d.growth}%
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Footer */}
-        <div
-          style={{
-            marginTop: "20px",
-            paddingTop: "16px",
-            borderTop: `1.5px solid ${c.border}`,
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            flexWrap: "wrap",
-            gap: "8px",
-          }}
-        >
-          <span style={{ fontSize: "11px", color: c.textMuted }}>
-            Actualizado hace 2 horas · 10 países
-          </span>
-          <div style={{ display: "flex", gap: "16px" }}>
-            {[
-              {
-                label: "Mayor crecimiento",
-                value: `🇧🇷 Brasil +44%`,
-                color: c.success,
-              },
-              { label: "Líder", value: `🇲🇽 México`, color: c.accent },
-            ].map((item) => (
-              <div key={item.label} style={{ textAlign: "right" }}>
-                <div
-                  style={{
-                    fontSize: "9px",
-                    color: c.textMuted,
-                    fontWeight: "600",
-                    letterSpacing: "0.06em",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  {item.label}
-                </div>
-                <div
-                  style={{
-                    fontSize: "12px",
-                    fontWeight: "700",
-                    color: item.color,
-                  }}
-                >
-                  {item.value}
-                </div>
+        {loading ? (
+          <div style={{ height: 310, display: "grid", placeItems: "center", color: c.textMuted }}>Cargando distribución...</div>
+        ) : countries.length === 0 ? (
+          <div style={{ height: 310, display: "grid", placeItems: "center", color: c.textMuted }}>No hay datos de países disponibles.</div>
+        ) : (
+          <div className="country-chart-grid" style={{ display: "grid", gridTemplateColumns: "minmax(280px, 1.2fr) minmax(230px, .8fr)", gap: 18, alignItems: "center" }}>
+            <div style={{ height: 310, position: "relative" }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={chartData} dataKey="users" nameKey="country" innerRadius={78} outerRadius={122} paddingAngle={2} stroke="none">
+                    {chartData.map((entry, index) => (
+                      <Cell key={`${entry.country}-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(value) => [`${Number(value).toLocaleString()} usuarios`, "Registros"]}
+                    contentStyle={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, color: c.text }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+              <div style={{ position: "absolute", inset: 0, display: "grid", placeContent: "center", pointerEvents: "none", textAlign: "center" }}>
+                <strong style={{ fontSize: 24, color: c.text }}>{total.toLocaleString()}</strong>
+                <span style={{ fontSize: 10, color: c.textMuted }}>usuarios</span>
               </div>
-            ))}
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <MetricCard title="País líder" value={formatCountry(leader?.country)} detail={`${leader?.users.toLocaleString() || 0} registros`} color={c.accent} c={c} />
+              <MetricCard
+                title="Mayor crecimiento"
+                value={growthLeader ? formatCountry(growthLeader.country) : "Sin crecimiento"}
+                detail={growthLeader ? `${growthLeader.growth >= 0 ? "+" : ""}${growthLeader.growth}% · ${growthLeader.currentMonthUsers} altas este mes` : "No hay altas este mes"}
+                color={c.success}
+                c={c}
+              />
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                {chartData.slice(0, 6).map((item, index) => (
+                  <div key={item.country} style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: CHART_COLORS[index], flexShrink: 0 }} />
+                    <span style={{ fontSize: 10, color: c.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.country}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </section>
+
+      {showAll && (
+        <div
+          onClick={() => setShowAll(false)}
+          style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(2,6,23,.72)", backdropFilter: "blur(7px)", display: "grid", placeItems: "center", padding: 20 }}
+        >
+          <div onClick={(event) => event.stopPropagation()} style={{ width: "min(760px, 100%)", maxHeight: "82vh", background: c.card, border: `1.5px solid ${c.border}`, borderRadius: 22, overflow: "auto", boxShadow: "0 28px 80px rgba(0,0,0,.35)" }}>
+            <div style={{ padding: "18px 22px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: `1px solid ${c.border}` }}>
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 800, color: c.text }}>Todos los países</div>
+                <div style={{ fontSize: 11, color: c.textMuted }}>{countries.length} países con usuarios registrados</div>
+              </div>
+              <button onClick={() => setShowAll(false)} style={{ border: 0, background: c.accentSoft, color: c.text, width: 34, height: 34, borderRadius: 10, cursor: "pointer" }}>✕</button>
+            </div>
+            <div className="countries-table-header" style={{ display: "grid", minWidth: 650, gridTemplateColumns: "54px 1fr 120px 120px 120px", gap: 10, padding: "10px 22px", background: c.accentSoft, color: c.textMuted, fontSize: 9, fontWeight: 800, textTransform: "uppercase" }}>
+              <span>#</span><span>País</span><span>Usuarios</span><span>Este mes</span><span>Crecimiento</span>
+            </div>
+            <div style={{ maxHeight: "58vh", overflowY: "auto" }}>
+              {countries.map((item, index) => (
+                <div className="country-row" key={`${item.country}-${index}`} style={{ display: "grid", minWidth: 650, gridTemplateColumns: "54px 1fr 120px 120px 120px", gap: 10, padding: "12px 22px", borderBottom: `1px solid ${c.border}`, alignItems: "center" }}>
+                  <strong style={{ color: index === 0 ? c.accent : c.textMuted, fontSize: 11 }}>#{index + 1}</strong>
+                  <span style={{ color: c.text, fontSize: 12, fontWeight: 700 }}>{formatCountry(item.country)} {index === 0 && "· Líder"}</span>
+                  <span style={{ color: c.text, fontSize: 12, fontWeight: 800 }}>{item.users.toLocaleString()}</span>
+                  <span style={{ color: c.textMuted, fontSize: 11 }}>{item.currentMonthUsers.toLocaleString()}</span>
+                  <span style={{ color: item.growth > 0 ? c.success : item.growth < 0 ? c.danger : c.textMuted, fontSize: 11, fontWeight: 800 }}>
+                    {item.growth > 0 ? "+" : ""}{item.growth}% {growthLeader?.country === item.country && "· Mayor"}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
-    </div>
+      )}
+    </>
   );
 };
+
+const MetricCard = ({ title, value, detail, color, c }: any) => (
+  <div style={{ border: `1px solid ${c.border}`, borderRadius: 14, padding: "13px 15px", background: c.accentSoft }}>
+    <div style={{ color: c.textMuted, fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".08em" }}>{title}</div>
+    <div style={{ color, fontSize: 14, fontWeight: 800, marginTop: 5 }}>{value}</div>
+    <div style={{ color: c.textMuted, fontSize: 10, marginTop: 2 }}>{detail}</div>
+  </div>
+);
 
 export default UsersByCountryChart;

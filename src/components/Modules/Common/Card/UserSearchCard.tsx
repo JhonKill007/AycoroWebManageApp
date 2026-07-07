@@ -4,27 +4,31 @@ import UserProfile from "../../../assets/UserProfile.jpeg";
 import { Colors } from "../../../constants/Colors";
 import { useImageBankContext } from "../../../context/ImageBankContext";
 import { useThemeContext } from "../../../context/ThemeContext";
-import { useUserContext } from "../../../context/UserContext";
 import { MediaDataModel } from "../../../Models/MediaData/MediaDataModel";
 import { UserModel } from "../../../Models/User/UserModel";
 
 const UserSearchCard = ({ user }: { user: UserModel }) => {
   const navigate = useNavigate();
   const { theme } = useThemeContext();
-  const { userData } = useUserContext();
   const { searchImage } = useImageBankContext();
   const [media, setMedia] = useState<MediaDataModel | undefined>(undefined);
+  const [imageFailed, setImageFailed] = useState(false);
   const colors = theme === "dark" ? Colors.dark : Colors.light;
   const c = colors.colors;
+  const profileMediaId = user.PerfilData?.IdMediaDataProfile;
+  const profilePhoto = user.ProfilePhoto || media?.Value;
 
   useEffect(() => {
+    let cancelled = false;
+
     const fetchImages = async () => {
-      if (user.PerfilData?.IdMediaDataProfile) {
+      setImageFailed(false);
+      setMedia(undefined);
+
+      if (!user.ProfilePhoto && profileMediaId) {
         try {
-          const [image] = await Promise.all([
-            searchImage(user.PerfilData.IdMediaDataProfile),
-          ]);
-          setMedia(image!);
+          const image = await searchImage(profileMediaId);
+          if (!cancelled) setMedia(image);
         } catch (error) {
           console.error("Error fetching image:", error);
         }
@@ -32,7 +36,11 @@ const UserSearchCard = ({ user }: { user: UserModel }) => {
     };
 
     fetchImages();
-  }, [user, searchImage]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [profileMediaId, searchImage, user.ProfilePhoto]);
 
   return (
     <div
@@ -54,25 +62,30 @@ const UserSearchCard = ({ user }: { user: UserModel }) => {
         style={{
           width: 32,
           height: 32,
-          borderRadius: 8,
+          borderRadius: "50%",
           background: c.accent + "22",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           fontSize: 14,
           flexShrink: 0,
+          overflow: "hidden",
+          border:
+            profilePhoto && !imageFailed
+              ? `2px solid ${Colors.detailAppColor}`
+              : `1px solid ${c.border}`,
         }}
       >
         <img
-          src={media?.Value ? media.Value : UserProfile}
+          src={!imageFailed && profilePhoto ? profilePhoto : UserProfile}
+          alt={`Foto de perfil de ${user.Name || user.Username || "usuario"}`}
+          onError={() => setImageFailed(true)}
           style={{
-            width: "32px",
-            height: "32px",
+            display: "block",
+            width: "100%",
+            height: "100%",
             borderRadius: "50%",
             objectFit: "cover",
-            border: media?.Value
-              ? `2px solid ${Colors.detailAppColor}`
-              : undefined,
           }}
         />
       </div>

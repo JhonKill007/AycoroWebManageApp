@@ -1,0 +1,9 @@
+node_modules
+build
+.git
+.github
+.expo
+coverage
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

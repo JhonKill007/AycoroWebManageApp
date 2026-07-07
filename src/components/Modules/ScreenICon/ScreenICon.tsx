@@ -31,7 +31,7 @@ export default function ScreenICon() {
   return (
     // <InsideProviders>
     <>
-      {Authenticate && !userData ? (
+      {!userData ? (
         <div
           style={{
             height: "100vh",

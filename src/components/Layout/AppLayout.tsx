@@ -3,9 +3,11 @@ import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import Icon from "../assets/icon.png";
 import UserProfile from "../assets/UserProfile.jpeg";
 import { Colors } from "../constants/Colors";
+import { Permission, Permissions } from "../constants/Permissions";
 import { useHubsContext } from "../context/HubsContext";
 import { useThemeContext } from "../context/ThemeContext";
 import { useUserContext } from "../context/UserContext";
+import { usePermissions } from "../hooks/usePermissions";
 import { AycoroAuthUserPerfilModel } from "../Models/User/AycoroAuthUserPerfilModel";
 import { UserModel } from "../Models/User/UserModel";
 import UserSearchCard from "../Modules/Common/Card/UserSearchCard";
@@ -13,7 +15,7 @@ import initializeService from "../Services/Initialize/InitializeService";
 import userService from "../Services/User/UserService";
 
 // ─── Nav items ─────────────────────────────────────────────────────────
-const NAV_ITEMS = [
+const NAV_ITEMS: any[] = [
   {
     section: "General",
     items: [
@@ -23,6 +25,7 @@ const NAV_ITEMS = [
         emoji: "🏠",
         badge: null,
         navigate: "/",
+        permissions: [Permissions.VIEW_DASHBOARD],
       },
       {
         id: "analytics",
@@ -30,6 +33,7 @@ const NAV_ITEMS = [
         emoji: "📊",
         badge: null,
         navigate: "/analytics",
+        permissions: [Permissions.VIEW_ANALYTICS],
       },
       {
         id: "reports",
@@ -37,6 +41,7 @@ const NAV_ITEMS = [
         emoji: "📋",
         badge: null,
         navigate: "/reports",
+        permissions: [Permissions.VIEW_MODERATION],
       },
       {
         id: "requests",
@@ -44,6 +49,7 @@ const NAV_ITEMS = [
         emoji: "✅",
         badge: null,
         navigate: "/requests",
+        permissions: [Permissions.VIEW_MODERATION],
       },
     ],
   },
@@ -56,6 +62,7 @@ const NAV_ITEMS = [
         emoji: "👥",
         badge: null,
         navigate: "/users",
+        permissions: [Permissions.VIEW_USERS],
       },
       {
         id: "publications",
@@ -63,6 +70,7 @@ const NAV_ITEMS = [
         emoji: "🖼️",
         badge: null,
         navigate: "/publications",
+        permissions: [Permissions.VIEW_POSTS],
       },
       // {
       //   id: "conversations",
@@ -90,6 +98,7 @@ const NAV_ITEMS = [
         emoji: "⚙️",
         badge: null,
         navigate: "/settings",
+        permissions: [Permissions.MANAGE_SETTINGS, Permissions.MANAGE_ADMINS, Permissions.DANGER_ZONE],
       },
       {
         id: "security",
@@ -97,6 +106,7 @@ const NAV_ITEMS = [
         emoji: "🔐",
         badge: null,
         navigate: "/security",
+        permissions: [Permissions.MANAGE_SETTINGS],
       },
       {
         id: "logs",
@@ -104,6 +114,15 @@ const NAV_ITEMS = [
         emoji: "🗂️",
         badge: null,
         navigate: "/logs",
+        permissions: [Permissions.VIEW_ERROR_LOGS],
+      },
+      {
+        id: "session-logs",
+        label: "Session",
+        emoji: "📱",
+        badge: null,
+        navigate: "/session",
+        permissions: [Permissions.VIEW_SESSION_LOGS],
       },
     ],
   },
@@ -326,6 +345,7 @@ function DropPanel({
         top: "calc(100% + 12px)",
         right: 0,
         width,
+        maxWidth: "calc(100vw - 24px)",
         zIndex: 999,
         animation: "panel-drop 0.18s cubic-bezier(0.22,1,0.36,1)",
       }}
@@ -974,6 +994,7 @@ function ProfileMenu({
   onClose: () => void;
 }) {
   const { removeUser } = useUserContext();
+  const { canAny } = usePermissions();
   const go = (path: string) => {
     navigate(path);
     onClose();
@@ -1046,7 +1067,7 @@ function ProfileMenu({
                 border: `1px solid ${c.accentMedium}`,
               }}
             >
-              Super Admin
+              {user.user?.roleName || "Manager"}
             </span>
           </div>
         </div>
@@ -1058,26 +1079,46 @@ function ProfileMenu({
             label: "Mi cuenta",
             sub: "Perfil, roles y permisos",
             path: "/account",
+            permissions: [] as Permission[],
           },
           {
             icon: "🔐",
             label: "Seguridad",
             sub: "2FA y contraseña",
             path: "/security",
+            permissions: [Permissions.MANAGE_SETTINGS],
           },
           {
             icon: "⚙️",
             label: "Configuración",
             sub: "Ajustes de la plataforma",
             path: "/settings",
+            permissions: [
+              Permissions.MANAGE_SETTINGS,
+              Permissions.MANAGE_ADMINS,
+              Permissions.DANGER_ZONE,
+            ],
           },
           {
             icon: "🗂️",
             label: "Logs",
             sub: "Auditoría y registros",
             path: "/logs",
+            permissions: [Permissions.VIEW_ERROR_LOGS],
           },
-        ].map((item, i) => (
+          {
+            icon: "📱",
+            label: "SessionLog",
+            sub: "Entradas a la app",
+            path: "/session-logs",
+            permissions: [Permissions.VIEW_SESSION_LOGS],
+          },
+        ]
+          .filter(
+            (item) =>
+              item.permissions.length === 0 || canAny(...item.permissions),
+          )
+          .map((item, i) => (
           <div
             key={i}
             onClick={() => go(item.path)}
@@ -1119,7 +1160,7 @@ function ProfileMenu({
               <div style={{ fontSize: 10, color: c.textMuted }}>{item.sub}</div>
             </div>
           </div>
-        ))}
+          ))}
       </div>
       <div
         style={{ padding: "6px 8px 10px", borderTop: `1px solid ${c.border}` }}
@@ -1170,6 +1211,7 @@ function ProfileMenu({
 export default function AycoroAdminNav() {
   const navigate = useNavigate();
   const { userData, saveUser } = useUserContext();
+  const { canAny } = usePermissions();
 
   const { JoinApp } = useHubsContext();
 
@@ -1180,6 +1222,8 @@ export default function AycoroAdminNav() {
   const { theme, setThemes } = useThemeContext();
 
   const [collapsed, setCollapsed] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 768);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchWord, setSearchWord] = useState<string>("");
   const [panel, setPanel] = useState<
     "search" | "notifs" | "messages" | "profile" | null
@@ -1197,6 +1241,16 @@ export default function AycoroAdminNav() {
   const profileRef = useRef<HTMLDivElement>(null);
 
   const closeAll = useCallback(() => setPanel(null), []);
+
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth <= 768;
+      setIsMobile(mobile);
+      if (!mobile) setMobileMenuOpen(false);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
   useClickOutside(searchRef, () => panel === "search" && closeAll());
   useClickOutside(notifsRef, () => panel === "notifs" && closeAll());
   useClickOutside(messagesRef, () => panel === "messages" && closeAll());
@@ -1232,6 +1286,7 @@ export default function AycoroAdminNav() {
       user: {
         ...userData.user!,
         role: data.role,
+        roleName: data.roleName,
         permissions: data.permissions,
       },
     });
@@ -1243,13 +1298,14 @@ export default function AycoroAdminNav() {
 
   const updatedNavItems = NAV_ITEMS.map((section) => ({
     ...section,
-  }));
+    items: section.items.filter((item: any) => canAny(...item.permissions)),
+  })).filter((section) => section.items.length > 0);
 
   return (
     <div
       style={{
         display: "flex",
-        height: "100vh",
+        height: "100dvh",
         background: c.background,
         fontFamily: "'Plus Jakarta Sans',sans-serif",
         transition: "background 0.3s",
@@ -1280,16 +1336,45 @@ export default function AycoroAdminNav() {
         .collapse-btn{width:26px;height:26px;border-radius:8px;border:1.5px solid ${c.border};background:${c.card};cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;color:${c.textMuted};transition:all 0.2s;flex-shrink:0;}
         .collapse-btn:hover{border-color:${c.accent};color:${c.accent};}
 
+        .mobile-menu-btn{display:none;}
+        .admin-main{min-width:0;}
+        .admin-sidebar{will-change:transform;}
+
+        @media (max-width: 768px){
+          .mobile-menu-btn{display:flex;}
+          .desktop-search{display:none !important;}
+          .admin-topbar{padding:0 12px !important;gap:8px !important;}
+          .admin-breadcrumb{min-width:0;flex:1;overflow:hidden;}
+          .admin-breadcrumb>div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+          .admin-main>main{padding:14px !important;}
+          .admin-main>main>div{max-width:100%;}
+          .collapse-btn{display:none;}
+        }
+
         @keyframes panel-drop{
           from{opacity:0;transform:translateY(-8px) scale(0.97);}
           to  {opacity:1;transform:translateY(0)    scale(1);}
         }
       `}</style>
 
+      {isMobile && mobileMenuOpen && (
+        <div
+          onClick={() => setMobileMenuOpen(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 390,
+            background: "rgba(2,6,23,0.62)",
+            backdropFilter: "blur(3px)",
+          }}
+        />
+      )}
+
       {/* ══ SIDEBAR ══ */}
       <aside
+        className="admin-sidebar"
         style={{
-          width: collapsed ? "66px" : "238px",
+          width: isMobile ? "260px" : collapsed ? "66px" : "238px",
           background: c.sidebarBg,
           borderRight: `1.5px solid ${c.border}`,
           display: "flex",
@@ -1297,6 +1382,15 @@ export default function AycoroAdminNav() {
           transition: "width 0.3s cubic-bezier(0.4,0,0.2,1)",
           overflow: "hidden",
           flexShrink: 0,
+          ...(isMobile
+            ? {
+                position: "fixed" as const,
+                inset: "0 auto 0 0",
+                zIndex: 400,
+                transform: mobileMenuOpen ? "translateX(0)" : "translateX(-105%)",
+                boxShadow: mobileMenuOpen ? "18px 0 50px rgba(0,0,0,.3)" : "none",
+              }
+            : {}),
         }}
       >
         {/* Logo */}
@@ -1327,7 +1421,7 @@ export default function AycoroAdminNav() {
               alt=""
             />
           </div>
-          {!collapsed && (
+          {(!collapsed || isMobile) && (
             <div style={{ flex: 1, overflow: "hidden" }}>
               <div
                 style={{
@@ -1370,7 +1464,7 @@ export default function AycoroAdminNav() {
         >
           {updatedNavItems.map((section) => (
             <div key={section.section} style={{ marginBottom: "8px" }}>
-              {!collapsed && (
+              {(!collapsed || isMobile) && (
                 <div
                   style={{
                     fontSize: "10px",
@@ -1390,10 +1484,13 @@ export default function AycoroAdminNav() {
                 <div
                   key={item.id}
                   className={`nav-item${active === item.id ? " active" : ""}`}
-                  onClick={() => navigate(item.navigate)}
+                  onClick={() => {
+                    navigate(item.navigate);
+                    setMobileMenuOpen(false);
+                  }}
                   title={collapsed ? item.label : ""}
                   style={{
-                    justifyContent: collapsed ? "center" : "flex-start",
+                    justifyContent: collapsed && !isMobile ? "center" : "flex-start",
                   }}
                 >
                   <span
@@ -1401,7 +1498,7 @@ export default function AycoroAdminNav() {
                   >
                     {item.emoji}
                   </span>
-                  {!collapsed && (
+                  {(!collapsed || isMobile) && (
                     <>
                       <span
                         style={{
@@ -1435,7 +1532,7 @@ export default function AycoroAdminNav() {
                       )}
                     </>
                   )}
-                  {collapsed && item.badge && (
+                  {collapsed && !isMobile && item.badge && (
                     <span
                       style={{
                         position: "absolute",
@@ -1462,7 +1559,7 @@ export default function AycoroAdminNav() {
             flexShrink: 0,
           }}
         >
-          {!collapsed ? (
+          {!collapsed || isMobile ? (
             <div
               onClick={() => navigate("/account")}
               style={{
@@ -1549,11 +1646,11 @@ export default function AycoroAdminNav() {
             style={{
               display: "flex",
               alignItems: "center",
-              justifyContent: collapsed ? "center" : "space-between",
-              padding: collapsed ? "0" : "0 4px",
+              justifyContent: collapsed && !isMobile ? "center" : "space-between",
+              padding: collapsed && !isMobile ? "0" : "0 4px",
             }}
           >
-            {!collapsed && (
+            {(!collapsed || isMobile) && (
               <span
                 style={{
                   fontSize: "12px",
@@ -1576,6 +1673,7 @@ export default function AycoroAdminNav() {
 
       {/* ══ MAIN ══ */}
       <div
+        className="admin-main"
         style={{
           flex: 1,
           display: "flex",
@@ -1585,6 +1683,7 @@ export default function AycoroAdminNav() {
       >
         {/* Topbar */}
         <header
+          className="admin-topbar"
           style={{
             height: "62px",
             background: c.topbarBg,
@@ -1599,7 +1698,14 @@ export default function AycoroAdminNav() {
           }}
         >
           {/* Breadcrumb */}
-          <div>
+          <button
+            className="icon-btn mobile-menu-btn"
+            onClick={() => setMobileMenuOpen(true)}
+            aria-label="Abrir navegación"
+          >
+            ☰
+          </button>
+          <div className="admin-breadcrumb">
             <div
               style={{
                 fontSize: "15px",
@@ -1625,6 +1731,7 @@ export default function AycoroAdminNav() {
 
           {/* ── Search ── */}
           <div
+            className="desktop-search"
             ref={searchRef}
             style={{
               flex: 1,

@@ -597,6 +597,62 @@ const UserDetail = () => {
         }
         .content-stat-cell:hover { transform: translateY(-2px); }
 
+        @media (max-width: 768px) {
+          .user-detail-content { padding: 0 14px 28px !important; }
+          .user-detail-status {
+            align-items: stretch !important;
+            flex-direction: column !important;
+          }
+          .user-detail-status .action-btn { width: 100%; min-height: 42px; }
+          .user-detail-overview {
+            display: grid !important;
+            grid-template-columns: minmax(0, 1fr) !important;
+            gap: 12px !important;
+          }
+          .user-detail-profile-card {
+            width: 100% !important;
+            min-height: 280px;
+            padding: 24px 18px !important;
+          }
+          .user-detail-info-card { width: 100%; min-width: 0; }
+          .user-detail-info-grid {
+            grid-template-columns: minmax(0, 1fr) !important;
+            gap: 10px !important;
+          }
+          .user-detail-info-grid > div {
+            align-items: flex-start;
+            flex-direction: column !important;
+            gap: 3px !important;
+            padding-bottom: 8px;
+            border-bottom: 1px solid ${c.border};
+          }
+          .user-detail-info-value {
+            width: 100%;
+            overflow: visible !important;
+            text-overflow: clip !important;
+            white-space: normal !important;
+            overflow-wrap: anywhere;
+          }
+          .user-detail-actions {
+            display: grid !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px !important;
+          }
+          .user-detail-actions .action-btn {
+            min-height: 44px;
+            white-space: normal;
+          }
+        }
+
+        @media (max-width: 440px) {
+          .user-detail-content { padding-inline: 10px !important; }
+          .user-detail-stats { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+          .user-detail-stats .social-col { min-width: 0; padding: 14px 5px !important; }
+          .user-detail-stats .social-col > div:first-child { font-size: 20px !important; }
+          .user-detail-stats .social-col > div:last-child { font-size: 9px !important; overflow-wrap: anywhere; }
+          .user-detail-actions { grid-template-columns: minmax(0, 1fr); }
+        }
+
         @keyframes fadeUp {
           from { opacity: 0; transform: translateY(10px); }
           to   { opacity: 1; transform: translateY(0); }
@@ -688,12 +744,13 @@ const UserDetail = () => {
           </div>
         </div>
 
-        <div style={{ padding: "0 28px 40px" }}>
+        <div className="user-detail-content" style={{ padding: "0 28px 40px" }}>
           {/* ══════════════════════════════════════════
               BLOQUE 1 — Control de estado HORIZONTAL
           ══════════════════════════════════════════ */}
 
           <div
+            className="user-detail-status"
             style={{
               background: c.card,
               border: `1.5px solid ${c.border}`,
@@ -740,6 +797,7 @@ const UserDetail = () => {
               Alineados de forma PARALELA / side by side
           ══════════════════════════════════════════ */}
           <div
+            className="user-detail-overview"
             style={{
               display: "flex",
               gap: 20,
@@ -749,6 +807,7 @@ const UserDetail = () => {
           >
             {/* ── Foto de perfil grande ── */}
             <div
+              className="user-detail-profile-card"
               style={{
                 background: c.card,
                 border: `1.5px solid ${c.border}`,
@@ -846,6 +905,7 @@ const UserDetail = () => {
 
             {/* ── Red social: seguidores, seguidos, bloqueados + bio ── */}
             <div
+              className="user-detail-info-card"
               style={{
                 flex: 1,
                 background: c.card,
@@ -879,7 +939,7 @@ const UserDetail = () => {
               </div>
 
               {/* Tres columnas de stats — más compactas */}
-              <div style={{ display: "flex" }}>
+              <div className="user-detail-stats" style={{ display: "flex" }}>
                 {[
                   {
                     label: "Seguidores",
@@ -951,6 +1011,7 @@ const UserDetail = () => {
               >
                 {/* Grid de info */}
                 <div
+                  className="user-detail-info-grid"
                   style={{
                     display: "grid",
                     gridTemplateColumns: "1fr 1fr",
@@ -1025,6 +1086,7 @@ const UserDetail = () => {
                       }}
                     >
                       <div
+                        className="user-detail-info-value"
                         style={{
                           fontSize: 9,
                           fontWeight: 700,
@@ -1110,6 +1172,7 @@ const UserDetail = () => {
               }}
             >
               <div
+                className="user-detail-actions"
                 style={{
                   padding: "10px 12px",
                   display: "flex",

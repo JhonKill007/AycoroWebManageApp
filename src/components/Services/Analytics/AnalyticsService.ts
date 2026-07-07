@@ -80,6 +80,19 @@ export class AnalyticsService implements IAnalyticsService {
     return result;
   }
 
+  async getSessionAccess(days = 30): Promise<any> {
+    let result = await new Promise<any>((resolve, reject) => {
+      Http.get(`/api/analytics/sessions?days=${days}`)
+        .then((res) => {
+          resolve(res);
+        })
+        .catch((err) => {
+          reject(err);
+        });
+    });
+    return result;
+  }
+
   async getGrowthData(year: number): Promise<any> {
     let result = await new Promise<any>((resolve, reject) => {
       Http.get(`/api/analytics/${year}`)

@@ -1723,6 +1723,7 @@ const Moderation = () => {
             <>
               {/* Header */}
               <div
+                className="history-table-header"
                 style={{
                   display: "grid",
                   gridTemplateColumns: "90px 100px 100px 90px 1fr 90px",

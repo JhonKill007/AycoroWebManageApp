@@ -6,12 +6,19 @@ export const Badge = ({ idRole }: { idRole: string }) => {
   const [role, setRole] = useState<RoleModel | undefined>();
 
   useEffect(() => {
-    findRole(idRole);
+    if (idRole) {
+      findRole(idRole);
+    }
   }, [idRole]);
 
   const findRole = async (id: string) => {
-    const { data } = await roleService.find(id);
-    setRole(data.role);
+    try {
+      const { data } = await roleService.find(id);
+      setRole(data.role);
+    } catch (error) {
+      console.error("Error loading role:", error);
+      setRole(undefined);
+    }
   };
 
   return (

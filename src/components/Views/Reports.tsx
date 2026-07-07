@@ -4,6 +4,8 @@ import { useNavigate } from "react-router-dom";
 import UserProfile from "../assets/UserProfile.jpeg";
 import { Colors } from "../constants/Colors";
 import { REPORT_REASONS } from "../constants/ReportsReason";
+import { Permissions } from "../constants/Permissions";
+import { usePermissions } from "../hooks/usePermissions";
 import { useThemeContext } from "../context/ThemeContext";
 import { useToast } from "../context/ToastContext";
 import { ReportModel } from "../Models/Report/ReportModel";
@@ -129,6 +131,7 @@ function ReportDetailModal({
   onBanUser,
   onOpenUser,
 }: any) {
+  const { can } = usePermissions();
   if (!report) return null;
 
   const reasonConfig = getReasonConfig(report.Type || "");
@@ -707,6 +710,7 @@ function ReportDetailModal({
         {/* Acciones */}
         <div
           style={{
+            visibility: can(Permissions.MODERATE) ? "visible" : "hidden",
             padding: "16px 24px",
             borderTop: `1.5px solid ${c.border}`,
             display: "flex",
@@ -1375,6 +1379,7 @@ const Reports = () => {
 
         {/* Tabla */}
         <div
+          className="responsive-table-card reports-table"
           style={{
             background: c.card,
             border: `1.5px solid ${c.border}`,
@@ -1558,6 +1563,7 @@ const Reports = () => {
 
           {/* Table header */}
           <div
+            className="reports-table-header"
             style={{
               display: "grid",
               gridTemplateColumns: "80px 180px 1fr 120px 90px 100px 80px 120px",

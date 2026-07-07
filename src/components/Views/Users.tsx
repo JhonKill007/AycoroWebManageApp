@@ -208,6 +208,7 @@ const Users = () => {
   // Skeleton loader
   const SkeletonRow = () => (
     <div
+      className="users-skeleton-row"
       style={{
         display: "grid",
         gridTemplateColumns: "44px 1fr 100px 200px 80px 72px 80px 90px 100px",
@@ -378,6 +379,7 @@ const Users = () => {
       >
         {/* ── Header banner ── */}
         <div
+          className="responsive-page-banner"
           style={{
             background:
               theme === "dark"
@@ -484,6 +486,7 @@ const Users = () => {
 
         {/* ── Tabla ── */}
         <div
+          className="responsive-table-card users-table"
           style={{
             background: c.card,
             border: `1.5px solid ${c.border}`,
@@ -579,6 +582,7 @@ const Users = () => {
 
           {/* Table header */}
           <div
+            className="users-table-header"
             style={{
               display: "grid",
               gridTemplateColumns:

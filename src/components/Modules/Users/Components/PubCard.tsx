@@ -10,6 +10,18 @@ import { useAlertConfirmation } from "../../../hooks/useAlertConfirmation";
 import useHourHook from "../../../hooks/useHourHook";
 import useLanguage from "../../../hooks/useLanguage";
 
+const isVideoPublication = (publication: PostModel) => {
+  const mediaType = publication.MediaType?.toLowerCase() || "";
+  const mimeType = publication.MediaMimeType?.toLowerCase() || "";
+  const mediaUrl = publication.MediaData?.toLowerCase() || "";
+
+  return (
+    mediaType.includes("video") ||
+    mimeType.startsWith("video/") ||
+    /\.(mp4|webm|mov|m4v|avi|mkv)(\?|#|$)/i.test(mediaUrl)
+  );
+};
+
 const PubCard = React.memo(({ publication }: { publication: PostModel }) => {
   const mentionRegex = /(@[^\s]+)/g;
   const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -94,6 +106,7 @@ const PubCard = React.memo(({ publication }: { publication: PostModel }) => {
 
   const fmt = (n: number = 0) =>
     n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
+  const isVideo = isVideoPublication(publication);
 
   return (
     <div
@@ -141,14 +154,109 @@ const PubCard = React.memo(({ publication }: { publication: PostModel }) => {
               overflow: "hidden",
             }}
           >
-            <img
-              src={publication.MediaData}
-              style={{
-                width: "100%",
-                height: "100%",
-                objectFit: "cover",
-              }}
-            />
+            {publication.MediaData ? (
+              isVideo ? (
+                <>
+                  <video
+                    src={publication.MediaData}
+                    muted
+                    playsInline
+                    preload="metadata"
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                      display: "block",
+                      background: "#05050b",
+                      pointerEvents: "none",
+                    }}
+                    onLoadedMetadata={(event) => {
+                      const video = event.currentTarget;
+                      if (Number.isFinite(video.duration) && video.duration > 0) {
+                        try {
+                          video.currentTime = Math.min(0.2, video.duration);
+                        } catch {
+                          // Some browsers/CDNs block seek before data is loaded.
+                        }
+                      }
+                    }}
+                  />
+                  <div
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      background:
+                        "linear-gradient(180deg, rgba(0,0,0,0.08), rgba(0,0,0,0.38))",
+                      pointerEvents: "none",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 62,
+                        height: 62,
+                        borderRadius: "50%",
+                        background: "rgba(0,0,0,0.58)",
+                        border: "1.5px solid rgba(255,255,255,0.45)",
+                        color: "#fff",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: 28,
+                        boxShadow: "0 12px 36px rgba(0,0,0,0.28)",
+                      }}
+                    >
+                      ▶
+                    </div>
+                  </div>
+                  <span
+                    style={{
+                      position: "absolute",
+                      left: 10,
+                      top: 10,
+                      padding: "5px 9px",
+                      borderRadius: 999,
+                      background: "rgba(0,0,0,0.62)",
+                      color: "#fff",
+                      fontSize: 10,
+                      fontWeight: 800,
+                      letterSpacing: 0.3,
+                    }}
+                  >
+                    VIDEO
+                  </span>
+                </>
+              ) : (
+                <img
+                  src={publication.MediaData}
+                  alt={publication.Description || "Publicacion"}
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                    display: "block",
+                  }}
+                />
+              )
+            ) : (
+              <div
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  background: c.accentSoft,
+                  color: c.textMuted,
+                  fontSize: 12,
+                  fontWeight: 700,
+                }}
+              >
+                Sin media
+              </div>
+            )}
           </div>
         </div>
         <div

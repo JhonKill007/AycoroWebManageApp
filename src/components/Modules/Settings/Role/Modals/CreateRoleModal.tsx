@@ -79,12 +79,6 @@ const AVAILABLE_PERMISSIONS: Permission[] = [
     description: "Aprobar/rechazar contenido",
   },
   {
-    id: "p11",
-    group: "Sistema",
-    label: "Ver logs",
-    description: "Registros del sistema",
-  },
-  {
     id: "p12",
     group: "Sistema",
     label: "Cambiar configuración",
@@ -101,6 +95,18 @@ const AVAILABLE_PERMISSIONS: Permission[] = [
     group: "Sistema",
     label: "Zona de peligro",
     description: "Acciones críticas del sistema",
+  },
+  {
+    id: "p15",
+    group: "Sistema",
+    label: "Ver ErrorLog",
+    description: "Registros de errores capturados por la app",
+  },
+  {
+    id: "p16",
+    group: "Sistema",
+    label: "Ver SessionLog",
+    description: "Registros de entradas y sesiones de usuarios",
   },
 ];
 
