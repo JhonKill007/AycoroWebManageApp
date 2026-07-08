@@ -55,4 +55,4 @@ jobs:
             docker stop aycoro-manageweb || true
             docker rm aycoro-manageweb || true
             # correr nuevo contenedor con nombre fijo
-            docker run -d --name aycoro-manageweb -p 1000:3000 --restart unless-stopped aycoro/manageweb:${{ env.TAG }}
+            docker run -d --name aycoro-manageweb -p 1000:80 --restart unless-stopped aycoro/manageweb:${{ env.TAG }}
