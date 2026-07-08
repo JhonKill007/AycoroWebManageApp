@@ -1,6 +1,18 @@
 import { IAnalyticsService } from "../../Interface/Analytics/IAnalyticsService";
 import Http from "../Http/HttpClient";
 
+const getBrowserTimeZone = () => {
+  return (
+    Intl.DateTimeFormat().resolvedOptions().timeZone ||
+    "America/Santo_Domingo"
+  );
+};
+
+const withTimeZone = (path: string) => {
+  const separator = path.includes("?") ? "&" : "?";
+  return `${path}${separator}timezone=${encodeURIComponent(getBrowserTimeZone())}`;
+};
+
 export class AnalyticsService implements IAnalyticsService {
   async getUsersByCountry(): Promise<any> {
     let result = await new Promise<any>((resolve, reject) => {
@@ -17,7 +29,7 @@ export class AnalyticsService implements IAnalyticsService {
 
   async getDashboardStats(): Promise<any> {
     let result = await new Promise<any>((resolve, reject) => {
-      Http.get(`/api/analytics/dashboard`)
+      Http.get(withTimeZone(`/api/analytics/dashboard`))
         .then((res) => {
           resolve(res);
         })
@@ -30,7 +42,7 @@ export class AnalyticsService implements IAnalyticsService {
 
   async getMonthlyData(): Promise<any> {
     let result = await new Promise<any>((resolve, reject) => {
-      Http.get(`/api/analytics/monthly`)
+      Http.get(withTimeZone(`/api/analytics/monthly`))
         .then((res) => {
           resolve(res);
         })
@@ -43,7 +55,7 @@ export class AnalyticsService implements IAnalyticsService {
 
   async getActivityResume(): Promise<any> {
     let result = await new Promise<any>((resolve, reject) => {
-      Http.get(`/api/analytics/activity`)
+      Http.get(withTimeZone(`/api/analytics/activity`))
         .then((res) => {
           resolve(res);
         })
@@ -82,7 +94,7 @@ export class AnalyticsService implements IAnalyticsService {
 
   async getSessionAccess(days = 30): Promise<any> {
     let result = await new Promise<any>((resolve, reject) => {
-      Http.get(`/api/analytics/sessions?days=${days}`)
+      Http.get(withTimeZone(`/api/analytics/sessions?days=${days}`))
         .then((res) => {
           resolve(res);
         })
@@ -95,7 +107,7 @@ export class AnalyticsService implements IAnalyticsService {
 
   async getGrowthData(year: number): Promise<any> {
     let result = await new Promise<any>((resolve, reject) => {
-      Http.get(`/api/analytics/${year}`)
+      Http.get(withTimeZone(`/api/analytics/${year}`))
         .then((res) => {
           resolve(res);
         })
@@ -108,7 +120,7 @@ export class AnalyticsService implements IAnalyticsService {
 
   async getGrowthDataByMonth(year: number, month: number): Promise<any> {
     let result = await new Promise<any>((resolve, reject) => {
-      Http.get(`/api/analytics/growth/month/${year}/${month}`)
+      Http.get(withTimeZone(`/api/analytics/growth/month/${year}/${month}`))
         .then((res) => {
           resolve(res);
         })
