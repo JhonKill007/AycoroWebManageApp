@@ -96,7 +96,7 @@ export default function Login() {
     setState("loading");
     setAccount(null);
 
-    const url = `https://auth.aycoro.com?client_id=mi_app_web&redirect_uri=http://localhost:3000/login&response_type=code&state=${crypto.randomUUID()}`;
+    const url = `https://auth.aycoro.com?client_id=mi_app_web&redirect_uri=https://manage.aycoro.com/login&response_type=code&state=${crypto.randomUUID()}`;
 
     window.location.href = url;
 
