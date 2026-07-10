@@ -2,15 +2,20 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import UserProfile from "../assets/UserProfile.jpeg";
 import { Colors } from "../constants/Colors";
+import { Permissions } from "../constants/Permissions";
 import { PostStatus, UserStatus } from "../constants/Status";
+import { CONTENT_DELETED_MESSAGE } from "../constants/SystemMessages";
 import { useImageBankContext } from "../context/ImageBankContext";
 import { useThemeContext } from "../context/ThemeContext";
+import { useToast } from "../context/ToastContext";
 import { useUserContext } from "../context/UserContext";
 import useLanguage from "../hooks/useLanguage";
+import { usePermissions } from "../hooks/usePermissions";
 import { PostModel } from "../Models/Post/PostModel";
 import { UserPerfilModel } from "../Models/User/UserPerfilModel";
 import PubCard from "../Modules/Users/Components/PubCard";
 import postService from "../Services/Post/PostService";
+import systemMessageService from "../Services/SystemMessage/SystemMessageService";
 import userService from "../Services/User/UserService";
 
 // ─── Mock usuario ──────────────────────────────────────────────────────
@@ -151,6 +156,18 @@ type PubTabId = (typeof PUB_TABS)[number]["id"];
 const fmt = (n: number = 0) =>
   n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
 
+const isVideoPublication = (publication?: PostModel | null) => {
+  const mediaType = publication?.MediaType?.toLowerCase() || "";
+  const mimeType = publication?.MediaMimeType?.toLowerCase() || "";
+  const mediaUrl = publication?.MediaData?.toLowerCase() || "";
+
+  return (
+    mediaType.includes("video") ||
+    mimeType.startsWith("video/") ||
+    /\.(mp4|mov|m4v|webm|ogg)(\?|#|$)/i.test(mediaUrl)
+  );
+};
+
 const getUserStatusKey = (status?: number) => {
   if (status === UserStatus.SUSPENDED) return "suspendido";
   if (status === UserStatus.BANNED) return "baneado";
@@ -175,10 +192,22 @@ const formatBirthDate = (value?: string) => {
   });
 };
 
-function UserPublicationModal({ pub, c, theme, onClose }: any) {
+function UserPublicationModal({
+  pub,
+  c,
+  theme,
+  onClose,
+  onDelete,
+  isDeleting,
+}: any) {
+  const { can } = usePermissions();
   const navigate = useNavigate();
 
   if (!pub) return null;
+
+  const isVideo = isVideoPublication(pub);
+  const canDelete =
+    can(Permissions.DELETE_POSTS) && pub.Status !== PostStatus.DELETED;
 
   const formatDate = (date?: Date) => {
     if (!date) return "Fecha desconocida";
@@ -279,11 +308,27 @@ function UserPublicationModal({ pub, c, theme, onClose }: any) {
                 background: c.accentSoft,
               }}
             >
-              <img
-                src={pub.MediaData}
-                alt="Post"
-                style={{ width: "100%", display: "block", objectFit: "cover" }}
-              />
+              {isVideo ? (
+                <video
+                  src={pub.MediaData}
+                  controls
+                  playsInline
+                  preload="metadata"
+                  style={{
+                    width: "100%",
+                    maxHeight: "70vh",
+                    display: "block",
+                    objectFit: "contain",
+                    background: "#000",
+                  }}
+                />
+              ) : (
+                <img
+                  src={pub.MediaData}
+                  alt="Post"
+                  style={{ width: "100%", display: "block", objectFit: "cover" }}
+                />
+              )}
             </div>
           )}
 
@@ -386,6 +431,28 @@ function UserPublicationModal({ pub, c, theme, onClose }: any) {
               </div>
             ))}
           </div>
+
+          {canDelete && (
+            <button
+              type="button"
+              disabled={isDeleting}
+              onClick={() => onDelete?.(pub)}
+              style={{
+                width: "100%",
+                padding: "11px 16px",
+                borderRadius: 14,
+                border: `1.5px solid ${c.danger}33`,
+                background: c.dangerSoft,
+                color: c.danger,
+                fontSize: 13,
+                fontWeight: 800,
+                cursor: isDeleting ? "not-allowed" : "pointer",
+                opacity: isDeleting ? 0.68 : 1,
+              }}
+            >
+              {isDeleting ? "Eliminando..." : "Eliminar"}
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -400,10 +467,12 @@ const UserDetail = () => {
   const { getLabel } = useLanguage();
   const { userData, updateUser } = useUserContext();
   const { searchImage } = useImageBankContext();
+  const { showToast } = useToast();
   const [perfilUser, setPerfilUser] = useState<UserPerfilModel | undefined>();
   const [perfilPost, setPerfilPost] = useState<PostModel[]>([]);
   const [selectedPublication, setSelectedPublication] =
     useState<PostModel | null>(null);
+  const [isDeletingPublication, setIsDeletingPublication] = useState(false);
   const [archivedPost, setArchivedPost] = useState<PostModel[]>([]);
   const [userPostSection, setUserPostSection] = useState(1);
   const { theme } = useThemeContext();
@@ -492,6 +561,68 @@ const UserDetail = () => {
     return perfilPost.filter((post) => tabStatuses.includes(post.Status as any))
       .length;
   };
+
+  const handleDeletePublication = useCallback(
+    async (publication: PostModel) => {
+      if (!publication._id) return;
+
+      setIsDeletingPublication(true);
+
+      try {
+        await postService.UpdateStatus(publication._id, PostStatus.DELETED);
+
+        const deletedPost = {
+          ...publication,
+          Status: PostStatus.DELETED,
+        };
+
+        setPerfilPost((prev) =>
+          prev.map((post) => (post._id === publication._id ? deletedPost : post)),
+        );
+        setSelectedPublication(deletedPost);
+
+        let messageSent = true;
+
+        try {
+          await systemMessageService.sendUserMessage(
+            {
+              _id: publication.IdUser,
+              Username: publication.Username,
+              Verify: publication.Verify,
+              PerfilData: {
+                IdMediaDataProfile: publication.IdMediaDataProfile,
+              },
+              ProfilePhoto: publication.ProfilePhoto,
+            },
+            CONTENT_DELETED_MESSAGE,
+          );
+        } catch (error) {
+          messageSent = false;
+          console.error("Error sending deleted content message:", error);
+        }
+
+        showToast({
+          type: messageSent ? "success" : "error",
+          title: "Publicacion eliminada",
+          description: messageSent
+            ? "Se elimino la publicacion, se sumo un strike y se envio el mensaje al usuario."
+            : "Se elimino la publicacion y se sumo un strike, pero no se pudo enviar el mensaje.",
+          duration: messageSent ? 3500 : 5500,
+        });
+      } catch (error) {
+        console.error("Error deleting publication:", error);
+        showToast({
+          type: "error",
+          title: "Error",
+          description: "No se pudo eliminar la publicacion.",
+          duration: 4000,
+        });
+      } finally {
+        setIsDeletingPublication(false);
+      }
+    },
+    [showToast],
+  );
 
   const applyStatus = async () => {
     if (!perfilUser?.User?._id) return;
@@ -1324,6 +1455,8 @@ const UserDetail = () => {
         c={c}
         theme={theme}
         onClose={() => setSelectedPublication(null)}
+        onDelete={handleDeletePublication}
+        isDeleting={isDeletingPublication}
       />
 
       {statusModalOpen && (

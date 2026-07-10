@@ -5,6 +5,7 @@ import UserProfile from "../assets/UserProfile.jpeg";
 import { Colors } from "../constants/Colors";
 import { REPORT_REASONS } from "../constants/ReportsReason";
 import { Permissions } from "../constants/Permissions";
+import { CONTENT_DELETED_MESSAGE } from "../constants/SystemMessages";
 import { usePermissions } from "../hooks/usePermissions";
 import { useThemeContext } from "../context/ThemeContext";
 import { useToast } from "../context/ToastContext";
@@ -12,6 +13,7 @@ import { ReportModel } from "../Models/Report/ReportModel";
 import { Pagination } from "../Modules/Common/Components/Pagination";
 import { formatDate } from "../Modules/Settings/Common/Utils";
 import reportService from "../Services/Report/ReportService";
+import systemMessageService from "../Services/SystemMessage/SystemMessageService";
 
 // ─── Configs de UI ────────────────────────────────────────────────────
 const STATUS_CONFIG: Record<
@@ -764,7 +766,7 @@ function ReportDetailModal({
             <button
               disabled={isResolved}
               onClick={() => {
-                onDeleteItem(report._id);
+                onDeleteItem(report);
                 onClose();
               }}
               style={{
@@ -965,6 +967,55 @@ const Reports = () => {
           description:
             "El contenido reportado fue eliminado y el reporte quedó confirmado",
           duration: 3500,
+        });
+        await loadReports();
+      } catch (error: any) {
+        showToast({
+          type: "error",
+          title: "Error",
+          description:
+            error?.response?.data?.message ||
+            "No se pudo eliminar el contenido reportado",
+          duration: 4000,
+        });
+      }
+    },
+    [loadReports, showToast],
+  );
+  void handleDeleteItem;
+
+  const handleDeleteReportedContent = useCallback(
+    async (report: ReportModel) => {
+      try {
+        await reportService.deleteReportedItem(report._id!);
+
+        let messageSent = true;
+
+        try {
+          await systemMessageService.sendUserMessage(
+            {
+              _id: report.IdUserReported,
+              Username: report.ReportedUser?.Username,
+              Name: report.ReportedUser?.Name,
+              Verify: report.ReportedUser?.Verify,
+              VerifyType: report.ReportedUser?.VerifyType,
+              PerfilData: report.ReportedUser?.PerfilData,
+              ProfilePhoto: report.ProfilePhotoUserReported,
+            },
+            CONTENT_DELETED_MESSAGE,
+          );
+        } catch (error) {
+          messageSent = false;
+          console.error("Error sending deleted content report message:", error);
+        }
+
+        showToast({
+          type: messageSent ? "success" : "error",
+          title: "Contenido eliminado",
+          description: messageSent
+            ? "El contenido reportado fue eliminado, el reporte quedo confirmado y se envio el mensaje al usuario"
+            : "El contenido reportado fue eliminado, pero no se pudo enviar el mensaje al usuario",
+          duration: messageSent ? 3500 : 5500,
         });
         await loadReports();
       } catch (error: any) {
@@ -1914,7 +1965,7 @@ const Reports = () => {
         theme={theme}
         onClose={() => setSelected(null)}
         onStatusChange={handleStatusChange}
-        onDeleteItem={handleDeleteItem}
+        onDeleteItem={handleDeleteReportedContent}
         onBanUser={handleBanUser}
         onOpenUser={handleOpenUser}
       />

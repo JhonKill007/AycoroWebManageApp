@@ -15,6 +15,7 @@ export class UserModel {
   public City?: string;
   public Country?: string;
   public Validate: boolean | undefined;
+  public Strike?: number;
   public PerfilData: UserPerfilData | undefined;
   public ProfilePhoto?: string;
   public CreateDate: Date | undefined;

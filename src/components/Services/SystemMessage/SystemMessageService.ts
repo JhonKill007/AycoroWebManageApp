@@ -5,6 +5,19 @@ import { MessageStatus } from "../../constants/Status";
 import { ChatType, MessageType } from "../../constants/Types";
 import userService from "../User/UserService";
 
+type SystemMessageReceiver = {
+  _id?: string;
+  IdUser?: string;
+  Username?: string;
+  Name?: string;
+  Verify?: number;
+  VerifyType?: string;
+  PerfilData?: {
+    IdMediaDataProfile?: string;
+  };
+  ProfilePhoto?: string;
+};
+
 const generateUUID = () => crypto.randomUUID();
 
 const textToBytes = (text: string) => new TextEncoder().encode(text);
@@ -35,9 +48,10 @@ const encryptMessage = (value: string, key: string, type: string) => {
 };
 
 export class SystemMessageService {
-  async sendRequestMessage(
-    request: RequestModel,
+  private async sendToReceiver(
+    receiver: SystemMessageReceiver | undefined,
     messageValue: string,
+    profilePhoto?: string,
   ): Promise<any> {
     const AycoroAuthSystem = axios.create({
       baseURL: process.env.REACT_APP_API_URL,
@@ -47,11 +61,10 @@ export class SystemMessageService {
     });
 
     const token = localStorage.getItem("systemToken");
-    const receiver = request.User;
-    const idUserReceiver = request.idUser || receiver?._id;
+    const idUserReceiver = receiver?._id || receiver?.IdUser;
 
     if (!idUserReceiver) {
-      throw new Error("Request user id is required to send a system message");
+      throw new Error("Receiver user id is required to send a system message");
     }
 
     const authHeaders = token
@@ -87,12 +100,12 @@ export class SystemMessageService {
       mediaDataProfileSender: aycoroResponse.data?.ProfilePhoto,
       idMediaDataProfileSender: aycoroUser?.PerfilData?.IdMediaDataProfile,
       idUserReceiver,
-      mediaDataProfileReceiver: request.ProfilePhotoUser,
+      mediaDataProfileReceiver: profilePhoto || receiver?.ProfilePhoto,
       idMediaDataProfileReceiver: receiver?.PerfilData?.IdMediaDataProfile,
       messageValue: encryptMessage(messageValue, encryptKey, messageType),
       usernameReceiver: receiver?.Username,
       verifyUserReceiver: receiver?.Verify,
-      verifyTypeUserReceiver: (receiver as any)?.VerifyType,
+      verifyTypeUserReceiver: receiver?.VerifyType,
       usernameSender: aycoroUser?.Username,
       verifyUserSender: aycoroUser?.Verify,
       verifyTypeUserSender: (aycoroUser as any)?.VerifyType,
@@ -110,6 +123,26 @@ export class SystemMessageService {
     return AycoroAuthSystem.post(`api/Chat/Message`, message, {
       headers: authHeaders,
     });
+  }
+
+  async sendRequestMessage(
+    request: RequestModel,
+    messageValue: string,
+  ): Promise<any> {
+    const receiver = request.User;
+
+    return this.sendToReceiver(
+      { ...receiver, _id: request.idUser || receiver?._id },
+      messageValue,
+      request.ProfilePhotoUser,
+    );
+  }
+
+  async sendUserMessage(
+    receiver: SystemMessageReceiver,
+    messageValue: string,
+  ): Promise<any> {
+    return this.sendToReceiver(receiver, messageValue);
   }
 }
 
