@@ -16,6 +16,7 @@ export class UserModel {
   public Country?: string;
   public Validate: boolean | undefined;
   public Strike?: number;
+  public SuspendedUntil?: string;
   public PerfilData: UserPerfilData | undefined;
   public ProfilePhoto?: string;
   public CreateDate: Date | undefined;

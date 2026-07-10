@@ -4,7 +4,8 @@ import UserProfile from "../assets/UserProfile.jpeg";
 import { Colors } from "../constants/Colors";
 import { Permissions } from "../constants/Permissions";
 import { PostStatus, UserStatus } from "../constants/Status";
-import { CONTENT_DELETED_MESSAGE } from "../constants/SystemMessages";
+import { getContentDeletedMessage } from "../constants/SystemMessages";
+import { MessageType } from "../constants/Types";
 import { useImageBankContext } from "../context/ImageBankContext";
 import { useThemeContext } from "../context/ThemeContext";
 import { useToast } from "../context/ToastContext";
@@ -569,7 +570,34 @@ const UserDetail = () => {
       setIsDeletingPublication(true);
 
       try {
-        await postService.UpdateStatus(publication._id, PostStatus.DELETED);
+        const response = await postService.UpdateStatus(
+          publication._id,
+          PostStatus.DELETED,
+        );
+        const strikes =
+          typeof response?.data?.strike === "number"
+            ? response.data.strike
+            : undefined;
+        const suspended = Boolean(response?.data?.suspended);
+
+        if (typeof strikes === "number" || suspended) {
+          setPerfilUser((current: any) =>
+            current?.User
+              ? {
+                  ...current,
+                  User: {
+                    ...current.User,
+                    ...(typeof strikes === "number" ? { Strike: strikes } : {}),
+                    ...(suspended ? { Status: UserStatus.SUSPENDED } : {}),
+                  },
+                }
+              : current,
+          );
+          if (suspended) {
+            setUser((current) => ({ ...current, status: "suspendido" }));
+            setPendingStatus("suspendido");
+          }
+        }
 
         const deletedPost = {
           ...publication,
@@ -594,7 +622,11 @@ const UserDetail = () => {
               },
               ProfilePhoto: publication.ProfilePhoto,
             },
-            CONTENT_DELETED_MESSAGE,
+            getContentDeletedMessage(strikes, suspended),
+            {
+              type: MessageType.PUBLICATION,
+              idMedia: publication._id,
+            },
           );
         } catch (error) {
           messageSent = false;
@@ -1207,6 +1239,14 @@ const UserDetail = () => {
                     {
                       label: "Pais",
                       value: perfilUser?.User?.Country || "-",
+                    },
+                    {
+                      label: "Strikes",
+                      value: perfilUser?.User?.Strike ?? 0,
+                      color:
+                        (perfilUser?.User?.Strike ?? 0) > 0
+                          ? c.danger
+                          : c.text,
                     },                  ].map((item) => (
                     <div
                       key={item.label}
@@ -1236,9 +1276,10 @@ const UserDetail = () => {
                           fontSize: 11,
                           fontWeight: 600,
                           color:
-                            item.value && item.value !== "—"
+                            item.color ||
+                            (item.value && item.value !== "-"
                               ? c.text
-                              : c.border,
+                              : c.border),
                           overflow: "hidden",
                           textOverflow: "ellipsis",
                           whiteSpace: "nowrap",

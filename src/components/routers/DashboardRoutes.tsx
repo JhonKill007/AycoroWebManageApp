@@ -14,6 +14,7 @@ import Requests from "../Views/Requests";
 import Security from "../Views/Security";
 import SessionLogs from "../Views/SessionLogs";
 import Settings from "../Views/Settings";
+import Suspenciones from "../Views/Suspenciones";
 import UserDetail from "../Views/UserDetail";
 import Users from "../Views/Users";
 import Unauthorized from "../Views/Unauthorized";
@@ -39,6 +40,7 @@ const DashboardRoutes = () => {
           <Route element={<PermissionRoute anyOf={[Permissions.VIEW_USERS]} />}>
             <Route path="/users" element={<Users />} />
             <Route path="users/:username" element={<UserDetail />} />
+            <Route path="/suspenciones" element={<Suspenciones />} />
           </Route>
           <Route element={<PermissionRoute anyOf={[Permissions.VIEW_POSTS]} />}><Route path="/publications" element={<Publications />} /></Route>
           <Route element={<PermissionRoute anyOf={[Permissions.MANAGE_SETTINGS, Permissions.MANAGE_ADMINS, Permissions.DANGER_ZONE]} />}><Route path="/settings" element={<Settings />} /></Route>

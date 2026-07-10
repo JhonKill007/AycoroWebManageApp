@@ -5,7 +5,8 @@ import UserProfile from "../assets/UserProfile.jpeg";
 import { Colors } from "../constants/Colors";
 import { REPORT_REASONS } from "../constants/ReportsReason";
 import { Permissions } from "../constants/Permissions";
-import { CONTENT_DELETED_MESSAGE } from "../constants/SystemMessages";
+import { getContentDeletedMessage } from "../constants/SystemMessages";
+import { MessageType } from "../constants/Types";
 import { usePermissions } from "../hooks/usePermissions";
 import { useThemeContext } from "../context/ThemeContext";
 import { useToast } from "../context/ToastContext";
@@ -987,7 +988,12 @@ const Reports = () => {
   const handleDeleteReportedContent = useCallback(
     async (report: ReportModel) => {
       try {
-        await reportService.deleteReportedItem(report._id!);
+        const response = await reportService.deleteReportedItem(report._id!);
+        const strikes =
+          typeof response?.data?.strike === "number"
+            ? response.data.strike
+            : undefined;
+        const suspended = Boolean(response?.data?.suspended);
 
         let messageSent = true;
 
@@ -1002,7 +1008,11 @@ const Reports = () => {
               PerfilData: report.ReportedUser?.PerfilData,
               ProfilePhoto: report.ProfilePhotoUserReported,
             },
-            CONTENT_DELETED_MESSAGE,
+            getContentDeletedMessage(strikes, suspended),
+            {
+              type: MessageType.PUBLICATION,
+              idMedia: report.IdItem,
+            },
           );
         } catch (error) {
           messageSent = false;

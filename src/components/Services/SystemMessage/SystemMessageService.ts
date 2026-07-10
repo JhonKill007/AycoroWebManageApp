@@ -18,6 +18,12 @@ type SystemMessageReceiver = {
   ProfilePhoto?: string;
 };
 
+type SystemMessageOptions = {
+  type?: string;
+  idMedia?: string;
+  mediaData?: string;
+};
+
 const generateUUID = () => crypto.randomUUID();
 
 const textToBytes = (text: string) => new TextEncoder().encode(text);
@@ -52,6 +58,7 @@ export class SystemMessageService {
     receiver: SystemMessageReceiver | undefined,
     messageValue: string,
     profilePhoto?: string,
+    options: SystemMessageOptions = {},
   ): Promise<any> {
     const AycoroAuthSystem = axios.create({
       baseURL: process.env.REACT_APP_API_URL,
@@ -90,7 +97,7 @@ export class SystemMessageService {
     const encryptKey = encryptKeyResponse.data;
     const aycoroResponse = await userService.GetUserByUsername("aycoro");
     const aycoroUser = aycoroResponse.data?.User;
-    const messageType = MessageType.TEXT;
+    const messageType = options.type || MessageType.TEXT;
 
     const message: MessageParams = {
       uuid: generateUUID(),
@@ -114,8 +121,8 @@ export class SystemMessageService {
       nameGroup: "",
       type: messageType,
       status: MessageStatus.DRAFT,
-      idMedia: undefined,
-      mediaData: undefined,
+      idMedia: options.idMedia,
+      mediaData: options.mediaData,
       conversationType: ChatType.DIRECT,
       createDate: `${new Date()}`,
     };
@@ -141,8 +148,9 @@ export class SystemMessageService {
   async sendUserMessage(
     receiver: SystemMessageReceiver,
     messageValue: string,
+    options?: SystemMessageOptions,
   ): Promise<any> {
-    return this.sendToReceiver(receiver, messageValue);
+    return this.sendToReceiver(receiver, messageValue, undefined, options);
   }
 }
 

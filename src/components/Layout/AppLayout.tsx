@@ -72,6 +72,14 @@ const NAV_ITEMS: any[] = [
         navigate: "/publications",
         permissions: [Permissions.VIEW_POSTS],
       },
+      {
+        id: "suspenciones",
+        label: "Suspensiones",
+        emoji: "!",
+        badge: null,
+        navigate: "/suspenciones",
+        permissions: [Permissions.VIEW_USERS],
+      },
       // {
       //   id: "conversations",
       //   label: "Conversaciones",
