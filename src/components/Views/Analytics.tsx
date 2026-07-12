@@ -590,7 +590,11 @@ const Analytics = () => {
   const colors = theme === "dark" ? Colors.dark : Colors.light;
   const c = colors.colors;
 
-  const [dataForMonth, setDataForMonth] = useState<[]>([]);
+  const [dataForMonth, setDataForMonth] = useState<any[]>([]);
+  const [growthSelectedMonthData, setGrowthSelectedMonthData] = useState<any[]>([]);
+  const [growthPreviousMonthData, setGrowthPreviousMonthData] = useState<any[]>([]);
+  const [growthYearData, setGrowthYearData] = useState<any[]>([]);
+  const [growthPreviousYearData, setGrowthPreviousYearData] = useState<any[]>([]);
 
   const initialMonthlyResume: MonthlyResume = {
     thisMonth: 0,
@@ -722,6 +726,38 @@ const Analytics = () => {
     getGrowthData();
   }, [growthPeriod, selectedMonth, selectedYear]);
 
+  useEffect(() => {
+    const getGrowthYearComparison = async () => {
+      const [currentYearResponse, previousYearResponse] = await Promise.all([
+        analyticsService.getGrowthData(selectedYear),
+        analyticsService.getGrowthData(selectedYear - 1),
+      ]);
+
+      setGrowthYearData(currentYearResponse.data || []);
+      setGrowthPreviousYearData(previousYearResponse.data || []);
+    };
+
+    getGrowthYearComparison();
+  }, [selectedYear]);
+
+  useEffect(() => {
+    const getGrowthMonthComparison = async () => {
+      const previousMonth = selectedMonth === 1 ? 12 : selectedMonth - 1;
+      const previousMonthYear =
+        selectedMonth === 1 ? selectedYear - 1 : selectedYear;
+
+      const [currentMonthResponse, previousMonthResponse] = await Promise.all([
+        analyticsService.getGrowthDataByMonth(selectedYear, selectedMonth),
+        analyticsService.getGrowthDataByMonth(previousMonthYear, previousMonth),
+      ]);
+
+      setGrowthSelectedMonthData(currentMonthResponse.data || []);
+      setGrowthPreviousMonthData(previousMonthResponse.data || []);
+    };
+
+    getGrowthMonthComparison();
+  }, [selectedMonth, selectedYear]);
+
   const gridColor =
     theme === "dark" ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)";
   const tickColor = c.textMuted;
@@ -773,9 +809,27 @@ const Analytics = () => {
         : isLeapYear(selectedYear)
           ? 366
           : 365;
-  const growthMetricTotal = dataForMonth.reduce(
-    (sum: number, item: any) => sum + (Number(item?.[growthMetric]) || 0),
-    0,
+  const getGrowthTotal = (items: any[]) =>
+    items.reduce(
+      (sum: number, item: any) => sum + (Number(item?.[growthMetric]) || 0),
+      0,
+    );
+  const getPercentChange = (current: number, previous: number) => {
+    if (!previous) return current > 0 ? 100 : 0;
+    return ((current - previous) / previous) * 100;
+  };
+  const growthMetricTotal = getGrowthTotal(dataForMonth);
+  const growthSelectedMonthTotal = getGrowthTotal(growthSelectedMonthData);
+  const growthPreviousMonthTotal = getGrowthTotal(growthPreviousMonthData);
+  const growthYearTotal = getGrowthTotal(growthYearData);
+  const growthPreviousYearTotal = getGrowthTotal(growthPreviousYearData);
+  const growthMonthChange = getPercentChange(
+    growthSelectedMonthTotal,
+    growthPreviousMonthTotal,
+  );
+  const growthYearChange = getPercentChange(
+    growthYearTotal,
+    growthPreviousYearTotal,
   );
   const growthFullPeriodDays =
     growthPeriod === "month"
@@ -795,6 +849,85 @@ const Analytics = () => {
   })} registros/dia`;
   const growthFullPeriodLabel =
     growthPeriod === "month" ? "Promedio mes completo" : "Promedio ano completo";
+  const formatGrowthNumber = (value: number, decimals = 0) =>
+    value.toLocaleString("es-DO", {
+      maximumFractionDigits: decimals,
+      minimumFractionDigits: decimals,
+    });
+  const renderGrowthMetric = ({
+    label,
+    value,
+    sub,
+    trend,
+    accent = activeMC.color,
+  }: {
+    label: string;
+    value: string;
+    sub?: string;
+    trend?: number;
+    accent?: string;
+  }) => {
+    const hasTrend = typeof trend === "number";
+    const trendColor = hasTrend && trend >= 0 ? c.success : c.danger;
+
+    return (
+      <div
+        style={{
+          minWidth: 180,
+          flex: "1 1 180px",
+          padding: "12px 14px",
+          borderRadius: 16,
+          border: `1px solid ${c.border}`,
+          background: c.inputBackground,
+        }}
+      >
+        <div
+          style={{
+            color: c.textMuted,
+            fontSize: 10,
+            fontWeight: 900,
+            textTransform: "uppercase",
+            letterSpacing: "0.06em",
+            marginBottom: 5,
+          }}
+        >
+          {label}
+        </div>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 10,
+          }}
+        >
+          <span style={{ color: accent, fontSize: 18, fontWeight: 900 }}>
+            {value}
+          </span>
+          {hasTrend && (
+            <span
+              style={{
+                color: trendColor,
+                background: `${trendColor}1f`,
+                borderRadius: 999,
+                padding: "4px 8px",
+                fontSize: 11,
+                fontWeight: 900,
+                whiteSpace: "nowrap",
+              }}
+            >
+              {trend >= 0 ? "↑" : "↓"} {Math.abs(trend).toFixed(2)}%
+            </span>
+          )}
+        </div>
+        {sub && (
+          <div style={{ color: c.textMuted, fontSize: 11, marginTop: 5 }}>
+            {sub}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   // const PERIOD_DATA = {
   //   "7d": WEEKLY_ACTIVITY,
@@ -965,50 +1098,7 @@ const Analytics = () => {
           <div className="span-2">
             <SectionCard
               title="Crecimiento de la comunidad"
-              subtitle={
-                <span
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 10,
-                    flexWrap: "wrap",
-                  }}
-                >
-                  <span>
-                    Evolucion mensual de usuarios, publicaciones y conversaciones
-                  </span>
-                  <span
-                    style={{
-                      color: activeMC.color,
-                      background: `${activeMC.color}1f`,
-                      border: `1px solid ${activeMC.color}44`,
-                      borderRadius: 999,
-                      padding: "3px 9px",
-                      fontSize: 10,
-                      fontWeight: 900,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.04em",
-                    }}
-                  >
-                    Promedio actual {growthDailyAverageLabel}
-                  </span>
-                  <span
-                    style={{
-                      color: c.textMuted,
-                      background: c.inputBackground,
-                      border: `1px solid ${c.border}`,
-                      borderRadius: 999,
-                      padding: "3px 9px",
-                      fontSize: 10,
-                      fontWeight: 900,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.04em",
-                    }}
-                  >
-                    {growthFullPeriodLabel} {growthFullPeriodAverageLabel}
-                  </span>
-                </span>
-              }
+              subtitle="Evolucion mensual de usuarios, publicaciones y conversaciones"
               c={c}
               action={
                 <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
@@ -1136,6 +1226,44 @@ const Analytics = () => {
                     </select>
                   </div>
                 )}
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  gap: "10px",
+                  flexWrap: "wrap",
+                  marginTop: "12px",
+                }}
+              >
+                {renderGrowthMetric({
+                  label: "Promedio actual",
+                  value: growthDailyAverageLabel,
+                  sub:
+                    growthPeriod === "month"
+                      ? "Segun los dias cursados del periodo"
+                      : "Segun los dias cursados del ano",
+                })}
+                {renderGrowthMetric({
+                  label: growthFullPeriodLabel,
+                  value: growthFullPeriodAverageLabel,
+                  sub:
+                    growthPeriod === "month"
+                      ? "Divide entre todos los dias del mes"
+                      : "Divide entre todos los dias del ano",
+                  accent: c.text,
+                })}
+                {renderGrowthMetric({
+                  label: "Total mes seleccionado",
+                  value: formatGrowthNumber(growthSelectedMonthTotal),
+                  sub: "Comparado con el mes anterior",
+                  trend: growthMonthChange,
+                })}
+                {renderGrowthMetric({
+                  label: "Total ano seleccionado",
+                  value: formatGrowthNumber(growthYearTotal),
+                  sub: "Comparado con el ano anterior",
+                  trend: growthYearChange,
+                })}
               </div>
             </SectionCard>
           </div>
