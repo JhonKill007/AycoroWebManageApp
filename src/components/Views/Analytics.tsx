@@ -747,6 +747,55 @@ const Analytics = () => {
 
   const activeMC = METRIC_CONFIG[growthMetric];
 
+  const currentDate = new Date();
+  const currentYear = currentDate.getFullYear();
+  const currentMonth = currentDate.getMonth() + 1;
+  const currentDayOfMonth = currentDate.getDate();
+  const getDayOfYear = (date: Date) => {
+    const start = new Date(date.getFullYear(), 0, 0);
+    const diff = date.getTime() - start.getTime();
+    return Math.floor(diff / 86400000);
+  };
+  const isLeapYear = (year: number) =>
+    (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+  const daysInSelectedMonth = new Date(
+    selectedYear,
+    selectedMonth,
+    0,
+  ).getDate();
+  const growthAverageDays =
+    growthPeriod === "month"
+      ? selectedYear === currentYear && selectedMonth === currentMonth
+        ? currentDayOfMonth
+        : daysInSelectedMonth
+      : selectedYear === currentYear
+        ? getDayOfYear(currentDate)
+        : isLeapYear(selectedYear)
+          ? 366
+          : 365;
+  const growthMetricTotal = dataForMonth.reduce(
+    (sum: number, item: any) => sum + (Number(item?.[growthMetric]) || 0),
+    0,
+  );
+  const growthFullPeriodDays =
+    growthPeriod === "month"
+      ? daysInSelectedMonth
+      : isLeapYear(selectedYear)
+        ? 366
+        : 365;
+  const growthDailyAverage =
+    growthAverageDays > 0 ? growthMetricTotal / growthAverageDays : 0;
+  const growthFullPeriodAverage =
+    growthFullPeriodDays > 0 ? growthMetricTotal / growthFullPeriodDays : 0;
+  const growthDailyAverageLabel = `${growthDailyAverage.toLocaleString("es-DO", {
+    maximumFractionDigits: 1,
+  })} registros/dia`;
+  const growthFullPeriodAverageLabel = `${growthFullPeriodAverage.toLocaleString("es-DO", {
+    maximumFractionDigits: 1,
+  })} registros/dia`;
+  const growthFullPeriodLabel =
+    growthPeriod === "month" ? "Promedio mes completo" : "Promedio ano completo";
+
   // const PERIOD_DATA = {
   //   "7d": WEEKLY_ACTIVITY,
   //   "30d": [], //GROWTH_DATA ||
@@ -916,7 +965,50 @@ const Analytics = () => {
           <div className="span-2">
             <SectionCard
               title="Crecimiento de la comunidad"
-              subtitle="Evolución mensual de usuarios, publicaciones y conversaciones"
+              subtitle={
+                <span
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 10,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <span>
+                    Evolucion mensual de usuarios, publicaciones y conversaciones
+                  </span>
+                  <span
+                    style={{
+                      color: activeMC.color,
+                      background: `${activeMC.color}1f`,
+                      border: `1px solid ${activeMC.color}44`,
+                      borderRadius: 999,
+                      padding: "3px 9px",
+                      fontSize: 10,
+                      fontWeight: 900,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.04em",
+                    }}
+                  >
+                    Promedio actual {growthDailyAverageLabel}
+                  </span>
+                  <span
+                    style={{
+                      color: c.textMuted,
+                      background: c.inputBackground,
+                      border: `1px solid ${c.border}`,
+                      borderRadius: 999,
+                      padding: "3px 9px",
+                      fontSize: 10,
+                      fontWeight: 900,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.04em",
+                    }}
+                  >
+                    {growthFullPeriodLabel} {growthFullPeriodAverageLabel}
+                  </span>
+                </span>
+              }
               c={c}
               action={
                 <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
