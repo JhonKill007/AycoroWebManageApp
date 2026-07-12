@@ -595,6 +595,9 @@ const Analytics = () => {
   const [growthPreviousMonthData, setGrowthPreviousMonthData] = useState<any[]>([]);
   const [growthYearData, setGrowthYearData] = useState<any[]>([]);
   const [growthPreviousYearData, setGrowthPreviousYearData] = useState<any[]>([]);
+  const [growthYearsCatalog, setGrowthYearsCatalog] = useState<
+    Array<{ year: number; data: any[] }>
+  >([]);
 
   const initialMonthlyResume: MonthlyResume = {
     thisMonth: 0,
@@ -741,6 +744,26 @@ const Analytics = () => {
   }, [selectedYear]);
 
   useEffect(() => {
+    const getGrowthYearsCatalog = async () => {
+      const startYear = 2025;
+      const catalogCurrentYear = new Date().getFullYear();
+      const years = Array.from(
+        { length: Math.max(1, catalogCurrentYear - startYear + 1) },
+        (_, index) => startYear + index,
+      );
+      const responses = await Promise.all(
+        years.map(async (year) => {
+          const { data } = await analyticsService.getGrowthData(year);
+          return { year, data: data || [] };
+        }),
+      );
+      setGrowthYearsCatalog(responses);
+    };
+
+    getGrowthYearsCatalog();
+  }, []);
+
+  useEffect(() => {
     const getGrowthMonthComparison = async () => {
       const previousMonth = selectedMonth === 1 ? 12 : selectedMonth - 1;
       const previousMonthYear =
@@ -841,14 +864,66 @@ const Analytics = () => {
     growthAverageDays > 0 ? growthMetricTotal / growthAverageDays : 0;
   const growthFullPeriodAverage =
     growthFullPeriodDays > 0 ? growthMetricTotal / growthFullPeriodDays : 0;
+  const growthUnit =
+    growthMetric === "publicaciones" ? "publicaciones/dia" : "registros/dia";
+  const growthTotalUnit =
+    growthMetric === "publicaciones" ? "publicaciones" : "registros";
   const growthDailyAverageLabel = `${growthDailyAverage.toLocaleString("es-DO", {
     maximumFractionDigits: 1,
-  })} registros/dia`;
+  })} ${growthUnit}`;
   const growthFullPeriodAverageLabel = `${growthFullPeriodAverage.toLocaleString("es-DO", {
     maximumFractionDigits: 1,
-  })} registros/dia`;
+  })} ${growthUnit}`;
   const growthFullPeriodLabel =
     growthPeriod === "month" ? "Promedio mes completo" : "Promedio ano completo";
+  const monthLabels = MONTH_OPTIONS.map((month) => month.slice(0, 3));
+  const bestGrowthMonth = growthYearData.reduce(
+    (best, item, index) => {
+      const total = Number(item?.[growthMetric]) || 0;
+      const monthIndex = index;
+      const days = new Date(selectedYear, monthIndex + 1, 0).getDate();
+      const average = days > 0 ? total / days : 0;
+
+      return average > best.average
+        ? {
+            label: item?.mes || monthLabels[monthIndex] || `Mes ${monthIndex + 1}`,
+            total,
+            average,
+            period: String(selectedYear),
+          }
+        : best;
+    },
+    {
+      label: "-",
+      total: 0,
+      average: 0,
+      period: String(selectedYear),
+    },
+  );
+  const bestGrowthYear = growthYearsCatalog.reduce(
+    (best, item) => {
+      const total = getGrowthTotal(item.data);
+      const days = isLeapYear(item.year) ? 366 : 365;
+      const average = days > 0 ? total / days : 0;
+
+      return average > best.average
+        ? {
+            label: String(item.year),
+            total,
+            average,
+            period: String(item.year),
+          }
+        : best;
+    },
+    {
+      label: "-",
+      total: 0,
+      average: 0,
+      period: "-",
+    },
+  );
+  const bestGrowthPeriod =
+    growthPeriod === "month" ? bestGrowthMonth : bestGrowthYear;
   const formatGrowthNumber = (value: number, decimals = 0) =>
     value.toLocaleString("es-DO", {
       maximumFractionDigits: decimals,
@@ -1263,6 +1338,18 @@ const Analytics = () => {
                   value: formatGrowthNumber(growthYearTotal),
                   sub: "Comparado con el ano anterior",
                   trend: growthYearChange,
+                })}
+                {renderGrowthMetric({
+                  label:
+                    growthPeriod === "month"
+                      ? "Mejor promedio mensual"
+                      : "Mejor promedio anual",
+                  value: `${formatGrowthNumber(bestGrowthPeriod.average, 1)} ${growthUnit}`,
+                  sub:
+                    growthPeriod === "month"
+                      ? `${bestGrowthPeriod.label} ${bestGrowthPeriod.period} - Total ${formatGrowthNumber(bestGrowthPeriod.total)} ${growthTotalUnit}`
+                      : `Ano ${bestGrowthPeriod.period} - Total ${formatGrowthNumber(bestGrowthPeriod.total)} ${growthTotalUnit}`,
+                  accent: c.success,
                 })}
               </div>
             </SectionCard>
