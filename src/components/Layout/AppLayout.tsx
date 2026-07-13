@@ -75,7 +75,7 @@ const NAV_ITEMS: any[] = [
       {
         id: "suspenciones",
         label: "Suspensiones",
-        emoji: "!",
+        emoji: "⛔",
         badge: null,
         navigate: "/suspenciones",
         permissions: [Permissions.VIEW_USERS],
