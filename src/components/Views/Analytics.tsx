@@ -808,8 +808,6 @@ const Analytics = () => {
 
   const currentDate = new Date();
   const currentYear = currentDate.getFullYear();
-  const currentMonth = currentDate.getMonth() + 1;
-  const currentDayOfMonth = currentDate.getDate();
   const getDayOfYear = (date: Date) => {
     const start = new Date(date.getFullYear(), 0, 0);
     const diff = date.getTime() - start.getTime();
@@ -822,26 +820,28 @@ const Analytics = () => {
     selectedMonth,
     0,
   ).getDate();
-  const growthAverageDays =
-    growthPeriod === "month"
-      ? selectedYear === currentYear && selectedMonth === currentMonth
-        ? currentDayOfMonth
-        : daysInSelectedMonth
-      : selectedYear === currentYear
-        ? getDayOfYear(currentDate)
-        : isLeapYear(selectedYear)
-          ? 366
-          : 365;
   const getGrowthTotal = (items: any[]) =>
     items.reduce(
       (sum: number, item: any) => sum + (Number(item?.[growthMetric]) || 0),
       0,
     );
+  const getGrowthActiveDays = (items: any[]) =>
+    items.filter((item: any) => (Number(item?.[growthMetric]) || 0) > 0)
+      .length;
   const getPercentChange = (current: number, previous: number) => {
     if (!previous) return current > 0 ? 100 : 0;
     return ((current - previous) / previous) * 100;
   };
   const growthMetricTotal = getGrowthTotal(dataForMonth);
+  const growthActiveDays = getGrowthActiveDays(dataForMonth);
+  const growthAverageDays =
+    growthPeriod === "month"
+      ? growthActiveDays
+      : selectedYear === currentYear
+        ? getDayOfYear(currentDate)
+        : isLeapYear(selectedYear)
+          ? 366
+          : 365;
   const growthSelectedMonthTotal = getGrowthTotal(growthSelectedMonthData);
   const growthPreviousMonthTotal = getGrowthTotal(growthPreviousMonthData);
   const growthYearTotal = getGrowthTotal(growthYearData);
@@ -1315,7 +1315,7 @@ const Analytics = () => {
                   value: growthDailyAverageLabel,
                   sub:
                     growthPeriod === "month"
-                      ? "Segun los dias cursados del periodo"
+                      ? "Segun los dias con registros del periodo"
                       : "Segun los dias cursados del ano",
                 })}
                 {renderGrowthMetric({
