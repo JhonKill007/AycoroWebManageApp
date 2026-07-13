@@ -832,8 +832,16 @@ const Analytics = () => {
     if (!previous) return current > 0 ? 100 : 0;
     return ((current - previous) / previous) * 100;
   };
-  const growthMetricTotal = getGrowthTotal(dataForMonth);
-  const growthActiveDays = getGrowthActiveDays(dataForMonth);
+  const growthSelectedMonthTotal = getGrowthTotal(growthSelectedMonthData);
+  const growthPreviousMonthTotal = getGrowthTotal(growthPreviousMonthData);
+  const growthYearTotal = getGrowthTotal(growthYearData);
+  const growthPreviousYearTotal = getGrowthTotal(growthPreviousYearData);
+  const growthMetricTotal =
+    growthPeriod === "month" ? growthSelectedMonthTotal : growthYearTotal;
+  const growthActiveDays =
+    growthPeriod === "month"
+      ? getGrowthActiveDays(growthSelectedMonthData)
+      : getGrowthActiveDays(growthYearData);
   const growthAverageDays =
     growthPeriod === "month"
       ? growthActiveDays
@@ -842,10 +850,6 @@ const Analytics = () => {
         : isLeapYear(selectedYear)
           ? 366
           : 365;
-  const growthSelectedMonthTotal = getGrowthTotal(growthSelectedMonthData);
-  const growthPreviousMonthTotal = getGrowthTotal(growthPreviousMonthData);
-  const growthYearTotal = getGrowthTotal(growthYearData);
-  const growthPreviousYearTotal = getGrowthTotal(growthPreviousYearData);
   const growthMonthChange = getPercentChange(
     growthSelectedMonthTotal,
     growthPreviousMonthTotal,
