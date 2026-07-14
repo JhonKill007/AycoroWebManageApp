@@ -563,6 +563,7 @@ type PieDatum = {
 type MonthlyResume = {
   thisMonth: number;
   lastMonth: number;
+  total: number;
   change: number;
 };
 
@@ -602,6 +603,7 @@ const Analytics = () => {
   const initialMonthlyResume: MonthlyResume = {
     thisMonth: 0,
     lastMonth: 0,
+    total: 0,
     change: 0
   };
   const [monthlyResume, setMonthlyResume] =
@@ -1109,14 +1111,15 @@ const Analytics = () => {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))",
+            gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))",
             gap: "14px",
+            width: "100%",
             marginBottom: "22px",
           }}
         >
           <KpiCard
             emoji="👥"
-            label="Usuarios totales"
+            label="Usuarios este mes"
             value={monthlyResume.users.thisMonth}
             sub="este mes"
             trend={monthlyResume.users.change}
@@ -1134,16 +1137,16 @@ const Analytics = () => {
           /> */}
           <KpiCard
             emoji="📝"
-            label="Publicaciones"
+            label="Publicaciones este mes"
             value={monthlyResume.posts.thisMonth}
-            sub="acumuladas"
+            sub="este mes"
             trend={monthlyResume.posts.change}
             colorKey="info"
             c={c}
           />
           <KpiCard
             emoji="💬"
-            label="Conversaciones"
+            label="Conversaciones este mes"
             value={monthlyResume.chats.thisMonth}
             sub="este mes"
             trend={monthlyResume.chats.change}
@@ -1152,9 +1155,9 @@ const Analytics = () => {
           />
           <KpiCard
             emoji="❤️"
-            label="Interacciones"
+            label="Interacciones este mes"
             value={monthlyResume.interactions.thisMonth}
-            sub="últimos 30 días"
+            sub="este mes"
             trend={monthlyResume.interactions.change}
             colorKey="warning"
             c={c}
@@ -1171,6 +1174,49 @@ const Analytics = () => {
         </div>
 
         {/* ── Grid de gráficos ── */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))",
+            gap: "14px",
+            width: "100%",
+            marginBottom: "22px",
+          }}
+        >
+          <KpiCard
+            emoji="👥"
+            label="Usuarios historicos"
+            value={monthlyResume.users.total}
+            sub="todos los tiempos"
+            colorKey="accent"
+            c={c}
+          />
+          <KpiCard
+            emoji="📝"
+            label="Publicaciones historicas"
+            value={monthlyResume.posts.total}
+            sub="todos los tiempos"
+            colorKey="info"
+            c={c}
+          />
+          <KpiCard
+            emoji="💬"
+            label="Conversaciones historicas"
+            value={monthlyResume.chats.total}
+            sub="todos los tiempos"
+            colorKey="accent"
+            c={c}
+          />
+          <KpiCard
+            emoji="❤️"
+            label="Interacciones historicas"
+            value={monthlyResume.interactions.total}
+            sub="todos los tiempos"
+            colorKey="warning"
+            c={c}
+          />
+        </div>
+
         <div className="analytics-grid">
 
           {/* 1. Crecimiento (span 2) */}
