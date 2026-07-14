@@ -1039,6 +1039,14 @@ const Analytics = () => {
         }
         .analytics-grid .span-2 { grid-column: span 2; }
 
+        .analytics-kpi-grid {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 14px;
+          width: 100%;
+          margin-bottom: 22px;
+        }
+
         .select-control {
           padding: 6px 32px 6px 12px;
           border-radius: 10px;
@@ -1055,6 +1063,11 @@ const Analytics = () => {
         @media (max-width: 800px) {
           .analytics-grid { grid-template-columns: 1fr; }
           .analytics-grid .span-2 { grid-column: span 1; }
+          .analytics-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+
+        @media (max-width: 520px) {
+          .analytics-kpi-grid { grid-template-columns: 1fr; }
         }
       `}</style>
 
@@ -1111,7 +1124,7 @@ const Analytics = () => {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))",
+            gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
             gap: "14px",
             width: "100%",
             marginBottom: "22px",
@@ -1177,7 +1190,7 @@ const Analytics = () => {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))",
+            gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
             gap: "14px",
             width: "100%",
             marginBottom: "22px",
