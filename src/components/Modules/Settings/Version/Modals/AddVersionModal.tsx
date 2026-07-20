@@ -1,8 +1,9 @@
 // Modals/AddVersionModal.tsx
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Colors } from "../../../../constants/Colors";
 import { useUserContext } from "../../../../context/UserContext";
 import { VersionParams } from "../../../../Models/Version/VersionParams";
+import versionService from "../../../../Services/Version/VersionService";
 
 // ─── Configuraciones ───────────────────────────────────────────────────
 const SEVERITY_OPTIONS = [
@@ -75,6 +76,53 @@ const AddVersionModal = ({
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [compatibleOptions, setCompatibleOptions] = useState<string[]>([]);
+  const [compatibleVersions, setCompatibleVersions] = useState<string[]>([]);
+  const [loadingCompatibleOptions, setLoadingCompatibleOptions] =
+    useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadCompatibleOptions = async () => {
+      if (!formData.Type) {
+        setCompatibleOptions([]);
+        setCompatibleVersions([]);
+        return;
+      }
+
+      setLoadingCompatibleOptions(true);
+      try {
+        const response = await versionService.getCompatibleOptions(
+          formData.Type,
+        );
+        const options = Array.isArray(response?.data?.data)
+          ? response.data.data
+          : [];
+
+        if (isMounted) {
+          setCompatibleOptions(options);
+          setCompatibleVersions(options);
+        }
+      } catch (error) {
+        console.error("Error loading compatible versions:", error);
+        if (isMounted) {
+          setCompatibleOptions([]);
+          setCompatibleVersions([]);
+        }
+      } finally {
+        if (isMounted) {
+          setLoadingCompatibleOptions(false);
+        }
+      }
+    };
+
+    loadCompatibleOptions();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [formData.Type]);
 
   // Validar formulario
   const validateForm = (): boolean => {
@@ -134,6 +182,7 @@ const AddVersionModal = ({
         Link: link,
         Type: formData.Type,
         Status: formData.Status,
+        CompatibleVersions: compatibleVersions,
         CreateBy: userData?.user?.id,
       });
       onClose();
@@ -149,6 +198,14 @@ const AddVersionModal = ({
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: "" }));
     }
+  };
+
+  const toggleCompatibleVersion = (value: string) => {
+    setCompatibleVersions((prev) =>
+      prev.includes(value)
+        ? prev.filter((item) => item !== value)
+        : [...prev, value],
+    );
   };
 
   return (
@@ -538,6 +595,106 @@ const AddVersionModal = ({
                     {type.label}
                   </button>
                 ))}
+              </div>
+            </div>
+
+            {/* Versiones compatibles */}
+            <div style={{ marginBottom: 20 }}>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: "13px",
+                  fontWeight: 700,
+                  color: c.text,
+                  marginBottom: 8,
+                }}
+              >
+                Versiones compatibles
+              </label>
+              <div
+                style={{
+                  border: `1.5px solid ${c.border}`,
+                  background: c.inputBackground,
+                  borderRadius: 14,
+                  padding: 12,
+                }}
+              >
+                {loadingCompatibleOptions ? (
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: c.textMuted,
+                      padding: "6px 2px",
+                    }}
+                  >
+                    Buscando la ultima version publicada...
+                  </div>
+                ) : compatibleOptions.length === 0 ? (
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: c.textMuted,
+                      padding: "6px 2px",
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    No hay versiones publicadas para esta plataforma. La nueva
+                    version se creara sin compatibilidades previas.
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
+                      gap: 8,
+                    }}
+                  >
+                    {compatibleOptions.map((versionValue) => {
+                      const checked =
+                        compatibleVersions.includes(versionValue);
+
+                      return (
+                        <label
+                          key={versionValue}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                            padding: "10px 12px",
+                            borderRadius: 12,
+                            border: `1.5px solid ${
+                              checked ? Colors.detailAppColor : c.border
+                            }`,
+                            background: checked
+                              ? `${Colors.detailAppColor}15`
+                              : "transparent",
+                            color: checked ? Colors.detailAppColor : c.text,
+                            fontSize: 12,
+                            fontWeight: 700,
+                            cursor: "pointer",
+                            userSelect: "none",
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() =>
+                              toggleCompatibleVersion(versionValue)
+                            }
+                            style={{ accentColor: Colors.detailAppColor }}
+                          />
+                          <span>{versionValue}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+              <div
+                style={{ fontSize: "10px", color: c.textMuted, marginTop: 4 }}
+              >
+                Se toma la ultima version publicada del SO seleccionado y sus
+                compatibilidades existentes.
               </div>
             </div>
 

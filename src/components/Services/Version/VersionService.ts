@@ -43,6 +43,19 @@ export class VersionService implements IVersionService {
     return result;
   }
 
+  async getCompatibleOptions(type: string): Promise<any> {
+    let result = await new Promise<any>((resolve, reject) => {
+      Http.get(`/api/version/compatible-options?type=${encodeURIComponent(type)}`)
+        .then((res) => {
+          resolve(res);
+        })
+        .catch((err) => {
+          reject(err);
+        });
+    });
+    return result;
+  }
+
   async publish(id: string): Promise<any> {
     const AycoroAuthSystem = axios.create({
       baseURL: process.env.REACT_APP_API_URL,

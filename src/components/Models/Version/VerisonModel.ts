@@ -6,6 +6,7 @@ export class VersionModel {
   public Link: string | undefined;
   public Type: string | undefined;
   public Status: number | undefined;
+  public CompatibleVersions: string[] | undefined;
   public CreateBy: string | undefined;
   public CreateDate: Date | undefined;
 }
