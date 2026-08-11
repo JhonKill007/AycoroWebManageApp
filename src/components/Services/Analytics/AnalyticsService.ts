@@ -66,9 +66,9 @@ export class AnalyticsService implements IAnalyticsService {
     return result;
   }
 
-  async getDeviceData(): Promise<any> {
+  async getDeviceData(days = 30): Promise<any> {
     let result = await new Promise<any>((resolve, reject) => {
-      Http.get(`/api/analytics/device`)
+      Http.get(withTimeZone(`/api/analytics/device?days=${days}`))
         .then((res) => {
           resolve(res);
         })

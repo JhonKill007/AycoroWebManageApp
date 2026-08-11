@@ -4,7 +4,7 @@ export interface IAnalyticsService {
   getActivityResume(): Promise<any>;
   getUsersByCountry(): Promise<any>;
   getDashboardStats(): Promise<any>;
-  getDeviceData(): Promise<any>;
+  getDeviceData(days?: number): Promise<any>;
   getGenderData(): Promise<any>;
   getSessionAccess(days?: number): Promise<any>;
   getGrowthDataByMonth(year: number, month: number): Promise<any>;

@@ -662,15 +662,16 @@ const Analytics = () => {
 
   useEffect(() => {
     const getDeviceData = async () => {
-      const { data } = await analyticsService.getDeviceData();
+      const { data } = await analyticsService.getDeviceData(sessionAccessPeriod);
       setDevices([
-        { name: "Android", value: data.android, color: "#34d399" },
-        { name: "iOS", value: data.ios, color: "#7b83f5" },
-        { name: "Others", value: data.others, color: "#2e88f7" },
+        { name: "Android", value: data?.android || 0, color: "#34d399" },
+        { name: "iOS", value: data?.ios || 0, color: "#7b83f5" },
+        { name: "Web", value: data?.web || 0, color: "#38bdf8" },
+        { name: "Otros", value: data?.others || 0, color: "#94a3b8" },
       ]);
     };
     getDeviceData();
-  }, []);
+  }, [sessionAccessPeriod]);
 
   useEffect(() => {
     const getGenderData = async () => {
@@ -1598,7 +1599,7 @@ const Analytics = () => {
           {/* 3. Tipos de contenido */}
           <SectionCard
             title="Tipos de dispositivos"
-            subtitle="Tipos de dispositivos sessionando"
+            subtitle={`Dispositivos de entradas a la app · últimos ${sessionAccessPeriod} días`}
             c={c}
           >
             <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
@@ -1630,7 +1631,7 @@ const Analytics = () => {
               >
                 {devices.map((ct) => {
                   const total = devices.reduce((s, x) => s + x.value, 0);
-                  const pct = ((ct.value / total) * 100).toFixed(0);
+                  const pct = total > 0 ? ((ct.value / total) * 100).toFixed(0) : "0";
                   return (
                     <div key={ct.name}>
                       <div

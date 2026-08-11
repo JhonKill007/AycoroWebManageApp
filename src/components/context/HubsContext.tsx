@@ -9,16 +9,22 @@ import React, {
 import { CurrencyConversation } from "../Models/Message/CurrencyConversation";
 import { MessageParams } from "../Models/Message/MessageParams";
 import { NotificationModel } from "../Models/Notification/NotificationModel";
+import {
+  LiveActivity,
+  normalizeLiveActivity,
+} from "../Models/Live/LiveActivity";
 import chatService from "../Services/Chat/ChatService";
 import { useUserContext } from "./UserContext";
 
 const chatUrl = process.env.REACT_APP_CHAT_URL || "https://api.aycoro.com/aycoroHubs";
+const MAX_LIVE_ACTIVITIES = 40;
 
 interface HubsContextProps {
   JoinApp: (Id: string, User: string) => void;
   usersConnecting: any[];
   lastMessage: MessageParams | undefined;
   lastNotify: NotificationModel | undefined;
+  liveActivities: LiveActivity[];
   closeConnection: () => void;
   isActive: () => void;
   currencyConversations: CurrencyConversation[];
@@ -37,6 +43,7 @@ export const HubsProvider: React.FC<HubsProviderProps> = ({ children }) => {
   const [usersConnecting, setUsers] = useState<any>([]);
   const [lastMessage, setLastMessage] = useState<MessageParams>();
   const [lastNotify, setLastNotify] = useState<NotificationModel>();
+  const [liveActivities, setLiveActivities] = useState<LiveActivity[]>([]);
   const [currencyConversations, setcurrencyConversations] = useState<
     CurrencyConversation[]
   >([]);
@@ -73,30 +80,17 @@ export const HubsProvider: React.FC<HubsProviderProps> = ({ children }) => {
 
       connection.on("ReceiveMessage", (message: MessageParams) => {
         setLastMessage(message);
-        // const notification: NotifyParams = {
-        //   idUser: message.idUserReceiver,
-        //   title: message.usernameSender,
-        //   description:
-        //     message.type === MessageType.PUBLICATION ||
-        //     message.type === MessageType.IMAGE ||
-        //     message.type === MessageType.AUDIO
-        //       ? ""
-        //       : message.messageValue,
-        //   type: "MESSAGE",
-        // };
-        // schedulePushNotification(notification, userData?.user?.id!);
       });
 
-      // connection.on("ReceiveNotify", (notify: NotificationModel) => {
-      //   setLastNotify(notify);
-      //   const notification: NotifyParams = {
-      //     idUser: notify.idUser,
-      //     title: notify.username,
-      //     description: notify.idItem,
-      //     type: notify.type,
-      //   };
-      //   schedulePushNotification(notification, userData?.user?.id!);
-      // });
+      connection.on("ReceiveLiveActivity", (activity: any) => {
+        const normalized = normalizeLiveActivity(activity);
+        setLiveActivities((prev) =>
+          [normalized, ...prev.filter((item) => item.id !== normalized.id)].slice(
+            0,
+            MAX_LIVE_ACTIVITIES,
+          ),
+        );
+      });
 
       connection.onclose((e: any) => {
         setConnection("");
@@ -105,7 +99,8 @@ export const HubsProvider: React.FC<HubsProviderProps> = ({ children }) => {
 
       await connection.start();
       await connection.invoke("JoinApp", { Id, User });
-      
+      await connection.invoke("JoinManage");
+
       GetCurrencyConversation(1);
       setConnection(connection);
     } catch (e) {
@@ -118,6 +113,7 @@ export const HubsProvider: React.FC<HubsProviderProps> = ({ children }) => {
       connection.off("ReceiveMessage");
       connection.off("ReceiveNewChat");
       connection.off("ReceiveNotify");
+      connection.off("ReceiveLiveActivity");
       connection.off("ActiveUsers");
       await connection.stop();
       await connection.stop();
@@ -204,6 +200,7 @@ export const HubsProvider: React.FC<HubsProviderProps> = ({ children }) => {
         closeConnection,
         isActive,
         lastNotify,
+        liveActivities,
         currencyConversations,
         updateCurrencyConversations,
         GetCurrencyConversation,

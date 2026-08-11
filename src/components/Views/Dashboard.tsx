@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import PostA from "../assets/comunity_image/POST_A.jpeg";
-import PostB from "../assets/comunity_image/POST_B.jpeg";
 import UserProfile from "../assets/UserProfile.jpeg";
 import { Colors } from "../constants/Colors";
 import { useHubsContext } from "../context/HubsContext";
 import { useThemeContext } from "../context/ThemeContext";
+import { LiveActivity } from "../Models/Live/LiveActivity";
 import StatCard from "../Modules/Card/StatCard";
 import analyticsService from "../Services/Analytics/AnalyticsService";
 
@@ -30,106 +29,50 @@ const emptyStats: DashboardStats = {
 
 const formatNumber = (value: number) => value.toLocaleString();
 
-const liveComments = [
-  {
-    user: "jhondavidrd",
-    message: "subio una nueva publicacion",
-    avatar: UserProfile,
-    targetImage: PostA,
-    targetType: "post",
-    color: "#11a96a",
-  },
-  {
-    user: "lucia_v",
-    message: "le dio like a una publicacion",
-    initial: "A",
-    targetImage: PostB,
-    targetType: "post",
-    color: "#1976d2",
-  },
-  {
-    user: "carlos_m",
-    message: "comento: excelente lugar, recomendado",
-    avatar: PostA,
-    targetImage: PostA,
-    targetType: "post",
-    color: "#46b7ff",
-  },
-  {
-    user: "maria_dev",
-    message: "guardo una publicacion para verla luego",
-    avatar: PostB,
-    targetImage: PostB,
-    targetType: "post",
-    color: "#d81b60",
-  },
-  {
-    user: "ana_flores",
-    message: "comenzo a seguir a sofia_r",
-    avatar: UserProfile,
-    targetImage: PostA,
-    targetType: "user",
-    color: "#00acc1",
-  },
-  {
-    user: "jorge_s",
-    message: "compartio una publicacion",
-    avatar: PostA,
-    targetImage: PostB,
-    targetType: "post",
-    color: "#455a64",
-  },
-  {
-    user: "Fadop3",
-    message: "reporto una publicacion",
-    initial: "F",
-    targetImage: PostA,
-    targetType: "post",
-    color: "#c2185b",
-  },
-  {
-    user: "barracuda40",
-    message: "actualizo su foto de perfil",
-    initial: "B",
-    targetImage: UserProfile,
-    targetType: "user",
-    color: "#607d8b",
-  },
-  {
-    user: "Web Application Guide",
-    message: "respondio un comentario en una publicacion",
-    initial: "W",
-    targetImage: PostB,
-    targetType: "post",
-    color: "#536dfe",
-  },
-  {
-    user: "Secret Sensei",
-    message: "comenzo a seguir a jhondavidrd",
-    avatar: PostB,
-    targetImage: UserProfile,
-    targetType: "user",
-    color: "#7cb342",
-  },
-  {
-    user: "Chimezie Uche",
-    message: "solicito verificacion de perfil",
-    initial: "C",
-    targetImage: UserProfile,
-    targetType: "user",
-    color: "#7e57c2",
-  },
-  {
-    user: "Daniel Kiptoo",
-    message: "marco una publicacion como favorita",
-    initial: "D",
-    targetImage: PostA,
-    targetType: "post",
-    color: "#0288d1",
-  },
-];
+const formatActivityDate = (value?: string) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString("es-DO", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
 
-function RealtimeActivityCard({ c, theme }: { c: any; theme: string }) {
+const avatarColor = (username: string) => {
+  const colors = [
+    "#11a96a",
+    "#1976d2",
+    "#46b7ff",
+    "#d81b60",
+    "#00acc1",
+    "#455a64",
+    "#c2185b",
+    "#607d8b",
+    "#536dfe",
+    "#7cb342",
+    "#7e57c2",
+    "#0288d1",
+  ];
+  let hash = 0;
+  for (let i = 0; i < username.length; i += 1) {
+    hash = username.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return colors[Math.abs(hash) % colors.length];
+};
+
+function RealtimeActivityCard({
+  c,
+  theme,
+  activities,
+}: {
+  c: any;
+  theme: string;
+  activities: LiveActivity[];
+}) {
   return (
     <section
       style={{
@@ -160,8 +103,17 @@ function RealtimeActivityCard({ c, theme }: { c: any; theme: string }) {
             fontWeight: 500,
           }}
         >
-          <span>Top chat replay</span>
-          <span style={{ fontSize: 16, color: c.text }}>⌄</span>
+          <span
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: "50%",
+              background: "#22c55e",
+              boxShadow: "0 0 0 4px rgba(34,197,94,0.18)",
+              display: "inline-block",
+            }}
+          />
+          <span>Live</span>
         </div>
         <button
           type="button"
@@ -190,92 +142,142 @@ function RealtimeActivityCard({ c, theme }: { c: any; theme: string }) {
           background: theme === "dark" ? c.card : "#fff",
         }}
       >
-        {liveComments.map((comment) => (
+        {activities.length === 0 ? (
           <div
-            key={`${comment.user}-${comment.message}`}
             style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              padding: "6px 0",
-              minHeight: 34,
+              padding: "28px 8px",
+              textAlign: "center",
+              color: c.textMuted,
+              fontSize: 13,
             }}
           >
-            <div
-              style={{
-                width: 24,
-                height: 24,
-                borderRadius: "50%",
-                flex: "0 0 auto",
-                overflow: "hidden",
-                background: comment.color,
-                color: "#fff",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 12,
-                fontWeight: 700,
-              }}
-            >
-              {comment.avatar ? (
-                <img
-                  src={comment.avatar}
-                  alt=""
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "cover",
-                    display: "block",
-                  }}
-                />
-              ) : (
-                comment.initial
-              )}
-            </div>
-            <div
-              style={{
-                minWidth: 0,
-                flex: 1,
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-              }}
-            >
+            Esperando actividad en tiempo real...
+          </div>
+        ) : (
+          activities.map((activity) => {
+            const initial = (activity.username || "?").charAt(0).toUpperCase();
+            const color = avatarColor(activity.username || "user");
+            const isUserTarget = activity.targetType === "user";
+            const activityDate = formatActivityDate(activity.createDate);
+
+            return (
               <div
+                key={activity.id}
                 style={{
-                  fontSize: 12,
-                  color: c.text,
-                  lineHeight: 1.25,
-                  minWidth: 0,
-                  flex: 1,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "8px 0",
+                  minHeight: 34,
                 }}
               >
-                <span
+                <div
                   style={{
-                    color: c.textMuted,
+                    width: 24,
+                    height: 24,
+                    borderRadius: "50%",
+                    flex: "0 0 auto",
+                    overflow: "hidden",
+                    background: color,
+                    color: "#fff",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 12,
                     fontWeight: 700,
-                    marginRight: 7,
                   }}
                 >
-                  {comment.user}
-                </span>
-                <span>{comment.message}</span>
+                  {activity.profilePhoto ? (
+                    <img
+                      src={activity.profilePhoto}
+                      alt=""
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                        display: "block",
+                      }}
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = "none";
+                      }}
+                    />
+                  ) : (
+                    initial
+                  )}
+                </div>
+                <div
+                  style={{
+                    minWidth: 0,
+                    flex: 1,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: c.text,
+                      lineHeight: 1.25,
+                      minWidth: 0,
+                      flex: 1,
+                    }}
+                  >
+                    <span
+                      style={{
+                        color: c.textMuted,
+                        fontWeight: 700,
+                        marginRight: 7,
+                      }}
+                    >
+                      {activity.username}
+                    </span>
+                    <span>{activity.message}</span>
+                  </div>
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "flex-end",
+                      gap: 4,
+                      flex: "0 0 auto",
+                    }}
+                  >
+                    {activityDate && (
+                      <span
+                        style={{
+                          fontSize: 10,
+                          color: c.textMuted,
+                          whiteSpace: "nowrap",
+                          lineHeight: 1.2,
+                        }}
+                      >
+                        {activityDate}
+                      </span>
+                    )}
+                    {(activity.targetImage || isUserTarget) && (
+                      <img
+                        src={activity.targetImage || UserProfile}
+                        alt=""
+                        style={{
+                          width: 28,
+                          height: 28,
+                          borderRadius: isUserTarget ? "50%" : 4,
+                          objectFit: "cover",
+                          border: `1px solid ${c.border}`,
+                          background: c.border,
+                        }}
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = UserProfile;
+                        }}
+                      />
+                    )}
+                  </div>
+                </div>
               </div>
-              <img
-                src={comment.targetImage}
-                alt=""
-                style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: comment.targetType === "user" ? "50%" : 4,
-                  objectFit: "cover",
-                  border: `1px solid ${c.border}`,
-                  flex: "0 0 auto",
-                }}
-              />
-            </div>
-          </div>
-        ))}
+            );
+          })
+        )}
       </div>
     </section>
   );
@@ -283,7 +285,7 @@ function RealtimeActivityCard({ c, theme }: { c: any; theme: string }) {
 
 const Dashboard = () => {
   const { theme } = useThemeContext();
-  const { usersConnecting } = useHubsContext();
+  const { usersConnecting, liveActivities } = useHubsContext();
   const [stats, setStats] = useState<DashboardStats>(emptyStats);
 
   const colors = theme === "dark" ? Colors.dark : Colors.light;
@@ -425,7 +427,7 @@ const Dashboard = () => {
           ))}
         </div>
 
-        <RealtimeActivityCard c={c} theme={theme} />
+        <RealtimeActivityCard c={c} theme={theme} activities={liveActivities} />
       </main>
     </>
   );
