@@ -10,6 +10,10 @@ export class AdminHistoryService implements IAdminHistoryService {
     );
   }
 
+  async GetById(id: string): Promise<any> {
+    return Http.get(`/api/history/${id}`);
+  }
+
   async UpdateStatus(id: string, status: number): Promise<any> {
     return Http.put("/api/history/status", { id, status });
   }

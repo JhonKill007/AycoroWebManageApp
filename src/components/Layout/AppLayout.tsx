@@ -36,6 +36,14 @@ const NAV_ITEMS: any[] = [
         permissions: [Permissions.VIEW_ANALYTICS],
       },
       {
+        id: "trends",
+        label: "Tendencias",
+        emoji: "🔥",
+        badge: null,
+        navigate: "/trends",
+        permissions: [Permissions.VIEW_TRENDS],
+      },
+      {
         id: "reports",
         label: "Reportes",
         emoji: "📋",
@@ -78,7 +86,7 @@ const NAV_ITEMS: any[] = [
         emoji: "⏱️",
         badge: null,
         navigate: "/stories",
-        permissions: [Permissions.VIEW_POSTS],
+        permissions: [Permissions.VIEW_STORIES],
       },
       {
         id: "audios",
@@ -86,7 +94,7 @@ const NAV_ITEMS: any[] = [
         emoji: "🎵",
         badge: null,
         navigate: "/audios",
-        permissions: [Permissions.VIEW_POSTS],
+        permissions: [Permissions.VIEW_AUDIOS],
       },
       {
         id: "comments",
@@ -94,7 +102,7 @@ const NAV_ITEMS: any[] = [
         emoji: "💬",
         badge: null,
         navigate: "/comments",
-        permissions: [Permissions.VIEW_POSTS],
+        permissions: [Permissions.VIEW_COMMENTS],
       },
       {
         id: "suspenciones",

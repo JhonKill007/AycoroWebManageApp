@@ -5,9 +5,11 @@ import { CommentStatus } from "../constants/Status";
 import { useThemeContext } from "../context/ThemeContext";
 import { useToast } from "../context/ToastContext";
 import { usePermissions } from "../hooks/usePermissions";
+import AdminContentPreviewModal from "../Modules/Common/Components/AdminContentPreviewModal";
 import { KpiCard } from "../Modules/Common/Components/bfdhjhg";
 import { Pagination } from "../Modules/Common/Components/Pagination";
 import adminComentService from "../Services/Coments/AdminComentService";
+import postService from "../Services/Post/PostService";
 
 const COMMENT_STATUS: Record<
   number,
@@ -65,6 +67,8 @@ const Comments = () => {
     reviewed: 0,
     deleted: 0,
   });
+  const [selectedPost, setSelectedPost] = useState<any | null>(null);
+  const [loadingPost, setLoadingPost] = useState(false);
   const debouncedSearch = useDebounce(search, 500);
   const itemsPerPage = 15;
 
@@ -125,6 +129,39 @@ const Comments = () => {
         description: "No se pudo actualizar el comentario",
         duration: 4000,
       });
+    }
+  };
+
+  const openPost = async (postId?: string) => {
+    if (!postId) {
+      showToast({
+        type: "error",
+        title: "Sin publicación",
+        description: "Este comentario no tiene una publicación asociada",
+        duration: 3000,
+      });
+      return;
+    }
+
+    setLoadingPost(true);
+    setSelectedPost(null);
+    try {
+      const result = await postService.GetById(postId);
+      const post = result?.data ?? result;
+      if (!post || !post._id) {
+        throw new Error("Post not found");
+      }
+      setSelectedPost(post);
+    } catch {
+      showToast({
+        type: "error",
+        title: "Error",
+        description: "No se pudo cargar la publicación",
+        duration: 4000,
+      });
+      setSelectedPost(null);
+    } finally {
+      setLoadingPost(false);
     }
   };
 
@@ -327,7 +364,28 @@ const Comments = () => {
                   {item.ComentValue || "—"}
                 </div>
 
-                <div style={{ display: "flex", gap: 10, alignItems: "center", minWidth: 0 }}>
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => openPost(item.PostId)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      openPost(item.PostId);
+                    }
+                  }}
+                  style={{
+                    display: "flex",
+                    gap: 10,
+                    alignItems: "center",
+                    minWidth: 0,
+                    cursor: item.PostId ? "pointer" : "default",
+                    borderRadius: 10,
+                    padding: 4,
+                    margin: -4,
+                  }}
+                  title={item.PostId ? "Ver publicación" : undefined}
+                >
                   {item.PostMediaData ? (
                     <img
                       src={item.PostMediaData}
@@ -423,6 +481,18 @@ const Comments = () => {
         setPage={setPage}
         c={c}
         theme={theme || "light"}
+      />
+
+      <AdminContentPreviewModal
+        item={selectedPost}
+        kind="post"
+        c={c}
+        theme={theme || "light"}
+        loading={loadingPost}
+        onClose={() => {
+          setSelectedPost(null);
+          setLoadingPost(false);
+        }}
       />
     </main>
   );

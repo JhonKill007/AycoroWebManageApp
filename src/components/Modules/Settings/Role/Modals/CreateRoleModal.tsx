@@ -67,6 +67,30 @@ const AVAILABLE_PERMISSIONS: Permission[] = [
     description: "Borrar contenido inapropiado",
   },
   {
+    id: "p17",
+    group: "Contenido",
+    label: "Ver historias",
+    description: "Acceso a la sección de historias",
+  },
+  {
+    id: "p18",
+    group: "Contenido",
+    label: "Ver audios",
+    description: "Acceso a la sección de audios",
+  },
+  {
+    id: "p19",
+    group: "Contenido",
+    label: "Ver comentarios",
+    description: "Acceso a la sección de comentarios",
+  },
+  {
+    id: "p20",
+    group: "Contenido",
+    label: "Ver tendencias",
+    description: "Acceso a la sección de tendencias",
+  },
+  {
     id: "p9",
     group: "Moderación",
     label: "Ver cola de moderación",

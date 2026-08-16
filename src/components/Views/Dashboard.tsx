@@ -1,11 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import UserProfile from "../assets/UserProfile.jpeg";
 import { Colors } from "../constants/Colors";
 import { useHubsContext } from "../context/HubsContext";
 import { useThemeContext } from "../context/ThemeContext";
+import { useToast } from "../context/ToastContext";
 import { LiveActivity } from "../Models/Live/LiveActivity";
+import AdminContentPreviewModal from "../Modules/Common/Components/AdminContentPreviewModal";
 import StatCard from "../Modules/Card/StatCard";
 import analyticsService from "../Services/Analytics/AnalyticsService";
+import adminHistoryService from "../Services/History/AdminHistoryService";
+import postService from "../Services/Post/PostService";
 
 type DashboardStats = {
   activeUsers: { value: number; trend: number | null };
@@ -68,10 +73,12 @@ function RealtimeActivityCard({
   c,
   theme,
   activities,
+  onActivityClick,
 }: {
   c: any;
   theme: string;
   activities: LiveActivity[];
+  onActivityClick: (activity: LiveActivity) => void;
 }) {
   return (
     <section
@@ -159,17 +166,35 @@ function RealtimeActivityCard({
             const color = avatarColor(activity.username || "user");
             const isUserTarget = activity.targetType === "user";
             const activityDate = formatActivityDate(activity.createDate);
+            const canOpen =
+              (activity.targetType === "user" && !!activity.targetUsername) ||
+              ((activity.targetType === "post" ||
+                activity.targetType === "history") &&
+                !!activity.targetId);
 
             return (
               <div
                 key={activity.id}
+                role={canOpen ? "button" : undefined}
+                tabIndex={canOpen ? 0 : undefined}
+                onClick={() => canOpen && onActivityClick(activity)}
+                onKeyDown={(e) => {
+                  if (!canOpen) return;
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onActivityClick(activity);
+                  }
+                }}
                 style={{
                   display: "flex",
                   alignItems: "center",
                   gap: 10,
                   padding: "8px 0",
                   minHeight: 34,
+                  cursor: canOpen ? "pointer" : "default",
+                  borderRadius: 8,
                 }}
+                title={canOpen ? "Ir al objetivo" : undefined}
               >
                 <div
                   style={{
@@ -286,7 +311,12 @@ function RealtimeActivityCard({
 const Dashboard = () => {
   const { theme } = useThemeContext();
   const { usersConnecting, liveActivities } = useHubsContext();
+  const { showToast } = useToast();
+  const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats>(emptyStats);
+  const [previewItem, setPreviewItem] = useState<any | null>(null);
+  const [previewKind, setPreviewKind] = useState<"post" | "history">("post");
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   const colors = theme === "dark" ? Colors.dark : Colors.light;
   const c = colors.colors;
@@ -303,6 +333,55 @@ const Dashboard = () => {
 
     loadDashboardStats();
   }, []);
+
+  const openTargetContent = async (
+    kind: "post" | "history",
+    targetId: string,
+  ) => {
+    setPreviewKind(kind);
+    setPreviewItem(null);
+    setPreviewLoading(true);
+    try {
+      const result =
+        kind === "post"
+          ? await postService.GetById(targetId)
+          : await adminHistoryService.GetById(targetId);
+      const item = result?.data ?? result;
+      if (!item || !item._id) {
+        throw new Error("Target not found");
+      }
+      setPreviewItem(item);
+    } catch {
+      showToast({
+        type: "error",
+        title: "Error",
+        description:
+          kind === "post"
+            ? "No se pudo cargar la publicación"
+            : "No se pudo cargar la historia",
+        duration: 4000,
+      });
+      setPreviewItem(null);
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  const handleActivityClick = (activity: LiveActivity) => {
+    if (activity.targetType === "user" && activity.targetUsername) {
+      navigate(`/users/${activity.targetUsername}`);
+      return;
+    }
+
+    if (activity.targetType === "post" && activity.targetId) {
+      void openTargetContent("post", activity.targetId);
+      return;
+    }
+
+    if (activity.targetType === "history" && activity.targetId) {
+      void openTargetContent("history", activity.targetId);
+    }
+  };
 
   const quickStats = useMemo(
     () => [
@@ -427,8 +506,25 @@ const Dashboard = () => {
           ))}
         </div>
 
-        <RealtimeActivityCard c={c} theme={theme} activities={liveActivities} />
+        <RealtimeActivityCard
+          c={c}
+          theme={theme}
+          activities={liveActivities}
+          onActivityClick={handleActivityClick}
+        />
       </main>
+
+      <AdminContentPreviewModal
+        item={previewItem}
+        kind={previewKind}
+        c={c}
+        theme={theme}
+        loading={previewLoading}
+        onClose={() => {
+          setPreviewItem(null);
+          setPreviewLoading(false);
+        }}
+      />
     </>
   );
 };

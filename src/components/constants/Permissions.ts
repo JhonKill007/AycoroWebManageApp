@@ -15,6 +15,10 @@ export const Permissions = Object.freeze({
   DANGER_ZONE: "p14",
   VIEW_ERROR_LOGS: "p15",
   VIEW_SESSION_LOGS: "p16",
+  VIEW_STORIES: "p17",
+  VIEW_AUDIOS: "p18",
+  VIEW_COMMENTS: "p19",
+  VIEW_TRENDS: "p20",
 });
 
 export type Permission = (typeof Permissions)[keyof typeof Permissions];
@@ -33,9 +37,13 @@ export const getDefaultAllowedRoute = (granted: string[] | undefined) => {
   const routes: Array<[Permission, string]> = [
     [Permissions.VIEW_DASHBOARD, "/"],
     [Permissions.VIEW_ANALYTICS, "/analytics"],
+    [Permissions.VIEW_TRENDS, "/trends"],
     [Permissions.VIEW_MODERATION, "/reports"],
     [Permissions.VIEW_USERS, "/users"],
     [Permissions.VIEW_POSTS, "/publications"],
+    [Permissions.VIEW_STORIES, "/stories"],
+    [Permissions.VIEW_AUDIOS, "/audios"],
+    [Permissions.VIEW_COMMENTS, "/comments"],
     [Permissions.MANAGE_SETTINGS, "/settings"],
     [Permissions.MANAGE_ADMINS, "/settings"],
     [Permissions.DANGER_ZONE, "/settings"],

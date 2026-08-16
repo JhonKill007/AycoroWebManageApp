@@ -5,7 +5,7 @@ import Http from "../Http/HttpClient";
 export class PostService implements IPostService {
   async GetById(id: string): Promise<any> {
     const result = await new Promise<any>((resolve, reject) => {
-      Http.get(`api/Post/${id}`)
+      Http.get(`/api/post/${id}`)
         .then((res) => {
           resolve(res);
         })

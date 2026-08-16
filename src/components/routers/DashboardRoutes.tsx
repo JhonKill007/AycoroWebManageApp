@@ -17,6 +17,7 @@ import Settings from "../Views/Settings";
 import Stories from "../Views/Stories";
 import Audios from "../Views/Audios";
 import Comments from "../Views/Comments";
+import Trends from "../Views/Trends";
 import Suspenciones from "../Views/Suspenciones";
 import UserDetail from "../Views/UserDetail";
 import Users from "../Views/Users";
@@ -40,6 +41,9 @@ const DashboardRoutes = () => {
             <Route path="/moderation/:id" element={<CaseDetails />} />
           </Route>
           <Route element={<PermissionRoute anyOf={[Permissions.VIEW_ANALYTICS]} />}><Route path="/analytics" element={<Analytics />} /></Route>
+          <Route element={<PermissionRoute anyOf={[Permissions.VIEW_TRENDS]} />}>
+            <Route path="/trends" element={<Trends />} />
+          </Route>
           <Route element={<PermissionRoute anyOf={[Permissions.VIEW_USERS]} />}>
             <Route path="/users" element={<Users />} />
             <Route path="users/:username" element={<UserDetail />} />
@@ -47,8 +51,14 @@ const DashboardRoutes = () => {
           </Route>
           <Route element={<PermissionRoute anyOf={[Permissions.VIEW_POSTS]} />}>
             <Route path="/publications" element={<Publications />} />
+          </Route>
+          <Route element={<PermissionRoute anyOf={[Permissions.VIEW_STORIES]} />}>
             <Route path="/stories" element={<Stories />} />
+          </Route>
+          <Route element={<PermissionRoute anyOf={[Permissions.VIEW_AUDIOS]} />}>
             <Route path="/audios" element={<Audios />} />
+          </Route>
+          <Route element={<PermissionRoute anyOf={[Permissions.VIEW_COMMENTS]} />}>
             <Route path="/comments" element={<Comments />} />
           </Route>
           <Route element={<PermissionRoute anyOf={[Permissions.MANAGE_SETTINGS, Permissions.MANAGE_ADMINS, Permissions.DANGER_ZONE]} />}><Route path="/settings" element={<Settings />} /></Route>

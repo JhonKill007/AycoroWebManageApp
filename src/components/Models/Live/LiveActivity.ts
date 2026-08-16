@@ -5,6 +5,7 @@ export type LiveActivity = {
   action: string;
   message: string;
   targetType: "post" | "user" | "history" | string;
+  targetId?: string;
   targetImage?: string;
   targetUsername?: string;
   mediaType?: string;
@@ -18,6 +19,7 @@ export const normalizeLiveActivity = (raw: any): LiveActivity => ({
   action: raw?.action ?? raw?.Action ?? "",
   message: raw?.message ?? raw?.Message ?? "",
   targetType: raw?.targetType ?? raw?.TargetType ?? "post",
+  targetId: raw?.targetId ?? raw?.TargetId ?? "",
   targetImage: raw?.targetImage ?? raw?.TargetImage ?? "",
   targetUsername: raw?.targetUsername ?? raw?.TargetUsername ?? "",
   mediaType: raw?.mediaType ?? raw?.MediaType ?? "",
