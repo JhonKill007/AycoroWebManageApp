@@ -14,6 +14,9 @@ import Requests from "../Views/Requests";
 import Security from "../Views/Security";
 import SessionLogs from "../Views/SessionLogs";
 import Settings from "../Views/Settings";
+import Stories from "../Views/Stories";
+import Audios from "../Views/Audios";
+import Comments from "../Views/Comments";
 import Suspenciones from "../Views/Suspenciones";
 import UserDetail from "../Views/UserDetail";
 import Users from "../Views/Users";
@@ -42,7 +45,12 @@ const DashboardRoutes = () => {
             <Route path="users/:username" element={<UserDetail />} />
             <Route path="/suspenciones" element={<Suspenciones />} />
           </Route>
-          <Route element={<PermissionRoute anyOf={[Permissions.VIEW_POSTS]} />}><Route path="/publications" element={<Publications />} /></Route>
+          <Route element={<PermissionRoute anyOf={[Permissions.VIEW_POSTS]} />}>
+            <Route path="/publications" element={<Publications />} />
+            <Route path="/stories" element={<Stories />} />
+            <Route path="/audios" element={<Audios />} />
+            <Route path="/comments" element={<Comments />} />
+          </Route>
           <Route element={<PermissionRoute anyOf={[Permissions.MANAGE_SETTINGS, Permissions.MANAGE_ADMINS, Permissions.DANGER_ZONE]} />}><Route path="/settings" element={<Settings />} /></Route>
           <Route element={<PermissionRoute anyOf={[Permissions.MANAGE_SETTINGS]} />}><Route path="/security" element={<Security />} /></Route>
           <Route element={<PermissionRoute anyOf={[Permissions.VIEW_ERROR_LOGS]} />}><Route path="/logs" element={<Logs />} /></Route>

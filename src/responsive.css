@@ -109,6 +109,23 @@ svg {
     grid-column: auto !important;
   }
 
+  .analytics-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 12px !important;
+  }
+
+  .analytics-page {
+    padding: 16px !important;
+  }
+
+  .analytics-section-header {
+    align-items: flex-start !important;
+  }
+
+  .analytics-section-actions > div {
+    justify-content: flex-start !important;
+  }
+
   .stats-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
@@ -501,6 +518,10 @@ svg {
 
 @media (max-width: 520px) {
   .stats-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .analytics-kpi-grid {
     grid-template-columns: minmax(0, 1fr) !important;
   }
 

@@ -138,9 +138,12 @@ function KpiCard({ emoji, label, value, sub, trend, colorKey, c }: any) {
     info: { bg: c.infoSoft, text: c.info },
   };
   const col = colorMap[colorKey] || colorMap.accent;
+  const displayValue =
+    typeof value === "number" ? value.toLocaleString() : value;
 
   return (
     <div
+      className="analytics-kpi-card"
       style={{
         background: c.card,
         border: `1.5px solid ${c.border}`,
@@ -150,6 +153,8 @@ function KpiCard({ emoji, label, value, sub, trend, colorKey, c }: any) {
         flexDirection: "column",
         gap: "10px",
         boxShadow: "0 2px 16px rgba(107,115,240,0.06)",
+        minWidth: 0,
+        overflow: "hidden",
       }}
     >
       <div
@@ -157,9 +162,12 @@ function KpiCard({ emoji, label, value, sub, trend, colorKey, c }: any) {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
+          gap: "8px",
+          minWidth: 0,
         }}
       >
         <div
+          className="analytics-kpi-icon"
           style={{
             width: "42px",
             height: "42px",
@@ -169,12 +177,14 @@ function KpiCard({ emoji, label, value, sub, trend, colorKey, c }: any) {
             alignItems: "center",
             justifyContent: "center",
             fontSize: "20px",
+            flexShrink: 0,
           }}
         >
           {emoji}
         </div>
         {trend !== null && trend !== undefined && (
           <span
+            className="analytics-kpi-trend"
             style={{
               fontSize: "11px",
               fontWeight: "700",
@@ -182,37 +192,52 @@ function KpiCard({ emoji, label, value, sub, trend, colorKey, c }: any) {
               background: trend >= 0 ? c.successSoft : c.dangerSoft,
               padding: "3px 9px",
               borderRadius: "20px",
+              whiteSpace: "nowrap",
+              flexShrink: 0,
             }}
           >
             {trend >= 0 ? "↑" : "↓"} {Math.abs(trend)}%
           </span>
         )}
       </div>
-      <div>
+      <div style={{ minWidth: 0 }}>
         <div
+          className="analytics-kpi-value"
           style={{
             fontSize: "26px",
             fontWeight: "800",
             color: col.text,
             letterSpacing: "-0.03em",
-            lineHeight: 1,
+            lineHeight: 1.15,
+            overflowWrap: "anywhere",
+            wordBreak: "break-word",
           }}
         >
-          {value}
+          {displayValue}
         </div>
         <div
+          className="analytics-kpi-label"
           style={{
             fontSize: "12px",
             fontWeight: "600",
             color: c.text,
-            marginTop: "4px",
+            marginTop: "6px",
+            lineHeight: 1.35,
+            overflowWrap: "anywhere",
           }}
         >
           {label}
         </div>
         {sub && (
           <div
-            style={{ fontSize: "11px", color: c.textMuted, marginTop: "2px" }}
+            className="analytics-kpi-sub"
+            style={{
+              fontSize: "11px",
+              color: c.textMuted,
+              marginTop: "2px",
+              lineHeight: 1.35,
+              overflowWrap: "anywhere",
+            }}
           >
             {sub}
           </div>
@@ -231,32 +256,50 @@ function SectionCard({ title, subtitle, children, c, action }: any) {
         borderRadius: "20px",
         overflow: "hidden",
         boxShadow: "0 2px 20px rgba(107,115,240,0.06)",
+        minWidth: 0,
       }}
     >
       <div
+        className="analytics-section-header"
         style={{
           padding: "18px 22px",
           borderBottom: `1px solid ${c.border}`,
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
+          gap: "12px",
+          flexWrap: "wrap",
         }}
       >
-        <div>
+        <div style={{ minWidth: 0, flex: "1 1 180px" }}>
           <div style={{ fontSize: "14px", fontWeight: "800", color: c.text }}>
             {title}
           </div>
           {subtitle && (
             <div
-              style={{ fontSize: "11px", color: c.textMuted, marginTop: "2px" }}
+              style={{
+                fontSize: "11px",
+                color: c.textMuted,
+                marginTop: "2px",
+                lineHeight: 1.4,
+              }}
             >
               {subtitle}
             </div>
           )}
         </div>
-        {action}
+        {action && (
+          <div
+            className="analytics-section-actions"
+            style={{ flex: "1 1 220px", minWidth: 0 }}
+          >
+            {action}
+          </div>
+        )}
       </div>
-      <div style={{ padding: "20px 22px" }}>{children}</div>
+      <div className="analytics-section-body" style={{ padding: "20px 22px" }}>
+        {children}
+      </div>
     </div>
   );
 }
@@ -1037,8 +1080,9 @@ const Analytics = () => {
           display: grid;
           grid-template-columns: 1fr 1fr;
           gap: 18px;
+          min-width: 0;
         }
-        .analytics-grid .span-2 { grid-column: span 2; }
+        .analytics-grid .span-2 { grid-column: span 2; min-width: 0; }
 
         .analytics-kpi-grid {
           display: grid;
@@ -1046,6 +1090,14 @@ const Analytics = () => {
           gap: 14px;
           width: 100%;
           margin-bottom: 22px;
+          min-width: 0;
+        }
+
+        .analytics-section-actions > div {
+          display: flex;
+          gap: 6px;
+          flex-wrap: wrap;
+          justify-content: flex-end;
         }
 
         .select-control {
@@ -1061,23 +1113,36 @@ const Analytics = () => {
           font-family: 'Plus Jakarta Sans', sans-serif;
         }
 
+        @media (max-width: 1100px) {
+          .analytics-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+
         @media (max-width: 800px) {
           .analytics-grid { grid-template-columns: 1fr; }
           .analytics-grid .span-2 { grid-column: span 1; }
           .analytics-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+          .analytics-section-actions > div { justify-content: flex-start; }
+          .analytics-kpi-card { padding: 16px !important; }
+          .analytics-kpi-value { font-size: 22px !important; }
         }
 
         @media (max-width: 520px) {
-          .analytics-kpi-grid { grid-template-columns: 1fr; }
+          .analytics-kpi-grid { grid-template-columns: 1fr; gap: 10px; }
+          .analytics-kpi-card { padding: 14px !important; gap: 8px !important; }
+          .analytics-kpi-icon { width: 36px !important; height: 36px !important; font-size: 17px !important; }
+          .analytics-kpi-value { font-size: 24px !important; }
+          .analytics-section-body { padding: 16px !important; }
         }
       `}</style>
 
       <main
+        className="analytics-page"
         style={{
           flex: 1,
           overflow: "auto",
           padding: "26px",
           fontFamily: "'Plus Jakarta Sans', sans-serif",
+          minWidth: 0,
         }}
       >
         {/* ── Header banner ── */}
@@ -1122,15 +1187,7 @@ const Analytics = () => {
         </div>
 
         {/* ── KPI Cards ── */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
-            gap: "14px",
-            width: "100%",
-            marginBottom: "22px",
-          }}
-        >
+        <div className="analytics-kpi-grid">
           <KpiCard
             emoji="👥"
             label="Usuarios este mes"
@@ -1188,15 +1245,7 @@ const Analytics = () => {
         </div>
 
         {/* ── Grid de gráficos ── */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
-            gap: "14px",
-            width: "100%",
-            marginBottom: "22px",
-          }}
-        >
+        <div className="analytics-kpi-grid">
           <KpiCard
             emoji="👥"
             label="Usuarios historicos"
