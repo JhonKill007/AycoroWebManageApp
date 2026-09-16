@@ -1,9 +1,25 @@
 // Modals/AddVersionModal.tsx
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Colors } from "../../../../constants/Colors";
 import { useUserContext } from "../../../../context/UserContext";
+import { useUploadFile } from "../../../../hooks/useUploadFile";
 import { VersionParams } from "../../../../Models/Version/VersionParams";
 import versionService from "../../../../Services/Version/VersionService";
+
+type ReleaseMediaDraft = {
+  localId: string;
+  fileName: string;
+  previewUrl: string;
+  mediaType: "image" | "video";
+  Url: string;
+  Key: string;
+  Type: string;
+  MimeType: string;
+  Size: number;
+  Duration?: number;
+  Width?: number;
+  Height?: number;
+};
 
 // ─── Configuraciones ───────────────────────────────────────────────────
 const SEVERITY_OPTIONS = [
@@ -66,6 +82,8 @@ const AddVersionModal = ({
   onClose,
 }: AddVersionModalProps) => {
   const { userData } = useUserContext();
+  const { uploadMedia } = useUploadFile();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [formData, setFormData] = useState({
     Value: "",
     Description: "",
@@ -78,6 +96,9 @@ const AddVersionModal = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [compatibleOptions, setCompatibleOptions] = useState<string[]>([]);
   const [compatibleVersions, setCompatibleVersions] = useState<string[]>([]);
+  const [releaseMedia, setReleaseMedia] = useState<ReleaseMediaDraft[]>([]);
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState("");
   const [loadingCompatibleOptions, setLoadingCompatibleOptions] =
     useState(false);
 
@@ -183,6 +204,17 @@ const AddVersionModal = ({
         Type: formData.Type,
         Status: formData.Status,
         CompatibleVersions: compatibleVersions,
+        ReleaseMedia: releaseMedia.map((item) => ({
+          Url: item.Url,
+          Key: item.Key,
+          Type: item.Type,
+          MimeType: item.MimeType,
+          Size: item.Size,
+          Duration: item.Duration,
+          Width: item.Width,
+          Height: item.Height,
+        })),
+        ReleaseHistoryIds: [],
         CreateBy: userData?.user?.id,
       });
       onClose();
@@ -206,6 +238,103 @@ const AddVersionModal = ({
         ? prev.filter((item) => item !== value)
         : [...prev, value],
     );
+  };
+
+  const readVideoMeta = (file: File) =>
+    new Promise<{ duration?: number; width?: number; height?: number }>(
+      (resolve) => {
+        const url = URL.createObjectURL(file);
+        const video = document.createElement("video");
+        video.preload = "metadata";
+        video.onloadedmetadata = () => {
+          resolve({
+            duration: Number.isFinite(video.duration) ? video.duration : undefined,
+            width: video.videoWidth || undefined,
+            height: video.videoHeight || undefined,
+          });
+          URL.revokeObjectURL(url);
+        };
+        video.onerror = () => {
+          URL.revokeObjectURL(url);
+          resolve({});
+        };
+        video.src = url;
+      },
+    );
+
+  const handleReleaseMediaPick = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const files = Array.from(event.target.files || []);
+    event.target.value = "";
+    if (files.length === 0) return;
+
+    setIsUploadingMedia(true);
+    setErrors((prev) => ({ ...prev, ReleaseMedia: "" }));
+
+    try {
+      for (let index = 0; index < files.length; index++) {
+        const file = files[index];
+        const isVideo = file.type.startsWith("video/");
+        const isImage = file.type.startsWith("image/");
+        if (!isVideo && !isImage) continue;
+
+        setUploadProgress(
+          `Subiendo ${index + 1}/${files.length}: ${file.name}`,
+        );
+
+        const meta = isVideo ? await readVideoMeta(file) : {};
+        if (isVideo && meta.duration && meta.duration > 60) {
+          setErrors((prev) => ({
+            ...prev,
+            ReleaseMedia: `El video "${file.name}" supera 60s (límite de subida).`,
+          }));
+          continue;
+        }
+
+        const uploaded = await uploadMedia(file, isVideo ? "video" : "image", {
+          duration: meta.duration,
+          width: meta.width,
+          height: meta.height,
+        });
+
+        setReleaseMedia((prev) => [
+          ...prev,
+          {
+            localId: `${Date.now()}-${index}-${file.name}`,
+            fileName: file.name,
+            previewUrl: URL.createObjectURL(file),
+            mediaType: isVideo ? "video" : "image",
+            Url: uploaded.url || "",
+            Key: uploaded.key || "",
+            Type: uploaded.type || (isVideo ? "video" : "image"),
+            MimeType: uploaded.mimeType || file.type,
+            Size: uploaded.size || file.size,
+            Duration: uploaded.duration,
+            Width: uploaded.width,
+            Height: uploaded.height,
+          },
+        ]);
+      }
+    } catch (error) {
+      console.error("Error uploading release media:", error);
+      setErrors((prev) => ({
+        ...prev,
+        ReleaseMedia:
+          "No se pudo subir uno o más archivos. Verifica el token de Aycoro y reintenta.",
+      }));
+    } finally {
+      setIsUploadingMedia(false);
+      setUploadProgress("");
+    }
+  };
+
+  const removeReleaseMedia = (localId: string) => {
+    setReleaseMedia((prev) => {
+      const target = prev.find((item) => item.localId === localId);
+      if (target?.previewUrl) URL.revokeObjectURL(target.previewUrl);
+      return prev.filter((item) => item.localId !== localId);
+    });
   };
 
   return (
@@ -698,6 +827,149 @@ const AddVersionModal = ({
               </div>
             </div>
 
+            {/* Historias de actualización */}
+            <div style={{ marginBottom: 20 }}>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: "13px",
+                  fontWeight: 700,
+                  color: c.text,
+                  marginBottom: 8,
+                }}
+              >
+                Historias de actualización
+              </label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*,video/*"
+                multiple
+                style={{ display: "none" }}
+                onChange={handleReleaseMediaPick}
+              />
+              <button
+                type="button"
+                disabled={isUploadingMedia || isSubmitting}
+                onClick={() => fileInputRef.current?.click()}
+                style={{
+                  width: "100%",
+                  padding: "12px 16px",
+                  borderRadius: 14,
+                  border: `1.5px dashed ${Colors.detailAppColor}`,
+                  background: `${Colors.detailAppColor}12`,
+                  color: Colors.detailAppColor,
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: isUploadingMedia ? "wait" : "pointer",
+                  opacity: isUploadingMedia ? 0.7 : 1,
+                }}
+              >
+                {isUploadingMedia
+                  ? uploadProgress || "Subiendo..."
+                  : "Seleccionar imágenes / videos"}
+              </button>
+              <div
+                style={{ fontSize: "10px", color: c.textMuted, marginTop: 6 }}
+              >
+                Opcional. Al publicar esta versión se crearán estas historias
+                para quienes actualicen. Videos máx. 60s.
+              </div>
+              {errors.ReleaseMedia && (
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: "#dc2626",
+                    marginTop: 8,
+                    fontWeight: 600,
+                  }}
+                >
+                  {errors.ReleaseMedia}
+                </div>
+              )}
+              {releaseMedia.length > 0 && (
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))",
+                    gap: 10,
+                    marginTop: 12,
+                  }}
+                >
+                  {releaseMedia.map((item) => (
+                    <div
+                      key={item.localId}
+                      style={{
+                        position: "relative",
+                        borderRadius: 12,
+                        overflow: "hidden",
+                        border: `1px solid ${c.border}`,
+                        background: c.inputBackground,
+                        aspectRatio: "9 / 16",
+                      }}
+                    >
+                      {item.mediaType === "video" ? (
+                        <video
+                          src={item.previewUrl}
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover",
+                          }}
+                          muted
+                        />
+                      ) : (
+                        <img
+                          src={item.previewUrl}
+                          alt={item.fileName}
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover",
+                          }}
+                        />
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => removeReleaseMedia(item.localId)}
+                        style={{
+                          position: "absolute",
+                          top: 6,
+                          right: 6,
+                          width: 24,
+                          height: 24,
+                          borderRadius: 999,
+                          border: "none",
+                          background: "rgba(0,0,0,0.7)",
+                          color: "#fff",
+                          cursor: "pointer",
+                          fontSize: 12,
+                          fontWeight: 700,
+                        }}
+                      >
+                        ×
+                      </button>
+                      <div
+                        style={{
+                          position: "absolute",
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          padding: "6px 8px",
+                          background: "rgba(0,0,0,0.55)",
+                          color: "#fff",
+                          fontSize: 10,
+                          fontWeight: 600,
+                        }}
+                      >
+                        {item.mediaType === "video" ? "Video" : "Imagen"}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Link de tienda */}
             <div style={{ marginBottom: 24 }}>
               <label
@@ -926,7 +1198,7 @@ const AddVersionModal = ({
             <button
               type="submit"
               form="version-form"
-              disabled={isSubmitting}
+              disabled={isSubmitting || isUploadingMedia}
               style={{
                 display: "inline-flex",
                 alignItems: "center",

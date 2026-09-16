@@ -887,6 +887,21 @@ const VersionsTab = ({ c, theme }: { c: any; theme: string }) => {
                     }}
                   >
                     {version.Description || "Sin descripción"}
+                    {Array.isArray(version.ReleaseMedia) &&
+                      version.ReleaseMedia.length > 0 && (
+                        <div
+                          style={{
+                            marginTop: 6,
+                            fontSize: 11,
+                            color: Colors.detailAppColor,
+                            fontWeight: 700,
+                          }}
+                        >
+                          {version.ReleaseMedia.length} historia
+                          {version.ReleaseMedia.length === 1 ? "" : "s"} de
+                          actualización
+                        </div>
+                      )}
                   </div>
                 </div>
 

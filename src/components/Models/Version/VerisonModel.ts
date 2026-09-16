@@ -7,6 +7,8 @@ export class VersionModel {
   public Type: string | undefined;
   public Status: number | undefined;
   public CompatibleVersions: string[] | undefined;
+  public ReleaseMedia?: Array<Record<string, any>>;
+  public ReleaseHistoryIds?: string[];
   public CreateBy: string | undefined;
   public CreateDate: Date | undefined;
 }

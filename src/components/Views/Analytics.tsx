@@ -15,6 +15,7 @@ import {
 } from "recharts";
 import { Colors } from "../constants/Colors";
 import { useThemeContext } from "../context/ThemeContext";
+import { MessageAnalytics, MessageAnalyticsPeriod } from "../Models/Analytics/MessageAnalyticsModel";
 import { SessionAccessAnalytics } from "../Models/SessionLog/SessionLogModel";
 import UsersByCountryChart from "../Modules/Card/UsersByCountryChart";
 import analyticsService from "../Services/Analytics/AnalyticsService";
@@ -628,6 +629,23 @@ const emptySessionAccess: SessionAccessAnalytics = {
   topUsers: [],
 };
 
+const emptyMessageAnalytics: MessageAnalytics = {
+  period: 30,
+  granularity: "day",
+  totalMessages: 0,
+  uniqueUsers: 0,
+  averageMessagesPerUser: 0,
+  series: [],
+  topUsers: [],
+};
+
+const MESSAGE_PERIODS: Array<{ value: MessageAnalyticsPeriod; label: string }> = [
+  { value: 7, label: "7d" },
+  { value: 30, label: "30d" },
+  { value: 90, label: "90d" },
+  { value: "all", label: "Todo" },
+];
+
 // ─── Componente principal ─────────────────────────────────────────────
 const Analytics = () => {
   const { theme } = useThemeContext();
@@ -696,6 +714,10 @@ const Analytics = () => {
   const [sessionAccessPeriod, setSessionAccessPeriod] = useState<number>(7);
   const [sessionAccess, setSessionAccess] =
     useState<SessionAccessAnalytics>(emptySessionAccess);
+  const [messagePeriod, setMessagePeriod] =
+    useState<MessageAnalyticsPeriod>(7);
+  const [messageAnalytics, setMessageAnalytics] =
+    useState<MessageAnalytics>(emptyMessageAnalytics);
   const [heatmap, setHeatmap] = useState<HeatmapCell[]>([]);
   const [heatMetric, setHeatMetric] = useState<HeatMetric>("total");
 
@@ -745,6 +767,19 @@ const Analytics = () => {
 
     getSessionAccess();
   }, [sessionAccessPeriod]);
+
+  useEffect(() => {
+    const getMessageAnalytics = async () => {
+      try {
+        const { data } = await analyticsService.getMessageAnalytics(messagePeriod);
+        setMessageAnalytics(data || emptyMessageAnalytics);
+      } catch {
+        setMessageAnalytics(emptyMessageAnalytics);
+      }
+    };
+
+    getMessageAnalytics();
+  }, [messagePeriod]);
 
   const heatmapMax = Math.max(
     1,
@@ -1572,6 +1607,120 @@ const Analytics = () => {
                     </div>
                     <div style={{ color: c.accent, fontSize: 12, fontWeight: 900 }}>
                       {item.sessions} entradas
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </SectionCard>
+          </div>
+
+          <div className="span-2">
+            <SectionCard
+              title="Envío de mensajes"
+              subtitle={`${messageAnalytics.uniqueUsers.toLocaleString()} usuarios enviaron ${messageAnalytics.totalMessages.toLocaleString()} mensajes · promedio ${messageAnalytics.averageMessagesPerUser} mensajes por usuario${
+                messagePeriod === "all" ? " · todo el historial" : ""
+              }`}
+              c={c}
+              action={
+                <div style={{ display: "flex", gap: "5px", flexWrap: "wrap" }}>
+                  {MESSAGE_PERIODS.map((item) => (
+                    <TabChip
+                      key={item.label}
+                      label={item.label}
+                      active={messagePeriod === item.value}
+                      onClick={() => setMessagePeriod(item.value)}
+                      c={c}
+                    />
+                  ))}
+                </div>
+              }
+            >
+              <ResponsiveContainer width="100%" height={230}>
+                <AreaChart
+                  data={messageAnalytics.series}
+                  margin={{ top: 5, right: 10, bottom: 0, left: 0 }}
+                >
+                  <defs>
+                    <linearGradient id="messageUsersGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={c.success} stopOpacity={0.25} />
+                      <stop offset="95%" stopColor={c.success} stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="messageCountGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={c.accent} stopOpacity={0.25} />
+                      <stop offset="95%" stopColor={c.accent} stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid stroke={gridColor} vertical={false} />
+                  <XAxis
+                    dataKey="label"
+                    tick={{ fill: tickColor, fontSize: 11 }}
+                    tickLine={false}
+                    axisLine={false}
+                    minTickGap={messageAnalytics.granularity === "month" ? 18 : 10}
+                  />
+                  <YAxis
+                    tick={{ fill: tickColor, fontSize: 10 }}
+                    tickLine={false}
+                    axisLine={false}
+                    width={40}
+                  />
+                  <Tooltip content={<CustomTooltip c={c} />} />
+                  <Area
+                    type="monotone"
+                    dataKey="users"
+                    name="Usuarios que enviaron"
+                    stroke={c.success}
+                    strokeWidth={2.5}
+                    fill="url(#messageUsersGrad)"
+                    dot={false}
+                    activeDot={{ r: 5, fill: c.success }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="messages"
+                    name="Mensajes enviados"
+                    stroke={c.accent}
+                    strokeWidth={2.5}
+                    fill="url(#messageCountGrad)"
+                    dot={false}
+                    activeDot={{ r: 5, fill: c.accent }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))",
+                  gap: 10,
+                  marginTop: 12,
+                }}
+              >
+                {messageAnalytics.topUsers.slice(0, 4).map((item) => (
+                  <div
+                    key={item.idUser}
+                    style={{
+                      border: `1px solid ${c.border}`,
+                      borderRadius: 12,
+                      padding: 10,
+                      background: c.inputBackground,
+                      minWidth: 0,
+                    }}
+                  >
+                    <div
+                      style={{
+                        color: c.text,
+                        fontSize: 12,
+                        fontWeight: 900,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      @{item.user?.Username || item.user?.Name || item.idUser}
+                    </div>
+                    <div style={{ color: c.accent, fontSize: 12, fontWeight: 900 }}>
+                      {item.messages} mensajes
                     </div>
                   </div>
                 ))}

@@ -63,7 +63,8 @@ export class VersionService implements IVersionService {
         "Content-Type": "application/json",
       },
     });
-    const token = localStorage.getItem("aycoroAuthToken");
+    // systemToken = cuenta oficial Aycoro (segundo login); así las historias salen como Aycoro.
+    const token = localStorage.getItem("systemToken");
     const response = await AycoroAuthSystem.put(`/api/Version/Publish`, null, {
       params: { id },
       headers: token

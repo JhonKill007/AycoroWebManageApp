@@ -105,6 +105,19 @@ export class AnalyticsService implements IAnalyticsService {
     return result;
   }
 
+  async getMessageAnalytics(days: number | "all" = 30): Promise<any> {
+    let result = await new Promise<any>((resolve, reject) => {
+      Http.get(withTimeZone(`/api/analytics/messages?days=${days}`))
+        .then((res) => {
+          resolve(res);
+        })
+        .catch((err) => {
+          reject(err);
+        });
+    });
+    return result;
+  }
+
   async getGrowthData(year: number): Promise<any> {
     let result = await new Promise<any>((resolve, reject) => {
       Http.get(withTimeZone(`/api/analytics/${year}`))
