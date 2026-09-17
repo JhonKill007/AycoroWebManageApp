@@ -76,7 +76,98 @@ const getCategoryDisplay = (category?: string) => {
   return {
     icon: CATEGORY_EMOJI[normalized] || "📄",
     label: CATEGORY_LABEL[normalized] || category || "N/A",
+    key: normalized,
   };
+};
+
+const SHARE_TYPE_LABEL: Record<string, string> = {
+  PUBLICATION: "Publicación adjunta",
+  STORY: "Historia adjunta",
+  USER: "Perfil de usuario adjunto",
+  SERVICE: "Servicio adjunto",
+  TEXT: "Mensaje de texto",
+};
+
+const joinMessageParts = (...parts: Array<string | undefined>) =>
+  parts
+    .map((part) => String(part || "").trim())
+    .filter(Boolean)
+    .join("\n\n");
+
+const buildReporterSharePayload = (
+  report: ReportModel,
+  extraText: string,
+) => {
+  const category = getCategoryDisplay(report.Category).key;
+  const extra = extraText.trim();
+  const quoted = String(
+    report.Content || report.ReportedItem?.description || "",
+  ).trim();
+
+  if (category === "comment" || category === "comentario") {
+    const parentType = String(
+      report.ReportedItem?.parentType || "",
+    ).toLowerCase();
+    return {
+      type:
+        parentType === "service" ? MessageType.SERVICE : MessageType.PUBLICATION,
+      idMedia: report.ReportedItem?.parentId || report.IdItem,
+      text: joinMessageParts(extra, quoted),
+    };
+  }
+
+  if (category === "message") {
+    return {
+      type: MessageType.USER,
+      idMedia: report.IdUserReported,
+      text: joinMessageParts(extra, quoted),
+    };
+  }
+
+  if (
+    ["post", "publication", "publicacion", "publicación"].includes(category)
+  ) {
+    return {
+      type: MessageType.PUBLICATION,
+      idMedia: report.IdItem,
+      text: extra,
+    };
+  }
+
+  if (["story", "history", "historia"].includes(category)) {
+    return {
+      type: MessageType.STORY,
+      idMedia: report.IdItem,
+      text: extra,
+    };
+  }
+
+  if (category === "service") {
+    return {
+      type: MessageType.SERVICE,
+      idMedia: report.IdItem,
+      text: extra,
+    };
+  }
+
+  if (category === "group") {
+    return {
+      type: MessageType.TEXT,
+      idMedia: undefined,
+      text: extra,
+    };
+  }
+
+  return {
+    type: MessageType.USER,
+    idMedia: report.IdUserReported || report.IdItem,
+    text: extra,
+  };
+};
+
+const getReporterShareHint = (report: ReportModel) => {
+  const payload = buildReporterSharePayload(report, "");
+  return SHARE_TYPE_LABEL[payload.type] || "Mensaje";
 };
 
 // Helper para obtener la configuración de una razón de reporte
@@ -133,8 +224,18 @@ function ReportDetailModal({
   onDeleteItem,
   onBanUser,
   onOpenUser,
+  onSendReporterMessage,
+  sendingReporterMessage,
 }: any) {
   const { can } = usePermissions();
+  const [showReporterComposer, setShowReporterComposer] = useState(false);
+  const [reporterMessage, setReporterMessage] = useState("");
+
+  useEffect(() => {
+    setShowReporterComposer(false);
+    setReporterMessage("");
+  }, [report?._id]);
+
   if (!report) return null;
 
   const reasonConfig = getReasonConfig(report.Type || "");
@@ -150,6 +251,14 @@ function ReportDetailModal({
   const reportedMediaUrl = reportedItem?.mediaUrl || contentMediaUrl;
   const canDeleteItem = isDeletableContentReport(report);
   const isResolved = report.Status === REPORT_STATUS.RESOLVED;
+  const categoryDisplay = getCategoryDisplay(report.Category);
+  const shareHint = getReporterShareHint(report);
+  const sharePreview = buildReporterSharePayload(report, reporterMessage);
+  const quotedReportContent = String(
+    report.Content || report.ReportedItem?.description || "",
+  ).trim();
+  const canSendReporterMessage =
+    Boolean(sharePreview.text?.trim()) || Boolean(sharePreview.idMedia);
 
   return (
     <div
@@ -287,9 +396,16 @@ function ReportDetailModal({
                 lineHeight: 1.6,
               }}
             >
-              {reasonConfig?.longDescription ||
-                report.Description ||
-                "Sin descripción adicional"}
+              <div style={{ fontWeight: 800, marginBottom: report.Description ? 8 : 0 }}>
+                {reasonConfig?.label || report.Type}
+              </div>
+              {reasonConfig?.description && (
+                <div style={{ color: c.textMuted, marginBottom: report.Description ? 8 : 0 }}>
+                  {reasonConfig.description}
+                </div>
+              )}
+              {report.Description ? `"${report.Description}"` : null}
+              {!report.Description && !reasonConfig ? "Sin descripción adicional" : null}
             </div>
           </div>
 
@@ -437,10 +553,13 @@ function ReportDetailModal({
             }}
           >
             <div
-              onClick={() => onOpenUser(report.ReporterUser?.Username)}
+              onClick={() => {
+                if (!report.IdUser) return;
+                setShowReporterComposer(true);
+              }}
               title={
-                report.ReporterUser?.Username
-                  ? `Abrir perfil de ${report.ReporterUser.Username}`
+                report.IdUser
+                  ? `Enviar mensaje a ${reporter.username}`
                   : undefined
               }
               style={{
@@ -451,7 +570,7 @@ function ReportDetailModal({
                 border: `1.5px solid ${c.border}`,
                 borderRadius: "12px",
                 padding: "12px 14px",
-                cursor: report.ReporterUser?.Username ? "pointer" : "default",
+                cursor: report.IdUser ? "pointer" : "default",
               }}
             >
               <div
@@ -506,6 +625,9 @@ function ReportDetailModal({
                   </div>
                   <div style={{ fontSize: 10, color: c.textMuted }}>
                     {reporter.email}
+                  </div>
+                  <div style={{ fontSize: 10, color: c.accent, marginTop: 3 }}>
+                    Enviar mensaje con el contenido reportado
                   </div>
                 </div>
               </div>
@@ -617,7 +739,7 @@ function ReportDetailModal({
                   marginLeft: "6px",
                 }}
               >
-                {CATEGORY_EMOJI[report.Category || ""]} {report.Category}
+                {categoryDisplay.icon} {categoryDisplay.label}
               </span>
             </div>
             <div
@@ -809,6 +931,191 @@ function ReportDetailModal({
           </button>
         </div>
       </div>
+
+      {showReporterComposer && (
+        <div
+          onClick={(event) => {
+            event.stopPropagation();
+            if (sendingReporterMessage) return;
+            setShowReporterComposer(false);
+            setReporterMessage("");
+          }}
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: theme === "dark" ? "rgba(0,0,0,0.55)" : "rgba(0,0,0,0.28)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 20,
+            zIndex: 2,
+          }}
+        >
+          <div
+            onClick={(event) => event.stopPropagation()}
+            style={{
+              width: "100%",
+              maxWidth: 440,
+              background: c.card,
+              border: `1.5px solid ${c.border}`,
+              borderRadius: 18,
+              overflow: "hidden",
+              boxShadow: "0 18px 50px rgba(0,0,0,0.28)",
+            }}
+          >
+            <div
+              style={{
+                padding: "16px 18px",
+                borderBottom: `1.5px solid ${c.border}`,
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 12,
+              }}
+            >
+              <div>
+                <div
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    color: c.textMuted,
+                    letterSpacing: "0.08em",
+                  }}
+                >
+                  MENSAJE AL REPORTANTE
+                </div>
+                <div style={{ fontSize: 15, fontWeight: 900, color: c.text, marginTop: 4 }}>
+                  Enviar a {reporter.username}
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={sendingReporterMessage}
+                onClick={() => {
+                  setShowReporterComposer(false);
+                  setReporterMessage("");
+                }}
+                style={{
+                  width: 30,
+                  height: 30,
+                  borderRadius: 8,
+                  border: `1.5px solid ${c.border}`,
+                  background: c.card,
+                  cursor: "pointer",
+                  color: c.textMuted,
+                }}
+              >
+                ✕
+              </button>
+            </div>
+            <div style={{ padding: 18, display: "flex", flexDirection: "column", gap: 12 }}>
+              <div
+                style={{
+                  fontSize: 12,
+                  color: c.textMuted,
+                  lineHeight: 1.5,
+                  background:
+                    theme === "dark"
+                      ? "rgba(255,255,255,0.03)"
+                      : "rgba(0,0,0,0.03)",
+                  border: `1.5px solid ${c.border}`,
+                  borderRadius: 12,
+                  padding: "10px 12px",
+                }}
+              >
+                Se enviará como <strong style={{ color: c.accent }}>{shareHint}</strong>
+                {quotedReportContent ? (
+                  <div style={{ marginTop: 8, color: c.text }}>
+                    Texto del reporte que se concatenará:
+                    <div style={{ marginTop: 4, fontStyle: "italic" }}>
+                      "{quotedReportContent}"
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+              <textarea
+                value={reporterMessage}
+                onChange={(event) => setReporterMessage(event.target.value)}
+                placeholder="Escribe un mensaje para acompañar el contenido reportado..."
+                rows={5}
+                disabled={sendingReporterMessage}
+                style={{
+                  width: "100%",
+                  resize: "vertical",
+                  borderRadius: 12,
+                  border: `1.5px solid ${c.inputBorder || c.border}`,
+                  background: c.inputBackground || c.card,
+                  color: c.text,
+                  padding: "12px 14px",
+                  fontSize: 13,
+                  fontFamily: "inherit",
+                  outline: "none",
+                }}
+              />
+            </div>
+            <div
+              style={{
+                padding: "12px 18px 16px",
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: 8,
+              }}
+            >
+              <button
+                type="button"
+                disabled={sendingReporterMessage}
+                onClick={() => {
+                  setShowReporterComposer(false);
+                  setReporterMessage("");
+                }}
+                style={{
+                  padding: "9px 14px",
+                  borderRadius: 12,
+                  border: `1.5px solid ${c.border}`,
+                  background: "transparent",
+                  color: c.textMuted,
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={!canSendReporterMessage || sendingReporterMessage}
+                onClick={async () => {
+                  if (!canSendReporterMessage || sendingReporterMessage) return;
+                  const sent = await onSendReporterMessage(
+                    report,
+                    reporterMessage,
+                  );
+                  if (sent) {
+                    setShowReporterComposer(false);
+                    setReporterMessage("");
+                  }
+                }}
+                style={{
+                  padding: "9px 14px",
+                  borderRadius: 12,
+                  border: "none",
+                  background: c.accent,
+                  color: "#fff",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor:
+                    !canSendReporterMessage || sendingReporterMessage
+                      ? "not-allowed"
+                      : "pointer",
+                  opacity:
+                    !canSendReporterMessage || sendingReporterMessage ? 0.55 : 1,
+                }}
+              >
+                {sendingReporterMessage ? "Enviando..." : "Enviar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -824,6 +1131,7 @@ const Reports = () => {
   // Estados
   const [reports, setReports] = useState<ReportModel[]>([]);
   const [selected, setSelected] = useState<ReportModel | null>(null);
+  const [sendingReporterMessage, setSendingReporterMessage] = useState(false);
   const [filterStatus, setFilterStatus] = useState<number | "todos">("todos");
   const [filterType, setFilterType] = useState<string>("todos");
   const [filterPriority, setFilterPriority] = useState<string>("todos");
@@ -1075,6 +1383,62 @@ const Reports = () => {
       navigate(`/users/${username}`);
     },
     [navigate],
+  );
+
+  const handleSendReporterMessage = useCallback(
+    async (report: ReportModel, extraText: string) => {
+      const payload = buildReporterSharePayload(report, extraText);
+      if (!payload.text?.trim() && !payload.idMedia) {
+        showToast({
+          type: "error",
+          title: "Mensaje vacío",
+          description: "Escribe un mensaje o espera a que el reporte tenga contenido para adjuntar",
+          duration: 4000,
+        });
+        return false;
+      }
+
+      setSendingReporterMessage(true);
+      try {
+        await systemMessageService.sendUserMessage(
+          {
+            _id: report.IdUser,
+            Username: report.ReporterUser?.Username,
+            Name: report.ReporterUser?.Name,
+            Verify: report.ReporterUser?.Verify,
+            VerifyType: report.ReporterUser?.VerifyType,
+            PerfilData: report.ReporterUser?.PerfilData,
+            ProfilePhoto: report.ProfilePhotoUser,
+          },
+          payload.text || report.ReportedUser?.Username || "Aycoro",
+          {
+            type: payload.type,
+            idMedia: payload.idMedia,
+          },
+        );
+        showToast({
+          type: "success",
+          title: "Mensaje enviado",
+          description: `Se envió a ${report.ReporterUser?.Username || "el reportante"} con ${
+            SHARE_TYPE_LABEL[payload.type] || payload.type
+          }`,
+          duration: 3500,
+        });
+        return true;
+      } catch (error) {
+        console.error("Error sending reporter message:", error);
+        showToast({
+          type: "error",
+          title: "Error",
+          description: "No se pudo enviar el mensaje al reportante",
+          duration: 4500,
+        });
+        return false;
+      } finally {
+        setSendingReporterMessage(false);
+      }
+    },
+    [showToast],
   );
 
   const stats = useMemo(() => {
@@ -1978,6 +2342,8 @@ const Reports = () => {
         onDeleteItem={handleDeleteReportedContent}
         onBanUser={handleBanUser}
         onOpenUser={handleOpenUser}
+        onSendReporterMessage={handleSendReporterMessage}
+        sendingReporterMessage={sendingReporterMessage}
       />
     </>
   );

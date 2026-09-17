@@ -5,6 +5,8 @@ export const MessageType = Object.freeze({
   VIDEO: "VIDEO",
   PUBLICATION: "PUBLICATION",
   SERVICE: "SERVICE",
+  STORY: "STORY",
+  USER: "USER",
 });
 
 export const NotifyType = Object.freeze({
