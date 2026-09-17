@@ -50,5 +50,19 @@ export const VerificationStatus = Object.freeze({
   PENDING_VERIFICATION: 3,
 });
 
+export const RequestStatus = Object.freeze({
+  PENDING: 1,
+  IN_REVIEW: 2,
+  APPROVED: 3,
+  REJECTED: 4,
+});
+
+export const ReportStatus = Object.freeze({
+  PENDING: 1,
+  IN_REVIEW: 2,
+  RESOLVED: 3,
+  DISMISSED: 4,
+});
+
 export const Mobile_App_Link =
   "https://expo.dev/artifacts/eas/udKsxvhXhrayQ3FSRZoCSR.apk";

@@ -13,4 +13,6 @@ export interface IReportService {
   updateStatus(id: string, status: number): Promise<any>;
   deleteReportedItem(id: string): Promise<any>;
   banReportedUser(id: string): Promise<any>;
+  getById(id: string): Promise<any>;
+  assign(id: string): Promise<any>;
 }

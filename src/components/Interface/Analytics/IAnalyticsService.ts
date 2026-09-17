@@ -8,5 +8,6 @@ export interface IAnalyticsService {
   getGenderData(): Promise<any>;
   getSessionAccess(days?: number): Promise<any>;
   getMessageAnalytics(days?: number | "all"): Promise<any>;
+  getBusinessAnalytics(): Promise<any>;
   getGrowthDataByMonth(year: number, month: number): Promise<any>;
 }

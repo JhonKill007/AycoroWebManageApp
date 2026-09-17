@@ -118,6 +118,19 @@ export class AnalyticsService implements IAnalyticsService {
     return result;
   }
 
+  async getBusinessAnalytics(): Promise<any> {
+    let result = await new Promise<any>((resolve, reject) => {
+      Http.get(withTimeZone(`/api/analytics/business`))
+        .then((res) => {
+          resolve(res);
+        })
+        .catch((err) => {
+          reject(err);
+        });
+    });
+    return result;
+  }
+
   async getGrowthData(year: number): Promise<any> {
     let result = await new Promise<any>((resolve, reject) => {
       Http.get(withTimeZone(`/api/analytics/${year}`))

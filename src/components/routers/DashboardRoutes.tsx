@@ -2,8 +2,8 @@ import { Route } from "react-router-dom";
 import AppLayout from "../Layout/AppLayout";
 import AccountAdmin from "../Views/AccountAdmin";
 import Analytics from "../Views/Analytics";
+import Audit from "../Views/Audit";
 import CaseDetails from "../Views/CaseDetails";
-import Conversations from "../Views/Conversations";
 import Dashboard from "../Views/Dashboard";
 import Login from "../Views/Login";
 import Logs from "../Views/Logs";
@@ -11,7 +11,6 @@ import Moderation from "../Views/Moderation";
 import Publications from "../Views/Publications";
 import Reports from "../Views/Reports";
 import Requests from "../Views/Requests";
-import Security from "../Views/Security";
 import SessionLogs from "../Views/SessionLogs";
 import Settings from "../Views/Settings";
 import Stories from "../Views/Stories";
@@ -36,7 +35,6 @@ const DashboardRoutes = () => {
           <Route element={<PermissionRoute anyOf={[Permissions.VIEW_MODERATION]} />}>
             <Route path="/reports" element={<Reports />} />
             <Route path="/requests" element={<Requests />} />
-            <Route path="/conversations" element={<Conversations />} />
             <Route path="/moderation" element={<Moderation />} />
             <Route path="/moderation/:id" element={<CaseDetails />} />
           </Route>
@@ -62,7 +60,7 @@ const DashboardRoutes = () => {
             <Route path="/comments" element={<Comments />} />
           </Route>
           <Route element={<PermissionRoute anyOf={[Permissions.MANAGE_SETTINGS, Permissions.MANAGE_ADMINS, Permissions.DANGER_ZONE]} />}><Route path="/settings" element={<Settings />} /></Route>
-          <Route element={<PermissionRoute anyOf={[Permissions.MANAGE_SETTINGS]} />}><Route path="/security" element={<Security />} /></Route>
+          <Route element={<PermissionRoute anyOf={[Permissions.VIEW_ERROR_LOGS, Permissions.MANAGE_ADMINS]} />}><Route path="/audit" element={<Audit />} /></Route>
           <Route element={<PermissionRoute anyOf={[Permissions.VIEW_ERROR_LOGS]} />}><Route path="/logs" element={<Logs />} /></Route>
           <Route element={<PermissionRoute anyOf={[Permissions.VIEW_SESSION_LOGS]} />}><Route path="/session" element={<SessionLogs />} /></Route>
           <Route path="/account" element={<AccountAdmin />} />
@@ -70,10 +68,6 @@ const DashboardRoutes = () => {
       </Route>
       <Route path="/unauthorized" element={<Unauthorized />} />
       <Route path="/login" element={<Login />} />
-      {/* <Route path="/" element={<LandingPage />} />
-      <Route path="/register" element={<RegisterPage />} /> */}
-      {/* <Route path="/comunity/*" element={<ComunityRoutes />} /> */}
-      {/* <Route path="/recovery" element={<AccountRecovery />} /> */}
     </CustomRoutes>
   );
 };

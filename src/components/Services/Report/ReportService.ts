@@ -123,6 +123,14 @@ export class ReportService implements IReportService {
     });
     return result;
   }
+
+  async getById(id: string): Promise<any> {
+    return Http.get(`/api/report/${id}`);
+  }
+
+  async assign(id: string): Promise<any> {
+    return Http.put(`/api/report/${id}/assign`);
+  }
 }
 
 const reportService = new ReportService();

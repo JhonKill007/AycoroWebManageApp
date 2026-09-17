@@ -328,6 +328,11 @@ const Dashboard = () => {
         setStats({ ...emptyStats, ...data });
       } catch (error) {
         console.error("Error loading dashboard stats:", error);
+        showToast({
+          type: "error",
+          title: "Error",
+          description: "No se pudieron cargar las métricas del dashboard.",
+        });
       }
     };
 

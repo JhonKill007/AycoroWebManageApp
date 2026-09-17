@@ -120,12 +120,12 @@ const AVAILABLE_PERMISSIONS: Permission[] = [
     label: "Zona de peligro",
     description: "Acciones críticas del sistema",
   },
-  {
-    id: "p15",
-    group: "Sistema",
-    label: "Ver ErrorLog",
-    description: "Registros de errores capturados por la app",
-  },
+    {
+      id: "p15",
+      group: "Sistema",
+      label: "Ver logs y auditoría",
+      description: "Errores de la app y acciones de administradores",
+    },
   {
     id: "p16",
     group: "Sistema",

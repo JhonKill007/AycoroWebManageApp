@@ -19,75 +19,7 @@ import postService from "../Services/Post/PostService";
 import systemMessageService from "../Services/SystemMessage/SystemMessageService";
 import userService from "../Services/User/UserService";
 
-// ─── Mock usuario ──────────────────────────────────────────────────────
-const MOCK_USER = {
-  id: "USR-042",
-  name: "Sofía Ramírez",
-  username: "sofia_r",
-  email: "sofia@gmail.com",
-  bio: "Diseñadora UX/UI 🎨 · Amante del café ☕ · Creando cosas bonitas desde 2019. Siempre explorando nuevas ideas y conectando con personas increíbles.",
-  location: "🇨🇴 Bogotá, Colombia",
-  website: "sofiaramirez.design",
-  joined: "14 mar 2023",
-  lastSeen: "Hace 12 min",
-  status: "activo" as "activo" | "suspendido" | "baneado",
-  verified: true,
-  premium: true,
-  avatar: "SR",
-  avatarColor: "#34d399",
-  coverGradient:
-    "linear-gradient(135deg, #0d1f2d 0%, #1a2f4a 50%, #0f3460 100%)",
-  stats: {
-    seguidores: 4820,
-    seguidos: 312,
-    bloqueados: 7,
-    publicaciones: 89,
-    archivadas: 14,
-    reposteadas: 23,
-    guardadas: 156,
-  },
-};
-
-// ─── Mock publicaciones ────────────────────────────────────────────────
-const genPubs = (type: string, count: number) =>
-  Array.from({ length: count }, (_, i) => ({
-    id: `PUB-${type.slice(0, 3).toUpperCase()}-${String(i + 1).padStart(3, "0")}`,
-    title: [
-      "El diseño minimalista y su impacto en la experiencia del usuario",
-      "Explorando nuevas técnicas de ilustración digital",
-      "Retrospectiva: mis mejores proyectos de 2024",
-      "¿Cómo organizo mi flujo de trabajo creativo?",
-      "Herramientas que uso a diario como diseñadora",
-      "La importancia del feedback en el diseño colaborativo",
-      "Proceso creativo: de la idea al producto final",
-      "Tendencias en UI design para este año",
-    ][i % 8],
-    content:
-      "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam quis nostrud exercitation.",
-    type: (["texto", "imagen", "video", "encuesta"] as const)[i % 4],
-    likes: Math.floor(Math.random() * 800) + 20,
-    comments: Math.floor(Math.random() * 120) + 2,
-    shares: Math.floor(Math.random() * 60),
-    views: Math.floor(Math.random() * 5000) + 100,
-    date: `${Math.floor(Math.random() * 28) + 1} feb 2025`,
-    tags: [
-      ["diseño", "ux", "ui"],
-      ["arte", "ilustración"],
-      ["proceso", "creativo"],
-      ["tips", "diseño"],
-    ][i % 4],
-    reportes: i === 2 ? 3 : i === 5 ? 1 : 0,
-  }));
-
-const PUBLICATIONS = {
-  activas: genPubs("act", 12),
-  archivadas: genPubs("arc", 14),
-  reposteadas: genPubs("rep", 8),
-  guardadas: genPubs("sav", 15),
-  eliminadas: genPubs("del", 3),
-};
-
-// ─── Configs ───────────────────────────────────────────────────────────
+const AVATAR_COLOR = "#34d399";
 const STATUS_CFG = {
   activo: {
     label: "Activo",
@@ -191,6 +123,19 @@ const formatBirthDate = (value?: string) => {
     month: "long",
     year: "numeric",
   });
+};
+
+const getAgeLabel = (value?: string) => {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  const now = new Date();
+  let age = now.getFullYear() - date.getFullYear();
+  const monthDiff = now.getMonth() - date.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < date.getDate())) {
+    age -= 1;
+  }
+  return `${age} años`;
 };
 
 function UserPublicationModal({
@@ -469,6 +414,7 @@ const UserDetail = () => {
   const { userData, updateUser } = useUserContext();
   const { searchImage } = useImageBankContext();
   const { showToast } = useToast();
+  const { can } = usePermissions();
   const [perfilUser, setPerfilUser] = useState<UserPerfilModel | undefined>();
   const [perfilPost, setPerfilPost] = useState<PostModel[]>([]);
   const [selectedPublication, setSelectedPublication] =
@@ -481,7 +427,9 @@ const UserDetail = () => {
   const colors = theme === "dark" ? Colors.dark : Colors.light;
   const c = colors.colors;
 
-  const [user, setUser] = useState(MOCK_USER);
+  const [user, setUser] = useState<{ status: "activo" | "suspendido" | "baneado" }>({
+    status: "activo",
+  });
   const [pubTab, setPubTab] = useState<PubTabId>("activas");
   const [searchPub, setSearch] = useState("");
   const [confirmBan, setConfirmBan] = useState(false);
@@ -529,6 +477,11 @@ const UserDetail = () => {
       // archivedPost.data.forEach((post: any) => savePost(post));
     } catch (error) {
       console.error("Error loading data:", error);
+      showToast({
+        type: "error",
+        title: "Error",
+        description: "No se pudo cargar el usuario.",
+      });
     } finally {
       setLoadingData({ user: false, posts: false });
       // setRefreshing(false);
@@ -687,9 +640,19 @@ const UserDetail = () => {
       setStatusSaved(true);
       setStatusModalOpen(false);
       setConfirmStatusOpen(false);
+      showToast({
+        type: "success",
+        title: "Estado actualizado",
+        description: "El estado del usuario se guardó correctamente.",
+      });
       setTimeout(() => setStatusSaved(false), 2200);
     } catch (error) {
       console.error("Error updating user status:", error);
+      showToast({
+        type: "error",
+        title: "Error",
+        description: "No se pudo actualizar el estado del usuario.",
+      });
     } finally {
       setStatusSaving(false);
     }
@@ -895,6 +858,18 @@ const UserDetail = () => {
           >
             <button
               className="action-btn"
+              onClick={() => {
+                const blob = new Blob(
+                  [JSON.stringify(perfilUser || {}, null, 2)],
+                  { type: "application/json" },
+                );
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = url;
+                link.download = `${perfilUser?.User?.Username || "usuario"}.json`;
+                link.click();
+                URL.revokeObjectURL(url);
+              }}
               style={{
                 background: c.card,
                 border: `1.5px solid ${c.border}`,
@@ -939,6 +914,7 @@ const UserDetail = () => {
                 )}
               </div>
             </div>
+            {can(Permissions.SANCTION_USERS) && (
             <button
               className="action-btn"
               onClick={() => {
@@ -953,6 +929,7 @@ const UserDetail = () => {
             >
               Cambiar estado
             </button>
+            )}
           </div>
 
           {/* ══════════════════════════════════════════
@@ -993,15 +970,15 @@ const UserDetail = () => {
                     width: 120,
                     height: 120,
                     borderRadius: "50%",
-                    background: `${user.avatarColor}20`,
-                    border: `3px solid ${user.avatarColor}55`,
+                    background: `${AVATAR_COLOR}20`,
+                    border: `3px solid ${AVATAR_COLOR}55`,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     fontSize: 42,
                     fontWeight: 900,
-                    color: user.avatarColor,
-                    boxShadow: `0 0 0 6px ${user.avatarColor}12, 0 12px 40px rgba(0,0,0,0.18)`,
+                    color: AVATAR_COLOR,
+                    boxShadow: `0 0 0 6px ${AVATAR_COLOR}12, 0 12px 40px rgba(0,0,0,0.18)`,
                   }}
                 >
                   <img
@@ -1119,12 +1096,17 @@ const UserDetail = () => {
                     value: perfilUser?.Posts ?? (perfilUser as any)?.Post ?? 0,
                     color: c.warning,
                   },
+                  {
+                    label: "Reportes",
+                    value: perfilUser?.Reports ?? 0,
+                    color: c.danger,
+                  },
                 ].map((s, i) => (
                   <div
                     key={s.label}
                     className="social-col"
                     style={{
-                      borderRight: i < 2 ? `1px solid ${c.border}` : "none",
+                      borderRight: i < 3 ? `1px solid ${c.border}` : "none",
                       padding: "14px 10px",
                       gap: 3,
                     }}
@@ -1231,7 +1213,7 @@ const UserDetail = () => {
                     },
                     {
                       label: "Edad",
-                      value: `${17} años`,
+                      value: getAgeLabel(perfilUser?.User?.Birthday),
                     },                    {
                       label: "Ciudad",
                       value: perfilUser?.User?.City || "-",
@@ -1353,15 +1335,27 @@ const UserDetail = () => {
                 }}
               >
                 {[
-                  { label: "✉️ Enviar mensaje", cls: "" },
-                  { label: "🔍 Ver actividad", cls: "" },
-                  { label: "📋 Ver logs del usuario", cls: "" },
-                  { label: "⚠️ Crear reporte", cls: "" },
-                  { label: "🚫 Banear usuario", cls: "danger" },
-                ].map((a) => (
+                  can(Permissions.SANCTION_USERS) && {
+                    label: user.status === "baneado" ? "✅ Quitar ban" : "🚫 Banear usuario",
+                    cls: user.status === "baneado" ? "" : "danger",
+                    onClick: () => {
+                      setPendingStatus(user.status === "baneado" ? "activo" : "baneado");
+                      setStatusModalOpen(true);
+                      setConfirmStatusOpen(true);
+                    },
+                  },
+                  {
+                    label: "📋 Ver reportes",
+                    cls: "",
+                    onClick: () => navigate("/reports"),
+                  },
+                ]
+                  .filter(Boolean)
+                  .map((a: any) => (
                   <button
                     key={a.label}
                     className={`action-btn ${a.cls}`}
+                    onClick={a.onClick}
                     style={{ width: "100%", textAlign: "left" }}
                   >
                     {a.label}

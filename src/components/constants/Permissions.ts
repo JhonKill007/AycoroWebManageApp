@@ -48,7 +48,7 @@ export const getDefaultAllowedRoute = (granted: string[] | undefined) => {
     [Permissions.MANAGE_ADMINS, "/settings"],
     [Permissions.DANGER_ZONE, "/settings"],
     [Permissions.VIEW_ERROR_LOGS, "/logs"],
-    [Permissions.VIEW_SESSION_LOGS, "/session-logs"],
+    [Permissions.VIEW_SESSION_LOGS, "/session"],
   ];
   return routes.find(([permission]) => granted?.includes(permission))?.[1];
 };

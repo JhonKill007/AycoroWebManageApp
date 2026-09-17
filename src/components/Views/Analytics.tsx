@@ -6,6 +6,8 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  Line,
+  LineChart,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -15,6 +17,7 @@ import {
 } from "recharts";
 import { Colors } from "../constants/Colors";
 import { useThemeContext } from "../context/ThemeContext";
+import { useToast } from "../context/ToastContext";
 import { MessageAnalytics, MessageAnalyticsPeriod } from "../Models/Analytics/MessageAnalyticsModel";
 import { SessionAccessAnalytics } from "../Models/SessionLog/SessionLogModel";
 import UsersByCountryChart from "../Modules/Card/UsersByCountryChart";
@@ -34,36 +37,23 @@ import analyticsService from "../Services/Analytics/AnalyticsService";
 
 
 
-const RETENTION_DATA = [
-  { semana: "S1", retencion: 100 },
-  { semana: "S2", retencion: 72 },
-  { semana: "S3", retencion: 58 },
-  { semana: "S4", retencion: 49 },
-  { semana: "S5", retencion: 43 },
-  { semana: "S6", retencion: 38 },
-  { semana: "S7", retencion: 35 },
-  { semana: "S8", retencion: 33 },
-];
-
-const TOP_USERS = [
-  { user: "sofia_r", posts: 142, likes: 3420, followers: 891, verified: true },
-  {
-    user: "carlos_m",
-    posts: 128,
-    likes: 2870,
-    followers: 754,
-    verified: false,
+const emptyBusiness = {
+  retention: {
+    d1: { cohort: 0, returned: 0, rate: 0 },
+    d7: { cohort: 0, returned: 0, rate: 0 },
+    d30: { cohort: 0, returned: 0, rate: 0 },
+    weekly: [] as Array<{ semana: string; retencion: number; cohort: number }>,
   },
-  {
-    user: "ana_flores",
-    posts: 97,
-    likes: 2640,
-    followers: 612,
-    verified: true,
-  },
-  { user: "jorge_s", posts: 84, likes: 1980, followers: 540, verified: false },
-  { user: "elena_rq", posts: 76, likes: 1720, followers: 489, verified: true },
-];
+  funnel: { registered: 0, validated: 0, posted: 0, returnedD1: 0 },
+  topUsers: [] as Array<{
+    user: string;
+    name: string;
+    posts: number;
+    likes: number;
+    followers: number;
+    verified: boolean;
+  }>,
+};
 
 type HeatMetric =
   | "total"
@@ -649,6 +639,7 @@ const MESSAGE_PERIODS: Array<{ value: MessageAnalyticsPeriod; label: string }> =
 // ─── Componente principal ─────────────────────────────────────────────
 const Analytics = () => {
   const { theme } = useThemeContext();
+  const { showToast } = useToast();
   const colors = theme === "dark" ? Colors.dark : Colors.light;
   const c = colors.colors;
 
@@ -724,6 +715,7 @@ const Analytics = () => {
   const [devices, setDevices] = useState<Device[]>([]);
   const [genderUsers, setGenderUsers] = useState<PieDatum[]>([]);
   const [genderPosts, setGenderPosts] = useState<PieDatum[]>([]);
+  const [business, setBusiness] = useState(emptyBusiness);
 
   useEffect(() => {
     const getDeviceData = async () => {
@@ -788,11 +780,35 @@ const Analytics = () => {
 
   useEffect(() => {
     const getMonthlyData = async () => {
-      const { data } = await analyticsService.getMonthlyData();
-      setMonthlyResume(data);
+      try {
+        const { data } = await analyticsService.getMonthlyData();
+        setMonthlyResume(data);
+      } catch {
+        showToast({
+          type: "error",
+          title: "Error",
+          description: "No se pudieron cargar las métricas mensuales.",
+        });
+      }
     };
 
     getMonthlyData();
+  }, [showToast]);
+
+  useEffect(() => {
+    const getBusiness = async () => {
+      try {
+        const { data } = await analyticsService.getBusinessAnalytics();
+        setBusiness({
+          retention: data?.retention || emptyBusiness.retention,
+          funnel: data?.funnel || emptyBusiness.funnel,
+          topUsers: data?.topUsers || [],
+        });
+      } catch {
+        setBusiness(emptyBusiness);
+      }
+    };
+    getBusiness();
   }, []);
 
   useEffect(() => {
@@ -1214,11 +1230,39 @@ const Analytics = () => {
               style={{ fontSize: "13px", color: c.textMuted, lineHeight: 1.5 }}
             >
               Métricas de crecimiento, actividad y retención de tu comunidad.{" "}
-              <strong style={{ color: c.accent }}>+18% usuarios</strong> este
-              mes.
+              <strong style={{ color: c.accent }}>
+                {monthlyResume.users.change >= 0 ? "+" : ""}
+                {monthlyResume.users.change}% usuarios
+              </strong>{" "}
+              este mes.
             </div>
           </div>
-          <button className="pill-cta">Exportar datos →</button>
+          <button
+            className="pill-cta"
+            onClick={() => {
+              const rows = [
+                ["metrica", "valor"],
+                ["usuarios_mes", monthlyResume.users.thisMonth],
+                ["usuarios_cambio", monthlyResume.users.change],
+                ["publicaciones_mes", monthlyResume.posts.thisMonth],
+                ["retencion_d1", business.retention.d1.rate],
+                ["retencion_d7", business.retention.d7.rate],
+                ["retencion_d30", business.retention.d30.rate],
+                ["usuarios_validados", business.funnel.validated],
+                ["usuarios_con_post", business.funnel.posted],
+              ];
+              const csv = rows.map((row) => row.join(",")).join("\n");
+              const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement("a");
+              link.href = url;
+              link.download = "aycoro-analytics.csv";
+              link.click();
+              URL.revokeObjectURL(url);
+            }}
+          >
+            Exportar CSV →
+          </button>
         </div>
 
         {/* ── KPI Cards ── */}
@@ -1268,15 +1312,30 @@ const Analytics = () => {
             colorKey="warning"
             c={c}
           />
-          {/* <KpiCard
+          <KpiCard
             emoji="📈"
-            label="Retención 30d"
-            value="33%"
-            sub="usuarios activos"
-            trend={-2}
-            colorKey="danger"
+            label="Retención D1"
+            value={`${business.retention.d1.rate}%`}
+            sub={`${business.retention.d1.returned}/${business.retention.d1.cohort} volvieron al día siguiente`}
+            colorKey="success"
             c={c}
-          /> */}
+          />
+          <KpiCard
+            emoji="📅"
+            label="Retención D7"
+            value={`${business.retention.d7.rate}%`}
+            sub={`${business.retention.d7.returned}/${business.retention.d7.cohort} a la semana`}
+            colorKey="info"
+            c={c}
+          />
+          <KpiCard
+            emoji="⏳"
+            label="Retención D30"
+            value={`${business.retention.d30.rate}%`}
+            sub={`${business.retention.d30.returned}/${business.retention.d30.cohort} al mes`}
+            colorKey="warning"
+            c={c}
+          />
         </div>
 
         {/* ── Grid de gráficos ── */}
@@ -1914,14 +1973,14 @@ const Analytics = () => {
           />
 
           {/* 4. Retención */}
-          {/* <SectionCard
+          <SectionCard
             title="Curva de retención"
-            subtitle="% de usuarios activos semana a semana"
+            subtitle="% de usuarios de cada cohorte semanal que volvieron a entrar"
             c={c}
           >
             <ResponsiveContainer width="100%" height={200}>
               <LineChart
-                data={RETENTION_DATA}
+                data={business.retention.weekly}
                 margin={{ top: 5, right: 10, bottom: 0, left: -10 }}
               >
                 <CartesianGrid stroke={gridColor} vertical={false} />
@@ -1960,7 +2019,7 @@ const Analytics = () => {
                 />
               </LineChart>
             </ResponsiveContainer>
-          </SectionCard> */}
+          </SectionCard>
 
           {/* 5. Heatmap de actividad por hora */}
           <SectionCard
@@ -2156,7 +2215,7 @@ const Analytics = () => {
           </SectionCard>
 
           {/* 7. Top usuarios (span 2) */}
-          <div style={{ display: 'none' }} className="span-2">
+          <div className="span-2">
             <SectionCard
               title="🏆 Top usuarios"
               subtitle="Usuarios más activos de la comunidad este mes"
@@ -2193,9 +2252,13 @@ const Analytics = () => {
                   )}
                 </div>
 
-                {TOP_USERS.map((u, i) => {
-                  const { bg } = getAvatar(u.user);
+                {business.topUsers.map((u, i) => {
+                  const { bg } = getAvatar(u.user || "u");
                   const medals = ["🥇", "🥈", "🥉"];
+                  const maxFollowers = Math.max(
+                    1,
+                    ...business.topUsers.map((item) => item.followers || 0),
+                  );
                   return (
                     <div
                       key={u.user}
@@ -2263,7 +2326,7 @@ const Analytics = () => {
                             flexShrink: 0,
                           }}
                         >
-                          {u.user.slice(0, 2).toUpperCase()}
+                          {String(u.user || "us").slice(0, 2).toUpperCase()}
                         </div>
                         <div>
                           <div
@@ -2306,7 +2369,7 @@ const Analytics = () => {
                           color: c.text,
                         }}
                       >
-                        {u.likes.toLocaleString()}
+                        {(u.likes || 0).toLocaleString()}
                       </div>
 
                       {/* Seguidores */}
@@ -2334,7 +2397,7 @@ const Analytics = () => {
                           <div
                             style={{
                               height: "100%",
-                              width: `${(u.followers / TOP_USERS[0].followers) * 100}%`,
+                              width: `${((u.followers || 0) / maxFollowers) * 100}%`,
                               background: accentHex,
                               borderRadius: 2,
                             }}
