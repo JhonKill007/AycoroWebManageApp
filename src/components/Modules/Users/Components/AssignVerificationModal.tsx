@@ -56,18 +56,27 @@ const AssignVerificationModal = ({
   onClose,
   onConfirm,
 }: AssignVerificationModalProps) => {
-  const currentType = (() => {
+  const currentType: VerificationOptionId | "" = (() => {
     if (currentVerify !== VerificationStatus.VERIFIED) return "";
     const type = `${currentVerifyType || ""}`.trim().toLowerCase();
-    if (type === "verde") return VerificationType.GREEN;
-    if (type === "azul") return VerificationType.BLUE;
-    if (type === "dorado" || type === "dorada" || type === "golden") {
+    if (type === "verde" || type === VerificationType.GREEN) {
+      return VerificationType.GREEN;
+    }
+    if (type === "azul" || type === VerificationType.BLUE) {
+      return VerificationType.BLUE;
+    }
+    if (
+      type === "dorado" ||
+      type === "dorada" ||
+      type === "golden" ||
+      type === VerificationType.GOLD
+    ) {
       return VerificationType.GOLD;
     }
-    return type;
+    return "";
   })();
   const [selected, setSelected] = useState<VerificationOptionId | "">(
-    currentType || "",
+    currentType,
   );
   const [confirming, setConfirming] = useState(false);
 
