@@ -92,6 +92,7 @@ const Chat = ({ setchatPlease }: IChat) => {
             Gender: e.data.Gender,
             Status: e.data.Status,
             Verify: e.data.Verify,
+            VerifyType: e.data.VerifyType,
             Validate: e.data.Validate,
             PerfilData: {
               Presentation: e.data.PerfilData.Presentation,
