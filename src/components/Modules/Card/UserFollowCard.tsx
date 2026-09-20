@@ -1,14 +1,14 @@
-import { faCircleCheck, faEllipsis } from "@fortawesome/free-solid-svg-icons";
+import { faEllipsis } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { MediaDataModel } from "../../Models/MediaData/MediaDataModel";
 import { UserPerfilModel } from "../../Models/User/UserPerfilModel";
 import UserProfile from "../../assets/UserProfile.jpeg";
-import { VerificationStatus } from "../../constants/Status";
 import { useImageBankContext } from "../../context/ImageBankContext";
 import { useThemeContext } from "../../context/ThemeContext";
 import { useUserContext } from "../../context/UserContext";
+import VerifiedBadge from "../Common/Components/VerifiedBadge";
 
 export const UserFollowCard = ({
   user,
@@ -258,18 +258,17 @@ export const UserFollowCard = ({
               color: theme === "light" ? "#262626" : "white",
               margin: 0,
               padding: 0,
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
             }}
           >
             {user.User?.Username}
-            {user.User?.Verify == VerificationStatus.VERIFIED && (
-              <FontAwesomeIcon
-                style={{
-                  color: "#089aff",
-                  fontSize: "15px",
-                }}
-                icon={faCircleCheck}
-              />
-            )}
+            <VerifiedBadge
+              verify={user.User?.Verify}
+              verifyType={user.User?.VerifyType}
+              size={14}
+            />
           </p>
           <p
             style={{

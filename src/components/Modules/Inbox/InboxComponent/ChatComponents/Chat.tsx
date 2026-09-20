@@ -5,7 +5,6 @@ import { MediaDataModel } from "../../../../Models/MediaData/MediaDataModel";
 import { MessagesModel } from "../../../../Models/Message/MessagesModel";
 import { UserPerfilModel } from "../../../../Models/User/UserPerfilModel";
 import UserProfile from "../../../../assets/UserProfile.jpeg";
-import IconVerify from "../../../../assets/img/verified-badge-profile-icon-png.webp";
 import { useHubsContext } from "../../../../context/HubsContext";
 import { useImageBankContext } from "../../../../context/ImageBankContext";
 import { useThemeContext } from "../../../../context/ThemeContext";
@@ -14,9 +13,9 @@ import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import chatService from "../../../../Services/Chat/ChatService";
 import User from "../../../../Services/User/UserService";
 import { Colors } from "../../../../constants/Colors";
-import { VerificationStatus } from "../../../../constants/Status";
 import { useUserContext } from "../../../../context/UserContext";
 import useLanguage from "../../../../hooks/useLanguage";
+import VerifiedBadge from "../../../Common/Components/VerifiedBadge";
 import "./Chat.css";
 import BandejaChatStart from "./MessageContainer/BandejaChatStart";
 import MessageContainer from "./MessageContainer/MessageContainer";
@@ -266,16 +265,11 @@ const Chat = ({ setchatPlease }: IChat) => {
                   >
                     {user?.User?.Name}
                   </h2>
-                  {/* {selectedConversation.user.isVerified && (
-                    <FontAwesomeIcon
-                      icon={faCheck}
-                      style={{ color: "#0095f6", fontSize: "14px" }}
-                    />
-                  )} */}
-
-                  {user?.User?.Verify == VerificationStatus.VERIFIED && (
-                    <img src={IconVerify} style={{ width: "15px" }} alt="" />
-                  )}
+                  <VerifiedBadge
+                    verify={user?.User?.Verify}
+                    verifyType={user?.User?.VerifyType}
+                    size={16}
+                  />
                 </div>
                 <p
                   style={{

@@ -1,11 +1,11 @@
 import { useNavigate } from "react-router-dom";
-import IconVerify from "../../../assets/img/verified-badge-profile-icon-png.webp";
 import UserProfile from "../../../assets/UserProfile.jpeg";
 import { Colors } from "../../../constants/Colors";
-import { UserStatus, VerificationStatus } from "../../../constants/Status";
+import { UserStatus } from "../../../constants/Status";
 import { useThemeContext } from "../../../context/ThemeContext";
 import { UserPerfilModel } from "../../../Models/User/UserPerfilModel";
 import { formatDate } from "../../Settings/Common/Utils";
+import VerifiedBadge from "../../Common/Components/VerifiedBadge";
 import UserStatusBadge from "./UserStatusBadge";
 import { Permissions } from "../../../constants/Permissions";
 import { usePermissions } from "../../../hooks/usePermissions";
@@ -227,18 +227,23 @@ export const UserDetailModal = ({
                 >
                   {user.User?.Name}
                 </span>
-                {user.User?.Verify === VerificationStatus.VERIFIED && (
-                  <img src={IconVerify} style={{ width: "13px" }} alt="" />
-                )}
               </div>
               <div
                 style={{
                   fontSize: "12px",
                   color: c.textMuted,
                   marginTop: "2px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
                 }}
               >
                 @{user.User?.Username}
+                <VerifiedBadge
+                  verify={user.User?.Verify}
+                  verifyType={user.User?.VerifyType}
+                  size={14}
+                />
               </div>
               <div
                 style={{

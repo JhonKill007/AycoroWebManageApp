@@ -20,6 +20,7 @@ export class PostModel {
   public CreateDate: Date | undefined;
   public Username: string | undefined;
   public Verify: number | undefined;
+  public VerifyType: string | undefined;
   public IdMediaDataProfile: string | undefined;
   public ProfilePhoto: string | undefined;
   public Likes: number | undefined;

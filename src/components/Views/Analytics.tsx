@@ -778,6 +778,21 @@ const Analytics = () => {
     ...heatmap.map((cell) => Number(cell[heatMetric]) || 0),
   );
 
+  const usersBeforeThisMonth = Math.max(
+    0,
+    monthlyResume.users.total - monthlyResume.users.thisMonth,
+  );
+  const usersGrowthVsTotal =
+    usersBeforeThisMonth > 0
+      ? Number(
+          ((monthlyResume.users.thisMonth / usersBeforeThisMonth) * 100).toFixed(
+            2,
+          ),
+        )
+      : monthlyResume.users.thisMonth > 0
+        ? 100
+        : 0;
+
   useEffect(() => {
     const getMonthlyData = async () => {
       try {
@@ -1229,10 +1244,10 @@ const Analytics = () => {
             <div
               style={{ fontSize: "13px", color: c.textMuted, lineHeight: 1.5 }}
             >
-              Métricas de crecimiento, actividad y retención de tu comunidad.{" "}
+              Métricas de crecimiento, actividad y retención de tu comunidad. Los
+              usuarios dentro de la app subieron un{" "}
               <strong style={{ color: c.accent }}>
-                {monthlyResume.users.change >= 0 ? "+" : ""}
-                {monthlyResume.users.change}% usuarios
+                {usersGrowthVsTotal}%
               </strong>{" "}
               este mes.
             </div>
@@ -1243,7 +1258,8 @@ const Analytics = () => {
               const rows = [
                 ["metrica", "valor"],
                 ["usuarios_mes", monthlyResume.users.thisMonth],
-                ["usuarios_cambio", monthlyResume.users.change],
+                ["usuarios_totales", monthlyResume.users.total],
+                ["usuarios_crecimiento_mes_vs_acumulado", usersGrowthVsTotal],
                 ["publicaciones_mes", monthlyResume.posts.thisMonth],
                 ["retencion_d1", business.retention.d1.rate],
                 ["retencion_d7", business.retention.d7.rate],

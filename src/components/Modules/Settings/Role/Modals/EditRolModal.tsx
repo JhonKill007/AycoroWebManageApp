@@ -54,6 +54,12 @@ const PERMS_MATRIX: Permission[] = [
     description: "Borrar cuentas permanentemente",
   },
   {
+    id: "p21",
+    group: "Usuarios",
+    label: "Asignar verificación",
+    description: "Otorgar, cambiar o quitar la verificación de una cuenta",
+  },
+  {
     id: "p7",
     group: "Contenido",
     label: "Ver publicaciones",

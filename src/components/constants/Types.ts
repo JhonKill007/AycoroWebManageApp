@@ -56,3 +56,29 @@ export const ChatType = Object.freeze({
   SELF: "SELF",
 });
 
+export const VerificationType = Object.freeze({
+  GREEN: "green",
+  BLUE: "blue",
+  GOLD: "gold",
+});
+
+export const getVerificationColor = (verifyType?: string) => {
+  const normalizedType = `${verifyType ?? ""}`.trim().toLowerCase();
+
+  switch (normalizedType) {
+    case VerificationType.GREEN:
+    case "verde":
+      return "#22c55e";
+    case VerificationType.BLUE:
+    case "azul":
+      return "#0562f7";
+    case VerificationType.GOLD:
+    case "golden":
+    case "dorado":
+    case "dorada":
+      return "#f5b301";
+    default:
+      return "#22c55e";
+  }
+};
+

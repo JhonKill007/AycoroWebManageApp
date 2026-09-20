@@ -19,6 +19,7 @@ export const Permissions = Object.freeze({
   VIEW_AUDIOS: "p18",
   VIEW_COMMENTS: "p19",
   VIEW_TRENDS: "p20",
+  ASSIGN_VERIFICATION: "p21",
 });
 
 export type Permission = (typeof Permissions)[keyof typeof Permissions];

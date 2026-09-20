@@ -1,7 +1,6 @@
 import {
   faCalendarAlt,
   faCamera,
-  faCircleCheck,
   faCog,
   faLink,
 } from "@fortawesome/free-solid-svg-icons";
@@ -10,7 +9,6 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import UserProfile from "../../assets/UserProfile.jpeg";
 import { Colors } from "../../constants/Colors";
-import { VerificationStatus } from "../../constants/Status";
 import { useThemeContext } from "../../context/ThemeContext";
 import { useUserContext } from "../../context/UserContext";
 import useLanguage from "../../hooks/useLanguage";
@@ -18,6 +16,7 @@ import { AycoroAuthUserPerfilModel } from "../../Models/User/AycoroAuthUserPerfi
 import { UserPerfilModel } from "../../Models/User/UserPerfilModel";
 import changesService from "../../Services/Changes/ChangesService";
 import FollowModal from "../Modals/FollowModal";
+import VerifiedBadge from "../Common/Components/VerifiedBadge";
 import Notify from "../Notify/Notify";
 import ProfileActions from "./ProfileActions";
 import "./UserPerfil.css";
@@ -294,21 +293,18 @@ const UserPerfil = ({ user, setFollow }: IUserPerfil) => {
                 fontSize: isMobile ? "22px" : "28px",
                 fontWeight: "300",
                 color: theme === "light" ? "#262626" : "white",
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
               }}
             >
               {user.User?.Username}
+              <VerifiedBadge
+                verify={user.User?.Verify}
+                verifyType={user.User?.VerifyType}
+                size={18}
+              />
             </h1>
-            <div style={{ width: 15, marginLeft: -15, marginTop: 5 }}>
-              {user.User?.Verify == VerificationStatus.VERIFIED && (
-                <FontAwesomeIcon
-                  style={{
-                    color: "#089aff",
-                    fontSize: "15px",
-                  }}
-                  icon={faCircleCheck}
-                />
-              )}
-            </div>
             {userData?.user?.id === user.User?._id && (
               <div
                 style={{

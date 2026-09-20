@@ -1,10 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Colors } from "../constants/Colors";
+import { PostStatus } from "../constants/Status";
 import { useThemeContext } from "../context/ThemeContext";
 import { useToast } from "../context/ToastContext";
+import { PostModel } from "../Models/Post/PostModel";
 import { KpiCard } from "../Modules/Common/Components/bfdhjhg";
+import VerifiedBadge from "../Modules/Common/Components/VerifiedBadge";
+import postService from "../Services/Post/PostService";
 import trendsService from "../Services/Trends/TrendsService";
+import { PublicationModal } from "./Publications";
 
 type TabKey = "posts" | "followers" | "streaks";
 
@@ -31,6 +36,7 @@ const Trends = () => {
   const [followers, setFollowers] = useState<any[]>([]);
   const [streaks, setStreaks] = useState<any[]>([]);
   const [trendDays, setTrendDays] = useState(3);
+  const [selectedPost, setSelectedPost] = useState<PostModel | null>(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -68,6 +74,38 @@ const Trends = () => {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  const handleStatusChange = useCallback(
+    async (id: string, newStatus: number) => {
+      setPosts((prev) =>
+        prev.map((item) =>
+          item._id === id ? { ...item, Status: newStatus } : item,
+        ),
+      );
+
+      try {
+        await postService.UpdateStatus(id, newStatus);
+        if (newStatus === PostStatus.DELETED) {
+          setPosts((prev) => prev.filter((item) => item._id !== id));
+        }
+        showToast({
+          type: "success",
+          title: "Estado actualizado",
+          description: "La publicación se actualizó correctamente.",
+          duration: 3000,
+        });
+      } catch {
+        await loadData();
+        showToast({
+          type: "error",
+          title: "Error",
+          description: "No se pudo actualizar el estado",
+          duration: 4000,
+        });
+      }
+    },
+    [loadData, showToast],
+  );
 
   const tabs: Array<{ id: TabKey; label: string }> = [
     { id: "posts", label: "Publicaciones" },
@@ -222,11 +260,13 @@ const Trends = () => {
               posts.map((item) => (
                 <div
                   key={item._id}
+                  onClick={() => setSelectedPost(item)}
                   style={{
                     background: c.card,
                     border: `1.5px solid ${c.border}`,
                     borderRadius: 18,
                     overflow: "hidden",
+                    cursor: "pointer",
                   }}
                 >
                   <div style={{ position: "relative", height: 200, background: "#111" }}>
@@ -270,8 +310,22 @@ const Trends = () => {
                     </span>
                   </div>
                   <div style={{ padding: 14 }}>
-                    <div style={{ fontWeight: 800, color: c.text, fontSize: 13 }}>
+                    <div
+                      style={{
+                        fontWeight: 800,
+                        color: c.text,
+                        fontSize: 13,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                      }}
+                    >
                       @{item.Username || "usuario"}
+                      <VerifiedBadge
+                        verify={item.Verify}
+                        verifyType={item.VerifyType}
+                        size={14}
+                      />
                     </div>
                     <div
                       style={{
@@ -388,8 +442,21 @@ const Trends = () => {
                   </div>
                 )}
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontWeight: 800, color: c.text }}>
+                  <div
+                    style={{
+                      fontWeight: 800,
+                      color: c.text,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                    }}
+                  >
                     @{item.Username}
+                    <VerifiedBadge
+                      verify={item.Verify}
+                      verifyType={item.VerifyType}
+                      size={14}
+                    />
                   </div>
                   <div style={{ fontSize: 12, color: c.textMuted }}>
                     {item.Name || "—"}
@@ -483,8 +550,21 @@ const Trends = () => {
                   </div>
                 )}
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontWeight: 800, color: c.text }}>
+                  <div
+                    style={{
+                      fontWeight: 800,
+                      color: c.text,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                    }}
+                  >
                     @{item.Username}
+                    <VerifiedBadge
+                      verify={item.Verify}
+                      verifyType={item.VerifyType}
+                      size={14}
+                    />
                   </div>
                   <div style={{ fontSize: 12, color: c.textMuted }}>
                     {item.ActiveDays || 0} días activos registrados
@@ -508,9 +588,17 @@ const Trends = () => {
                 </div>
               </button>
             ))
-          )}
-        </div>
+        )}
+      </div>
       )}
+
+      <PublicationModal
+        pub={selectedPost}
+        c={c}
+        theme={theme}
+        onClose={() => setSelectedPost(null)}
+        onAction={handleStatusChange}
+      />
     </main>
   );
 };

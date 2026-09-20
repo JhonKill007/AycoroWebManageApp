@@ -11,6 +11,7 @@ export class UserModel {
   public Gender: string | undefined;
   public Status: number | undefined;
   public Verify: number | undefined;
+  public VerifyType: string | undefined;
   public IP?: string;
   public City?: string;
   public Country?: string;

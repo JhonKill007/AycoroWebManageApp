@@ -94,6 +94,19 @@ export class UserService implements IUserService {
     });
     return getUser;
   }
+
+  async AssignVerification(id: string, verifyType: string): Promise<any> {
+    const result = await new Promise<any>((resolve, reject) => {
+      Http.put(`/api/users/${id}/verification`, { verifyType })
+        .then((res) => {
+          resolve(res);
+        })
+        .catch((err) => {
+          reject(err);
+        });
+    });
+    return result;
+  }
 }
 
 const userService = new UserService();

@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import UserProfile from "../assets/UserProfile.jpeg";
 import { Colors } from "../constants/Colors";
 import { Permissions } from "../constants/Permissions";
-import { PostStatus, UserStatus } from "../constants/Status";
+import { PostStatus, UserStatus, VerificationStatus } from "../constants/Status";
 import { getContentDeletedMessage } from "../constants/SystemMessages";
 import { MessageType } from "../constants/Types";
 import { useImageBankContext } from "../context/ImageBankContext";
@@ -15,6 +15,8 @@ import { usePermissions } from "../hooks/usePermissions";
 import { PostModel } from "../Models/Post/PostModel";
 import { UserPerfilModel } from "../Models/User/UserPerfilModel";
 import PubCard from "../Modules/Users/Components/PubCard";
+import AssignVerificationModal from "../Modules/Users/Components/AssignVerificationModal";
+import VerifiedBadge from "../Modules/Common/Components/VerifiedBadge";
 import postService from "../Services/Post/PostService";
 import systemMessageService from "../Services/SystemMessage/SystemMessageService";
 import userService from "../Services/User/UserService";
@@ -291,25 +293,38 @@ function UserPublicationModal({
               }}
             />
             <div>
-              <button
-                type="button"
-                onClick={() => {
-                  onClose();
-                  navigate(`/users/${pub.Username}`);
-                }}
+              <div
                 style={{
-                  border: "none",
-                  background: "transparent",
-                  padding: 0,
-                  fontFamily: "inherit",
-                  fontSize: 14,
-                  fontWeight: 900,
-                  color: c.text,
-                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
                 }}
               >
-                @{pub.Username}
-              </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    navigate(`/users/${pub.Username}`);
+                  }}
+                  style={{
+                    border: "none",
+                    background: "transparent",
+                    padding: 0,
+                    fontFamily: "inherit",
+                    fontSize: 14,
+                    fontWeight: 900,
+                    color: c.text,
+                    cursor: "pointer",
+                  }}
+                >
+                  @{pub.Username}
+                </button>
+                <VerifiedBadge
+                  verify={pub.Verify}
+                  verifyType={pub.VerifyType}
+                  size={14}
+                />
+              </div>
               <div style={{ fontSize: 11, color: c.textMuted, marginTop: 2 }}>
                 {formatDate(pub.CreateDate)}
               </div>
@@ -440,6 +455,8 @@ const UserDetail = () => {
   const [pendingStatus, setPendingStatus] = useState<typeof user.status>(
     user.status,
   );
+  const [verificationModalOpen, setVerificationModalOpen] = useState(false);
+  const [verificationSaving, setVerificationSaving] = useState(false);
 
   const [loadingData, setLoadingData] = useState({
     user: true,
@@ -607,6 +624,53 @@ const UserDetail = () => {
       }
     },
     [showToast],
+  );
+
+  const handleAssignVerification = useCallback(
+    async (verifyType: string) => {
+      const userId = perfilUser?.User?._id;
+      if (!userId) return;
+
+      setVerificationSaving(true);
+      try {
+        const response = await userService.AssignVerification(userId, verifyType);
+        const updated = response?.data || response;
+        setPerfilUser((current) =>
+          current?.User
+            ? {
+                ...current,
+                User: {
+                  ...current.User,
+                  Verify: updated?.Verify,
+                  VerifyType:
+                    verifyType === "none" ? undefined : updated?.VerifyType,
+                },
+              }
+            : current,
+        );
+        setVerificationModalOpen(false);
+        showToast({
+          type: "success",
+          title: "Verificación actualizada",
+          description:
+            verifyType === "none"
+              ? "Se quitó la verificación de la cuenta."
+              : "La verificación se asignó correctamente.",
+          duration: 3500,
+        });
+      } catch (error) {
+        console.error("Error assigning verification:", error);
+        showToast({
+          type: "error",
+          title: "Error",
+          description: "No se pudo asignar la verificación.",
+          duration: 4000,
+        });
+      } finally {
+        setVerificationSaving(false);
+      }
+    },
+    [perfilUser?.User?._id, showToast],
   );
 
   const applyStatus = async () => {
@@ -1037,8 +1101,22 @@ const UserDetail = () => {
                 >
                   {perfilUser?.User?.Name}
                 </div>
-                <div style={{ fontSize: 11, color: c.textMuted }}>
+                <div
+                  style={{
+                    fontSize: 11,
+                    color: c.textMuted,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                  }}
+                >
                   @{perfilUser?.User?.Username}
+                  <VerifiedBadge
+                    verify={perfilUser?.User?.Verify}
+                    verifyType={perfilUser?.User?.VerifyType}
+                    size={15}
+                  />
                 </div>
               </div>
             </div>
@@ -1344,6 +1422,14 @@ const UserDetail = () => {
                       setConfirmStatusOpen(true);
                     },
                   },
+                  can(Permissions.ASSIGN_VERIFICATION) && {
+                    label:
+                      perfilUser?.User?.Verify === VerificationStatus.VERIFIED
+                        ? "🛡️ Cambiar verificación"
+                        : "🛡️ Asignar verificación",
+                    cls: "",
+                    onClick: () => setVerificationModalOpen(true),
+                  },
                   {
                     label: "📋 Ver reportes",
                     cls: "",
@@ -1493,6 +1579,21 @@ const UserDetail = () => {
         onDelete={handleDeletePublication}
         isDeleting={isDeletingPublication}
       />
+
+      {verificationModalOpen && (
+        <AssignVerificationModal
+          c={c}
+          theme={theme}
+          username={perfilUser?.User?.Username}
+          currentVerify={perfilUser?.User?.Verify}
+          currentVerifyType={perfilUser?.User?.VerifyType}
+          saving={verificationSaving}
+          onClose={() => {
+            if (!verificationSaving) setVerificationModalOpen(false);
+          }}
+          onConfirm={handleAssignVerification}
+        />
+      )}
 
       {statusModalOpen && (
         <div

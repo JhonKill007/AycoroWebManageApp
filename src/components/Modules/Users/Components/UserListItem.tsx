@@ -1,10 +1,9 @@
 import { useState } from "react";
 import { UserPerfilModel } from "../../../Models/User/UserPerfilModel";
 import UserProfile from "../../../assets/UserProfile.jpeg";
-import IconVerify from "../../../assets/img/verified-badge-profile-icon-png.webp";
 import { Colors } from "../../../constants/Colors";
-import { VerificationStatus } from "../../../constants/Status";
 import { useThemeContext } from "../../../context/ThemeContext";
+import VerifiedBadge from "../../Common/Components/VerifiedBadge";
 import { formatDate } from "../../Settings/Common/Utils";
 import { UserDetailModal } from "./UserDetailModal";
 import UserStatusBadge from "./UserStatusBadge";
@@ -82,9 +81,6 @@ const UserListItem = ({
             >
               {user.User?.Name}
             </span>
-            {user.User?.Verify === VerificationStatus.VERIFIED && (
-              <img src={IconVerify} style={{ width: "13px" }} alt="" />
-            )}
           </div>
           <div
             style={{
@@ -93,9 +89,17 @@ const UserListItem = ({
               whiteSpace: "nowrap",
               overflow: "hidden",
               textOverflow: "ellipsis",
+              display: "flex",
+              alignItems: "center",
+              gap: 5,
             }}
           >
             @{user.User?.Username}
+            <VerifiedBadge
+              verify={user.User?.Verify}
+              verifyType={user.User?.VerifyType}
+              size={12}
+            />
           </div>
         </div>
 

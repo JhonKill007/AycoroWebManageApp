@@ -2,8 +2,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Colors } from "../constants/Colors";
-import { PostStatus } from "../constants/Status";
 import { Permissions } from "../constants/Permissions";
+import { PostStatus } from "../constants/Status";
 import { usePermissions } from "../hooks/usePermissions";
 import { useThemeContext } from "../context/ThemeContext";
 import { useToast } from "../context/ToastContext";
@@ -11,6 +11,7 @@ import { PostModel } from "../Models/Post/PostModel";
 import { KpiCard } from "../Modules/Common/Components/bfdhjhg";
 import { TabChip } from "../Modules/Common/Components/gffsag";
 import { Pagination } from "../Modules/Common/Components/Pagination";
+import VerifiedBadge from "../Modules/Common/Components/VerifiedBadge";
 import PubCard from "../Modules/Users/Components/PubCard";
 import postService from "../Services/Post/PostService";
 
@@ -116,7 +117,7 @@ function UserAvatar({ username, photoUrl, size = 32 }: any) {
 }
 
 // ─── Modal detalle ────────────────────────────────────────────────────
-function PublicationModal({ pub, c, theme, onClose, onAction }: any) {
+export function PublicationModal({ pub, c, theme, onClose, onAction }: any) {
   const { can } = usePermissions();
   const navigate = useNavigate();
   if (!pub) return null;
@@ -377,7 +378,11 @@ function PublicationModal({ pub, c, theme, onClose, onAction }: any) {
                 >
                   @{pub.Username}
                 </button>
-                {pub.Verify === 1 && <span>✅</span>}
+                <VerifiedBadge
+                  verify={pub.Verify}
+                  verifyType={pub.VerifyType}
+                  size={14}
+                />
               </div>
               <div style={{ fontSize: "11px", color: c.textMuted }}>
                 {formatDate(pub.CreateDate)}
