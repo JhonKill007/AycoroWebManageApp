@@ -19,6 +19,12 @@ type ReleaseMediaDraft = {
   Duration?: number;
   Width?: number;
   Height?: number;
+  ThumbnailUrl?: string;
+  ThumbnailKey?: string;
+  ThumbnailMimeType?: string;
+  ThumbnailSize?: number;
+  ThumbnailWidth?: number;
+  ThumbnailHeight?: number;
 };
 
 // ─── Configuraciones ───────────────────────────────────────────────────
@@ -213,6 +219,12 @@ const AddVersionModal = ({
           Duration: item.Duration,
           Width: item.Width,
           Height: item.Height,
+          ThumbnailUrl: item.ThumbnailUrl,
+          ThumbnailKey: item.ThumbnailKey,
+          ThumbnailMimeType: item.ThumbnailMimeType,
+          ThumbnailSize: item.ThumbnailSize,
+          ThumbnailWidth: item.ThumbnailWidth,
+          ThumbnailHeight: item.ThumbnailHeight,
         })),
         ReleaseHistoryIds: [],
         CreateBy: userData?.user?.id,
@@ -262,6 +274,52 @@ const AddVersionModal = ({
       },
     );
 
+  const captureVideoThumbnail = (file: File) =>
+    new Promise<Blob | undefined>((resolve) => {
+      const url = URL.createObjectURL(file);
+      const video = document.createElement("video");
+      video.preload = "auto";
+      video.muted = true;
+      video.playsInline = true;
+      const cleanup = () => URL.revokeObjectURL(url);
+      video.onloadeddata = () => {
+        const seekTo = Number.isFinite(video.duration)
+          ? Math.min(1, Math.max(0.1, video.duration * 0.1))
+          : 0.1;
+        video.currentTime = seekTo;
+      };
+      video.onseeked = () => {
+        try {
+          const canvas = document.createElement("canvas");
+          canvas.width = video.videoWidth || 720;
+          canvas.height = video.videoHeight || 1280;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            cleanup();
+            resolve(undefined);
+            return;
+          }
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          canvas.toBlob(
+            (blob) => {
+              cleanup();
+              resolve(blob ?? undefined);
+            },
+            "image/jpeg",
+            0.82,
+          );
+        } catch {
+          cleanup();
+          resolve(undefined);
+        }
+      };
+      video.onerror = () => {
+        cleanup();
+        resolve(undefined);
+      };
+      video.src = url;
+    });
+
   const handleReleaseMediaPick = async (
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
@@ -298,6 +356,26 @@ const AddVersionModal = ({
           height: meta.height,
         });
 
+        let thumbnail:
+          | {
+              url?: string;
+              key?: string;
+              mimeType?: string;
+              size?: number;
+              width?: number;
+              height?: number;
+            }
+          | undefined;
+        if (isVideo) {
+          const thumbBlob = await captureVideoThumbnail(file);
+          if (thumbBlob) {
+            thumbnail = await uploadMedia(thumbBlob, "image", {
+              width: meta.width,
+              height: meta.height,
+            });
+          }
+        }
+
         setReleaseMedia((prev) => [
           ...prev,
           {
@@ -313,6 +391,12 @@ const AddVersionModal = ({
             Duration: uploaded.duration,
             Width: uploaded.width,
             Height: uploaded.height,
+            ThumbnailUrl: thumbnail?.url,
+            ThumbnailKey: thumbnail?.key,
+            ThumbnailMimeType: thumbnail?.mimeType,
+            ThumbnailSize: thumbnail?.size,
+            ThumbnailWidth: thumbnail?.width,
+            ThumbnailHeight: thumbnail?.height,
           },
         ]);
       }

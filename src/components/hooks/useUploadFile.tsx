@@ -5,19 +5,23 @@ import mediaDataService from "../Services/MediaData/MediaDataService";
 type UploadMediaType = "image" | "audio" | "video";
 
 const mimeMap: Record<UploadMediaType, string> = {
-  image: "image/jpg",
+  image: "image/jpeg",
   audio: "audio/m4a",
   video: "video/mp4",
 };
 
 const normalizeUploadType = (type: string): UploadMediaType => {
   const normalized = `${type}`.toLowerCase();
-  if (normalized === "video") return "video";
-  if (normalized === "audio") return "audio";
+  if (normalized === "video" || normalized.startsWith("video/")) return "video";
+  if (normalized === "audio" || normalized.startsWith("audio/")) return "audio";
   return "image";
 };
 
-const getSignedContentType = (type: UploadMediaType) => mimeMap[type];
+const getSignedContentType = (type: UploadMediaType, file?: File | Blob) => {
+  const fileType = `${(file as File)?.type ?? ""}`.trim().toLowerCase();
+  if (fileType) return fileType;
+  return mimeMap[type];
+};
 
 export const useUploadFile = () => {
   const uploadMedia = async (
@@ -30,7 +34,13 @@ export const useUploadFile = () => {
     },
   ) => {
     const mediaType = normalizeUploadType(type);
-    const uploadData = await getUploadUrl(file, mediaType, extra?.duration);
+    const contentType = getSignedContentType(mediaType, file);
+    const uploadData = await getUploadUrl(
+      file,
+      mediaType,
+      extra?.duration,
+      contentType,
+    );
     const payload = uploadData?.data ?? uploadData;
     const uploadUrl = payload.uploadUrl ?? payload.UploadUrl;
     const fileUrl = payload.fileUrl ?? payload.FileUrl;
@@ -40,13 +50,13 @@ export const useUploadFile = () => {
       throw new Error("Invalid upload URL response");
     }
 
-    await uploadBinary(file, uploadUrl, mediaType);
+    await uploadBinary(file, uploadUrl, contentType);
 
     const mediaModel: MediaDataParams = {
       url: fileUrl as string,
       key: key as string,
       type: mediaType,
-      mimeType: getSignedContentType(mediaType),
+      mimeType: contentType,
       size: file.size,
       duration: extra?.duration,
       width: extra?.width,
@@ -60,11 +70,11 @@ export const useUploadFile = () => {
     file: File | Blob,
     type: UploadMediaType,
     duration?: number,
+    contentType?: string,
   ) => {
-    const contentType = getSignedContentType(type);
     const request: UploadRequest = {
       type,
-      contentType,
+      contentType: contentType || getSignedContentType(type, file),
       size: file.size || 0,
       duration,
     };
@@ -74,9 +84,8 @@ export const useUploadFile = () => {
   const uploadBinary = async (
     file: File | Blob,
     uploadUrl: string,
-    type: UploadMediaType,
+    contentType: string,
   ) => {
-    const contentType = getSignedContentType(type);
     const response = await fetch(uploadUrl, {
       method: "PUT",
       headers: {

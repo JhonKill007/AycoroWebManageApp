@@ -64,5 +64,10 @@ export const ReportStatus = Object.freeze({
   DISMISSED: 4,
 });
 
+export const SessionStatus = Object.freeze({
+  ACTIVE: 1,
+  DESACTIVE: 2,
+});
+
 export const Mobile_App_Link =
   "https://expo.dev/artifacts/eas/udKsxvhXhrayQ3FSRZoCSR.apk";

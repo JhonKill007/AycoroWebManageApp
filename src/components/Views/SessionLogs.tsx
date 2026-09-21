@@ -7,6 +7,8 @@ import {
 } from "../Models/SessionLog/SessionLogModel";
 import { Pagination } from "../Modules/Common/Components/Pagination";
 import sessionLogService from "../Services/SessionLog/SessionLogService";
+import authSessionService from "../Services/Session/AuthSessionService";
+import AuthSessionsPanel from "../Modules/Session/AuthSessionsPanel";
 
 const emptyResponse: SessionLogResponse = {
   data: [],
@@ -210,6 +212,23 @@ const SessionLogs = () => {
   const [appVersion, setAppVersion] = useState("todos");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [tab, setTab] = useState<"logs" | "auth">("logs");
+  const [authActiveCount, setAuthActiveCount] = useState(0);
+
+  useEffect(() => {
+    let alive = true;
+    authSessionService
+      .getStats()
+      .then((data) => {
+        if (alive) setAuthActiveCount(data.active);
+      })
+      .catch(() => {
+        if (alive) setAuthActiveCount(0);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -284,6 +303,14 @@ const SessionLogs = () => {
           min-width:830px;
         }
         .session-log-row { min-width:830px; }
+        .session-tab, .session-auth-btn {
+          border-radius:12px;
+          min-height:38px;
+          padding:0 14px;
+          font:800 12px 'Plus Jakarta Sans', sans-serif;
+          cursor:pointer;
+        }
+        .session-tabs { display:flex; gap:8px; flex-wrap:wrap; margin-top:14px; }
         @media (max-width: 768px) {
           .session-log-toolbar { align-items:stretch; flex-direction:column; }
           .session-log-toolbar > * { width:100%; min-width:0; }
@@ -345,19 +372,66 @@ const SessionLogs = () => {
             padding: "20px 24px",
           }}
         >
-          <h2 style={{ margin: 0, color: c.text, fontSize: 20 }}>
-            SessionLog
-          </h2>
-          <p style={{ margin: "6px 0 0", color: c.textMuted, fontSize: 13 }}>
-            Entradas reales a la app por usuario, dispositivo, version, IP y ubicacion.
-          </p>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              gap: 16,
+              alignItems: "flex-start",
+              flexWrap: "wrap",
+            }}
+          >
+            <div>
+              <h2 style={{ margin: 0, color: c.text, fontSize: 20 }}>
+                Sesiones
+              </h2>
+              <p style={{ margin: "6px 0 0", color: c.textMuted, fontSize: 13 }}>
+                Entradas a la app, inicios de sesion (AuthSession) y registros de notificaciones.
+              </p>
+            </div>
+            <button
+              className="session-auth-btn"
+              onClick={() => setTab("auth")}
+              style={{
+                border: `1.5px solid ${c.accentMedium}`,
+                background: c.accent,
+                color: "#fff",
+              }}
+            >
+              Ver sesiones activas ({authActiveCount})
+            </button>
+          </div>
+          <div className="session-tabs">
+            <button
+              className="session-tab"
+              onClick={() => setTab("logs")}
+              style={{
+                border: `1.5px solid ${tab === "logs" ? c.accentMedium : c.border}`,
+                background: tab === "logs" ? c.accentSoft : "transparent",
+                color: tab === "logs" ? c.accent : c.textMuted,
+              }}
+            >
+              SessionLog
+            </button>
+            <button
+              className="session-tab"
+              onClick={() => setTab("auth")}
+              style={{
+                border: `1.5px solid ${tab === "auth" ? c.accentMedium : c.border}`,
+                background: tab === "auth" ? c.accentSoft : "transparent",
+                color: tab === "auth" ? c.accent : c.textMuted,
+              }}
+            >
+              AuthSession
+            </button>
+          </div>
         </section>
 
         <section
           className="stats-grid"
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(2,minmax(0,1fr))",
+            gridTemplateColumns: "repeat(3,minmax(0,1fr))",
             gap: 12,
           }}
         >
@@ -373,8 +447,29 @@ const SessionLogs = () => {
             color={c.success}
             c={c}
           />
+          <button
+            onClick={() => setTab("auth")}
+            style={{
+              background: "transparent",
+              border: "none",
+              padding: 0,
+              textAlign: "left",
+              cursor: "pointer",
+            }}
+          >
+            <StatCard
+              label="AuthSession activas"
+              value={authActiveCount}
+              color={c.info}
+              c={c}
+            />
+          </button>
         </section>
 
+        {tab === "auth" ? (
+          <AuthSessionsPanel c={c} theme={theme} />
+        ) : (
+          <>
         <section className="session-log-toolbar">
           <input
             className="session-log-search"
@@ -492,6 +587,8 @@ const SessionLogs = () => {
             <GroupList title="Por pais" items={response.groups.countries} c={c} />
           </aside>
         </section>
+          </>
+        )}
       </main>
     </>
   );
