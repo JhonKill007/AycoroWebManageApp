@@ -15,7 +15,7 @@ const emptyResponse: SessionLogResponse = {
   pagination: {
     total: 0,
     page: 1,
-    limit: 14,
+    limit: 30,
     totalPages: 0,
     hasNextPage: false,
     hasPrevPage: false,
@@ -250,7 +250,7 @@ const SessionLogs = () => {
     sessionLogService
       .getAll({
         page,
-        limit: 14,
+        limit: 30,
         search: debouncedSearch,
         deviceOS,
         country,
@@ -287,10 +287,10 @@ const SessionLogs = () => {
           outline:none;
         }
         .session-log-search { min-width:280px; }
-        .session-log-toolbar { display:flex; gap:10px; flex-wrap:wrap; align-items:center; flex-shrink:0; }
-        .session-log-content { flex:1; min-height:0; display:flex; flex-direction:column; gap:16px; }
-        .session-log-table { flex:1; min-height:0; overflow:auto; }
-        .session-log-card { flex:1; min-height:0; display:flex; flex-direction:column; overflow:hidden; }
+        .session-log-toolbar { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+        .session-log-content { display:flex; flex-direction:column; gap:16px; }
+        .session-log-table { overflow:visible; }
+        .session-log-card { overflow:visible; }
         .session-log-header {
           display:grid;
           grid-template-columns:minmax(170px,1.2fr) 120px 120px 140px 130px 150px;
@@ -316,7 +316,7 @@ const SessionLogs = () => {
         @media (max-width: 768px) {
           .session-log-toolbar { align-items:stretch; flex-direction:column; }
           .session-log-toolbar > * { width:100%; min-width:0; }
-          .session-log-content, .session-log-card { min-height:0; overflow:auto; }
+          .session-log-content, .session-log-card { overflow:visible; }
           .session-log-table { overflow:visible; }
           .session-log-header { display:none; }
           .session-log-row {
@@ -356,8 +356,8 @@ const SessionLogs = () => {
         style={{
           flex: 1,
           minHeight: 0,
-          overflow: "hidden",
-          padding: 26,
+          overflow: "auto",
+          padding: "26px 26px 40px",
           display: "flex",
           flexDirection: "column",
           gap: 16,
@@ -541,8 +541,6 @@ const SessionLogs = () => {
             display: "grid",
             gridTemplateColumns: "minmax(0,1fr) 300px",
             gap: 16,
-            flex: 1,
-            minHeight: 0,
           }}
           className="logs-responsive-layout"
         >
@@ -590,7 +588,7 @@ const SessionLogs = () => {
             </div>
           </div>
 
-          <aside style={{ display: "grid", gap: 16, alignContent: "start", overflow: "auto", minHeight: 0 }}>
+          <aside style={{ display: "grid", gap: 16, alignContent: "start" }}>
             <GroupList title="Por dispositivo" items={response.groups.devices} c={c} />
             <GroupList title="Por pais" items={response.groups.countries} c={c} />
           </aside>

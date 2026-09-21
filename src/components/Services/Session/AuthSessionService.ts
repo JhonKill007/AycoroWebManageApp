@@ -17,7 +17,7 @@ export class AuthSessionService {
   async getAll(query: AuthSessionQuery): Promise<AuthSessionListResponse> {
     const params = new URLSearchParams({
       page: String(query.page),
-      limit: String(query.limit || 14),
+      limit: String(query.limit || 30),
       search: query.search || "",
       status: query.status || "active",
     });

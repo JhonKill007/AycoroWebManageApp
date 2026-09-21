@@ -8,7 +8,7 @@ export class SessionLogService {
   async getAll(query: SessionLogQuery): Promise<SessionLogResponse> {
     const params = new URLSearchParams({
       page: String(query.page),
-      limit: String(query.limit || 14),
+      limit: String(query.limit || 30),
       search: query.search || "",
     });
 

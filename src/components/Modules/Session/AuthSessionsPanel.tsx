@@ -9,7 +9,7 @@ const emptyResponse = {
   pagination: {
     total: 0,
     page: 1,
-    limit: 14,
+    limit: 30,
     totalPages: 0,
     hasNextPage: false,
     hasPrevPage: false,
@@ -159,7 +159,7 @@ const AuthSessionsPanel = ({ c, theme }: AuthSessionsPanelProps) => {
     authSessionService
       .getAll({
         page,
-        limit: 14,
+        limit: 30,
         search: debouncedSearch,
         deviceOS,
         country,
@@ -231,8 +231,6 @@ const AuthSessionsPanel = ({ c, theme }: AuthSessionsPanelProps) => {
     <div
       className="auth-session-panel"
       style={{
-        flex: 1,
-        minHeight: 0,
         display: "flex",
         flexDirection: "column",
         gap: 16,
@@ -250,8 +248,8 @@ const AuthSessionsPanel = ({ c, theme }: AuthSessionsPanelProps) => {
           outline:none;
         }
         .auth-session-search { min-width:280px; }
-        .auth-session-toolbar { display:flex; gap:10px; flex-wrap:wrap; align-items:center; flex-shrink:0; }
-        .auth-session-table { flex:1; min-height:0; overflow:auto; }
+        .auth-session-toolbar { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+        .auth-session-table { overflow:visible; }
         .auth-session-header {
           display:grid;
           grid-template-columns:minmax(170px,1.2fr) 150px 90px 140px 130px 150px 90px;
@@ -270,7 +268,7 @@ const AuthSessionsPanel = ({ c, theme }: AuthSessionsPanelProps) => {
         @media (max-width: 768px) {
           .auth-session-toolbar { align-items:stretch; flex-direction:column; }
           .auth-session-toolbar > * { width:100%; min-width:0; }
-          .auth-session-panel, .auth-session-card { min-height:0; overflow:auto; }
+          .auth-session-panel, .auth-session-card { overflow:visible; }
           .auth-session-table { overflow:visible; }
           .auth-session-header { display:none; }
           .auth-session-row {
@@ -354,12 +352,8 @@ const AuthSessionsPanel = ({ c, theme }: AuthSessionsPanelProps) => {
           background: c.card,
           border: `1.5px solid ${c.border}`,
           borderRadius: 18,
-          overflow: "hidden",
+          overflow: "visible",
           minWidth: 0,
-          flex: 1,
-          minHeight: 0,
-          display: "flex",
-          flexDirection: "column",
         }}
       >
         <div className="auth-session-table">
