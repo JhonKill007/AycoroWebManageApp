@@ -1,5 +1,5 @@
-import { SessionStatus } from "../../../constants/Status";
-import { AuthSessionModel } from "../../../Models/Session/AuthSessionModel";
+import { SessionStatus } from "../../constants/Status";
+import { AuthSessionModel } from "../../Models/Session/AuthSessionModel";
 
 const formatDate = (value?: string | null) => {
   if (!value) return "-";
