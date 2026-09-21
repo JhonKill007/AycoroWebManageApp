@@ -287,8 +287,10 @@ const SessionLogs = () => {
           outline:none;
         }
         .session-log-search { min-width:280px; }
-        .session-log-toolbar { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
-        .session-log-table { overflow:auto; }
+        .session-log-toolbar { display:flex; gap:10px; flex-wrap:wrap; align-items:center; flex-shrink:0; }
+        .session-log-content { flex:1; min-height:0; display:flex; flex-direction:column; gap:16px; }
+        .session-log-table { flex:1; min-height:0; overflow:auto; }
+        .session-log-card { flex:1; min-height:0; display:flex; flex-direction:column; overflow:hidden; }
         .session-log-header {
           display:grid;
           grid-template-columns:minmax(170px,1.2fr) 120px 120px 140px 130px 150px;
@@ -314,6 +316,7 @@ const SessionLogs = () => {
         @media (max-width: 768px) {
           .session-log-toolbar { align-items:stretch; flex-direction:column; }
           .session-log-toolbar > * { width:100%; min-width:0; }
+          .session-log-content, .session-log-card { min-height:0; overflow:auto; }
           .session-log-table { overflow:visible; }
           .session-log-header { display:none; }
           .session-log-row {
@@ -352,7 +355,8 @@ const SessionLogs = () => {
       <main
         style={{
           flex: 1,
-          overflow: "auto",
+          minHeight: 0,
+          overflow: "hidden",
           padding: 26,
           display: "flex",
           flexDirection: "column",
@@ -370,6 +374,7 @@ const SessionLogs = () => {
             border: `1.5px solid ${c.accentMedium}`,
             borderRadius: 20,
             padding: "20px 24px",
+            flexShrink: 0,
           }}
         >
           <div
@@ -433,6 +438,7 @@ const SessionLogs = () => {
             display: "grid",
             gridTemplateColumns: "repeat(3,minmax(0,1fr))",
             gap: 12,
+            flexShrink: 0,
           }}
         >
           <StatCard
@@ -469,7 +475,7 @@ const SessionLogs = () => {
         {tab === "auth" ? (
           <AuthSessionsPanel c={c} theme={theme} />
         ) : (
-          <>
+          <div className="session-log-content">
         <section className="session-log-toolbar">
           <input
             className="session-log-search"
@@ -535,15 +541,17 @@ const SessionLogs = () => {
             display: "grid",
             gridTemplateColumns: "minmax(0,1fr) 300px",
             gap: 16,
+            flex: 1,
+            minHeight: 0,
           }}
           className="logs-responsive-layout"
         >
           <div
+            className="session-log-card"
             style={{
               background: c.card,
               border: `1.5px solid ${c.border}`,
               borderRadius: 18,
-              overflow: "hidden",
               minWidth: 0,
             }}
           >
@@ -568,7 +576,7 @@ const SessionLogs = () => {
                 response.data.map((log) => <SessionRow key={log._id} log={log} c={c} />)
               )}
             </div>
-            <div style={{ borderTop: `1px solid ${c.border}` }}>
+            <div style={{ borderTop: `1px solid ${c.border}`, flexShrink: 0 }}>
               <Pagination
                 page={page}
                 totalPages={Math.max(response.pagination.totalPages, 1)}
@@ -582,12 +590,12 @@ const SessionLogs = () => {
             </div>
           </div>
 
-          <aside style={{ display: "grid", gap: 16, alignContent: "start" }}>
+          <aside style={{ display: "grid", gap: 16, alignContent: "start", overflow: "auto", minHeight: 0 }}>
             <GroupList title="Por dispositivo" items={response.groups.devices} c={c} />
             <GroupList title="Por pais" items={response.groups.countries} c={c} />
           </aside>
         </section>
-          </>
+          </div>
         )}
       </main>
     </>

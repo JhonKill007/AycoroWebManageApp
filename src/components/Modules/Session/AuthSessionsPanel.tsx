@@ -228,7 +228,16 @@ const AuthSessionsPanel = ({ c, theme }: AuthSessionsPanelProps) => {
   };
 
   return (
-    <>
+    <div
+      className="auth-session-panel"
+      style={{
+        flex: 1,
+        minHeight: 0,
+        display: "flex",
+        flexDirection: "column",
+        gap: 16,
+      }}
+    >
       <style>{`
         .auth-session-search, .auth-session-select {
           background:${c.inputBackground};
@@ -241,8 +250,8 @@ const AuthSessionsPanel = ({ c, theme }: AuthSessionsPanelProps) => {
           outline:none;
         }
         .auth-session-search { min-width:280px; }
-        .auth-session-toolbar { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
-        .auth-session-table { overflow:auto; }
+        .auth-session-toolbar { display:flex; gap:10px; flex-wrap:wrap; align-items:center; flex-shrink:0; }
+        .auth-session-table { flex:1; min-height:0; overflow:auto; }
         .auth-session-header {
           display:grid;
           grid-template-columns:minmax(170px,1.2fr) 150px 90px 140px 130px 150px 90px;
@@ -261,6 +270,7 @@ const AuthSessionsPanel = ({ c, theme }: AuthSessionsPanelProps) => {
         @media (max-width: 768px) {
           .auth-session-toolbar { align-items:stretch; flex-direction:column; }
           .auth-session-toolbar > * { width:100%; min-width:0; }
+          .auth-session-panel, .auth-session-card { min-height:0; overflow:auto; }
           .auth-session-table { overflow:visible; }
           .auth-session-header { display:none; }
           .auth-session-row {
@@ -339,12 +349,17 @@ const AuthSessionsPanel = ({ c, theme }: AuthSessionsPanelProps) => {
       )}
 
       <div
+        className="auth-session-card"
         style={{
           background: c.card,
           border: `1.5px solid ${c.border}`,
           borderRadius: 18,
           overflow: "hidden",
           minWidth: 0,
+          flex: 1,
+          minHeight: 0,
+          display: "flex",
+          flexDirection: "column",
         }}
       >
         <div className="auth-session-table">
@@ -376,7 +391,7 @@ const AuthSessionsPanel = ({ c, theme }: AuthSessionsPanelProps) => {
             ))
           )}
         </div>
-        <div style={{ borderTop: `1px solid ${c.border}` }}>
+        <div style={{ borderTop: `1px solid ${c.border}`, flexShrink: 0 }}>
           <Pagination
             page={page}
             totalPages={Math.max(response.pagination.totalPages, 1)}
@@ -402,7 +417,7 @@ const AuthSessionsPanel = ({ c, theme }: AuthSessionsPanelProps) => {
           onActivate={handleActivate}
         />
       )}
-    </>
+    </div>
   );
 };
 
