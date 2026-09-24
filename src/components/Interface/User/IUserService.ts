@@ -7,4 +7,5 @@ export interface IUserService {
   SearchUser(key: string, section: number): Promise<any>;
   GetUserByUsername(username: string): Promise<any>;
   AssignVerification(id: string, verifyType: string): Promise<any>;
+  GetProfileEdits(id: string, page?: number): Promise<any>;
 }

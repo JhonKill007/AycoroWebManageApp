@@ -2,12 +2,23 @@ import { IAdminHistoryService } from "../../Interface/History/IAdminHistoryServi
 import Http from "../Http/HttpClient";
 
 export class AdminHistoryService implements IAdminHistoryService {
-  async GetAll(page: number, search: string, status?: number): Promise<any> {
-    const statusQuery =
-      status !== undefined && status !== null ? `&status=${status}` : "";
-    return Http.get(
-      `/api/history/all?page=${page}&search=${encodeURIComponent(search || "")}${statusQuery}`,
-    );
+  async GetAll(
+    page: number,
+    search: string,
+    status?: number,
+    idUser?: string,
+  ): Promise<any> {
+    const params = new URLSearchParams({
+      page: String(page),
+      search: search || "",
+    });
+    if (status !== undefined && status !== null) {
+      params.append("status", String(status));
+    }
+    if (idUser) {
+      params.append("idUser", idUser);
+    }
+    return Http.get(`/api/history/all?${params.toString()}`);
   }
 
   async GetById(id: string): Promise<any> {

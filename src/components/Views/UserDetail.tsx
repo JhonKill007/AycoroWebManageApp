@@ -3,9 +3,14 @@ import { useNavigate, useParams } from "react-router-dom";
 import UserProfile from "../assets/UserProfile.jpeg";
 import { Colors } from "../constants/Colors";
 import { Permissions } from "../constants/Permissions";
-import { PostStatus, UserStatus, VerificationStatus } from "../constants/Status";
+import { PostStatus, UserStatus, VerificationStatus, HistoryStatus, ReportStatus } from "../constants/Status";
 import { getContentDeletedMessage } from "../constants/SystemMessages";
-import { MessageType } from "../constants/Types";
+import {
+  MessageType,
+  VerificationType,
+  getVerificationColor,
+} from "../constants/Types";
+import { getReasonById } from "../constants/ReportsReason";
 import { useImageBankContext } from "../context/ImageBankContext";
 import { useThemeContext } from "../context/ThemeContext";
 import { useToast } from "../context/ToastContext";
@@ -20,6 +25,8 @@ import VerifiedBadge from "../Modules/Common/Components/VerifiedBadge";
 import postService from "../Services/Post/PostService";
 import systemMessageService from "../Services/SystemMessage/SystemMessageService";
 import userService from "../Services/User/UserService";
+import adminHistoryService from "../Services/History/AdminHistoryService";
+import reportService from "../Services/Report/ReportService";
 
 const AVATAR_COLOR = "#34d399";
 const STATUS_CFG = {
@@ -44,6 +51,34 @@ const STATUS_CFG = {
     bg: "rgba(248,113,113,0.12)",
     border: "rgba(248,113,113,0.28)",
   },
+};
+
+const getVerificationLabel = (verifyType?: string) => {
+  const type = `${verifyType ?? ""}`.trim().toLowerCase();
+  if (type === VerificationType.GREEN || type === "verde") {
+    return "Verificación verde";
+  }
+  if (type === VerificationType.BLUE || type === "azul") {
+    return "Verificación azul";
+  }
+  if (
+    type === VerificationType.GOLD ||
+    type === "golden" ||
+    type === "dorado" ||
+    type === "dorada"
+  ) {
+    return "Verificación dorada";
+  }
+  if (
+    type === VerificationType.PURPLE ||
+    type === "morado" ||
+    type === "morada" ||
+    type === "creators" ||
+    type === "creator"
+  ) {
+    return "Verificación Creators";
+  }
+  return "Verificación";
 };
 
 const TYPE_CFG = {
@@ -87,6 +122,60 @@ const PUB_TABS = [
   },
 ] as const;
 type PubTabId = (typeof PUB_TABS)[number]["id"];
+
+type ContentSectionId =
+  | "publicaciones"
+  | "historias"
+  | "reportes"
+  | "historial";
+
+const CONTENT_SECTIONS: Array<{
+  id: ContentSectionId;
+  label: string;
+  emoji: string;
+}> = [
+  { id: "publicaciones", label: "Publicaciones", emoji: "📰" },
+  { id: "historias", label: "Historias", emoji: "⏱️" },
+  { id: "reportes", label: "Reportes", emoji: "📋" },
+  { id: "historial", label: "Historial", emoji: "📝" },
+];
+
+const STORY_STATUS: Record<number, { label: string; color: string; bg: string }> = {
+  [HistoryStatus.PUBLISHED]: { label: "Publicada", color: "#059669", bg: "#d1fae5" },
+  [HistoryStatus.FLAGGED]: { label: "Marcada", color: "#2563eb", bg: "#dbeafe" },
+  [HistoryStatus.REPORTED]: { label: "Reportada", color: "#dc2626", bg: "#fee2e2" },
+  [HistoryStatus.UNDER_REVIEW]: { label: "En revisión", color: "#d97706", bg: "#fed7aa" },
+  [HistoryStatus.DELETED]: { label: "Eliminada", color: "#dc2626", bg: "#fee2e2" },
+};
+
+const REPORT_STATUS_CFG: Record<number, { label: string; color: string }> = {
+  [ReportStatus.PENDING]: { label: "Pendiente", color: "#f87171" },
+  [ReportStatus.IN_REVIEW]: { label: "En revisión", color: "#fbbf24" },
+  [ReportStatus.RESOLVED]: { label: "Resuelto", color: "#34d399" },
+  [ReportStatus.DISMISSED]: { label: "Descartado", color: "#94a3b8" },
+};
+
+const PROFILE_EDIT_LABELS: Record<string, string> = {
+  Name: "Nombre",
+  Username: "Usuario",
+  Email: "Email",
+  Phone: "Teléfono",
+  Password: "Contraseña",
+  CoverPhoto: "Foto de portada",
+  ProfilePhoto: "Foto de perfil",
+  Presentation: "Bio",
+};
+
+const isStoryVideo = (item: any) => {
+  const mediaType = `${item?.MediaType || ""}`.toLowerCase();
+  const mimeType = `${item?.MediaMimeType || ""}`.toLowerCase();
+  const url = `${item?.MediaData || ""}`.toLowerCase();
+  return (
+    mediaType.includes("video") ||
+    mimeType.startsWith("video/") ||
+    /\.(mp4|webm|mov|m4v)(\?|#|$)/i.test(url)
+  );
+};
 
 const fmt = (n: number = 0) =>
   n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
@@ -457,11 +546,20 @@ const UserDetail = () => {
   );
   const [verificationModalOpen, setVerificationModalOpen] = useState(false);
   const [verificationSaving, setVerificationSaving] = useState(false);
+  const [contentSection, setContentSection] =
+    useState<ContentSectionId>("publicaciones");
+  const [userStories, setUserStories] = useState<any[]>([]);
+  const [userReports, setUserReports] = useState<any[]>([]);
+  const [profileEdits, setProfileEdits] = useState<any[]>([]);
+  const [sectionLoading, setSectionLoading] = useState(false);
+  const [selectedStory, setSelectedStory] = useState<any | null>(null);
 
   const [loadingData, setLoadingData] = useState({
     user: true,
     posts: true,
   });
+
+  const userId = perfilUser?.User?._id;
 
   useEffect(() => {
     if (username) {
@@ -473,6 +571,11 @@ const UserDetail = () => {
     setLoadingData({ user: true, posts: true });
     setUserPostSection(1);
     setPerfilPost([]);
+    setUserStories([]);
+    setUserReports([]);
+    setProfileEdits([]);
+    setContentSection("publicaciones");
+    setSelectedStory(null);
 
     try {
       const [userResponse, postResponse] = await Promise.all([
@@ -505,7 +608,69 @@ const UserDetail = () => {
     }
   }, [username, userData, searchImage]);
 
+  useEffect(() => {
+    if (!userId || contentSection === "publicaciones") return;
 
+    let cancelled = false;
+
+    const loadSection = async () => {
+      setSectionLoading(true);
+      try {
+        if (contentSection === "historias") {
+          const response = await adminHistoryService.GetAll(
+            1,
+            "",
+            undefined,
+            userId,
+          );
+          if (!cancelled) {
+            const payload = response?.data?.data || response?.data;
+            setUserStories(
+              Array.isArray(payload?.Histories) ? payload.Histories : [],
+            );
+          }
+        } else if (contentSection === "reportes") {
+          const response = await reportService.getAll(1, "", {
+            idUserReported: userId,
+          });
+          if (!cancelled) {
+            const reportsData = Array.isArray(response?.data?.data)
+              ? response.data.data
+              : Array.isArray(response?.data)
+                ? response.data
+                : [];
+            setUserReports(reportsData);
+          }
+        } else if (contentSection === "historial") {
+          const response = await userService.GetProfileEdits(userId, 1);
+          if (!cancelled) {
+            const edits = Array.isArray(response?.data?.data)
+              ? response.data.data
+              : Array.isArray(response?.data)
+                ? response.data
+                : [];
+            setProfileEdits(edits);
+          }
+        }
+      } catch (error) {
+        console.error("Error loading section:", error);
+        if (!cancelled) {
+          showToast({
+            type: "error",
+            title: "Error",
+            description: "No se pudo cargar esta sección.",
+          });
+        }
+      } finally {
+        if (!cancelled) setSectionLoading(false);
+      }
+    };
+
+    void loadSection();
+    return () => {
+      cancelled = true;
+    };
+  }, [contentSection, userId, showToast]);
 
   const pubs = useMemo(() => {
     const selectedTab = PUB_TABS.find((tab) => tab.id === pubTab);
@@ -723,6 +888,14 @@ const UserDetail = () => {
   };
 
   const sc = STATUS_CFG[user.status];
+  const isVerified =
+    perfilUser?.User?.Verify === VerificationStatus.VERIFIED;
+  const verificationLabel = isVerified
+    ? getVerificationLabel(perfilUser?.User?.VerifyType)
+    : "";
+  const verificationColor = isVerified
+    ? getVerificationColor(perfilUser?.User?.VerifyType)
+    : c.accent;
 
   return (
     <>
@@ -790,8 +963,10 @@ const UserDetail = () => {
         @media (max-width: 768px) {
           .user-detail-content { padding: 0 14px 28px !important; }
           .user-detail-status {
-            align-items: stretch !important;
             flex-direction: column !important;
+          }
+          .user-detail-status-panel {
+            width: 100% !important;
           }
           .user-detail-status .action-btn { width: 100%; min-height: 42px; }
           .user-detail-overview {
@@ -957,42 +1132,157 @@ const UserDetail = () => {
               background: c.card,
               border: `1.5px solid ${c.border}`,
               borderRadius: 16,
-              padding: "12px 14px",
+              padding: "10px 12px",
               marginBottom: 12,
               display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 12,
+              alignItems: "stretch",
+              gap: 10,
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ fontSize: 16 }}>{sc.emoji}</span>
-              <div>
-                <div style={{ fontSize: 12, fontWeight: 800, color: c.text }}>
-                  Estado del usuario: {sc.label}
-                </div>
-                {statusSaved && (
-                  <div style={{ fontSize: 10, color: c.success, marginTop: 2 }}>
-                    Estado actualizado correctamente
-                  </div>
-                )}
-              </div>
-            </div>
-            {can(Permissions.SANCTION_USERS) && (
-            <button
-              className="action-btn"
-              onClick={() => {
-                setPendingStatus(user.status);
-                setStatusModalOpen(true);
-              }}
+            {/* Estado del usuario */}
+            <div
+              className="user-detail-status-panel"
               style={{
-                background: c.accentSoft,
-                borderColor: `${c.accent}44`,
-                color: c.accent,
+                flex: 1,
+                minWidth: 0,
+                border: `1.5px solid ${sc.border}`,
+                background: sc.bg,
+                borderRadius: 14,
+                padding: "12px 14px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
               }}
             >
-              Cambiar estado
-            </button>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                <span style={{ fontSize: 16 }}>{sc.emoji}</span>
+                <div style={{ minWidth: 0 }}>
+                  <div
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 800,
+                      color: sc.color,
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                  >
+                    Estado del usuario: {sc.label}
+                  </div>
+                  {statusSaved && (
+                    <div style={{ fontSize: 10, color: c.success, marginTop: 2 }}>
+                      Estado actualizado correctamente
+                    </div>
+                  )}
+                </div>
+              </div>
+              {can(Permissions.SANCTION_USERS) && (
+                <button
+                  className="action-btn"
+                  onClick={() => {
+                    setPendingStatus(user.status);
+                    setStatusModalOpen(true);
+                  }}
+                  style={{
+                    flexShrink: 0,
+                    background: "transparent",
+                    borderColor: sc.color,
+                    color: sc.color,
+                  }}
+                >
+                  Cambiar estado
+                </button>
+              )}
+            </div>
+
+            {/* Verificación */}
+            {can(Permissions.ASSIGN_VERIFICATION) && (
+              <div
+                className="user-detail-status-panel"
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  border: `1.5px solid ${
+                    isVerified ? `${verificationColor}55` : `${verificationColor}66`
+                  }`,
+                  background: isVerified
+                    ? `${verificationColor}14`
+                    : "transparent",
+                  borderRadius: 14,
+                  padding: isVerified ? "12px 14px" : 0,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 12,
+                  overflow: "hidden",
+                }}
+              >
+                {isVerified ? (
+                  <>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
+                        minWidth: 0,
+                        flex: 1,
+                      }}
+                    >
+                      <VerifiedBadge
+                        verify={VerificationStatus.VERIFIED}
+                        verifyType={perfilUser?.User?.VerifyType}
+                        size={18}
+                      />
+                      <div
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 800,
+                          color: verificationColor,
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
+                        {verificationLabel}
+                      </div>
+                    </div>
+                    <button
+                      className="action-btn"
+                      onClick={() => setVerificationModalOpen(true)}
+                      style={{
+                        flexShrink: 0,
+                        background: "transparent",
+                        borderColor: verificationColor,
+                        color: verificationColor,
+                      }}
+                    >
+                      Cambiar / Quitar
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    className="action-btn"
+                    onClick={() => setVerificationModalOpen(true)}
+                    style={{
+                      width: "100%",
+                      minHeight: 46,
+                      border: "none",
+                      borderRadius: 14,
+                      background: "transparent",
+                      color: verificationColor,
+                      fontSize: 12,
+                      fontWeight: 800,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 8,
+                    }}
+                  >
+                    🛡️ Asignar verificación
+                  </button>
+                )}
+              </div>
             )}
           </div>
 
@@ -1386,190 +1676,580 @@ const UserDetail = () => {
           </div>
 
           {/* ══════════════════════════════════════════
-              BLOQUE 3 — Stats de contenido + Acciones rápidas
+              BLOQUE 3 — Tabs de contenido
           ══════════════════════════════════════════ */}
           <div
             style={{
-              marginBottom: 20,
+              background: c.card,
+              border: `1.5px solid ${c.border}`,
+              borderRadius: 20,
+              overflow: "hidden",
+              boxShadow: "0 2px 16px rgba(107,115,240,0.06)",
+              marginBottom: 16,
             }}
           >
-            {/* Acciones rápidas */}
             <div
+              className="user-detail-actions"
               style={{
-                background: c.card,
-                border: `1.5px solid ${c.border}`,
-                borderRadius: 20,
-                overflow: "hidden",
-                boxShadow: "0 2px 16px rgba(107,115,240,0.06)",
+                padding: "10px 12px",
+                display: "flex",
+                flexDirection: "row",
+                gap: 5,
               }}
             >
-              <div
-                className="user-detail-actions"
-                style={{
-                  padding: "10px 12px",
-                  display: "flex",
-                  flexDirection: "row",
-                  gap: 5,
-                }}
-              >
-                {[
-                  can(Permissions.SANCTION_USERS) && {
-                    label: user.status === "baneado" ? "✅ Quitar ban" : "🚫 Banear usuario",
-                    cls: user.status === "baneado" ? "" : "danger",
-                    onClick: () => {
-                      setPendingStatus(user.status === "baneado" ? "activo" : "baneado");
-                      setStatusModalOpen(true);
-                      setConfirmStatusOpen(true);
-                    },
-                  },
-                  can(Permissions.ASSIGN_VERIFICATION) && {
-                    label:
-                      perfilUser?.User?.Verify === VerificationStatus.VERIFIED
-                        ? "🛡️ Cambiar verificación"
-                        : "🛡️ Asignar verificación",
-                    cls: "",
-                    onClick: () => setVerificationModalOpen(true),
-                  },
-                  {
-                    label: "📋 Ver reportes",
-                    cls: "",
-                    onClick: () => navigate("/reports"),
-                  },
-                ]
-                  .filter(Boolean)
-                  .map((a: any) => (
+              {CONTENT_SECTIONS.map((section) => {
+                const active = contentSection === section.id;
+                return (
                   <button
-                    key={a.label}
-                    className={`action-btn ${a.cls}`}
-                    onClick={a.onClick}
-                    style={{ width: "100%", textAlign: "left" }}
+                    key={section.id}
+                    type="button"
+                    className={`action-btn${active ? " active" : ""}`}
+                    onClick={() => setContentSection(section.id)}
+                    style={{
+                      width: "100%",
+                      textAlign: "center",
+                      color: active ? c.accent : c.textMuted,
+                      borderColor: active ? `${c.accent}66` : c.border,
+                      background: active ? c.accentSoft : "transparent",
+                    }}
                   >
-                    {a.label}
+                    {section.emoji} {section.label}
                   </button>
-                ))}
-              </div>
+                );
+              })}
             </div>
           </div>
 
           {/* ══════════════════════════════════════════
-              BLOQUE 4 — Sección de publicaciones
+              BLOQUE 4 — Contenido de la sección
           ══════════════════════════════════════════ */}
           <div id="pub-section">
-            {/* Toolbar: tabs + buscador */}
-            <div
-              style={{
-                background: c.card,
-                border: `1.5px solid ${c.border}`,
-                borderRadius: 20,
-                padding: "16px 20px",
-                marginBottom: 16,
-                boxShadow: "0 2px 16px rgba(107,115,240,0.06)",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  gap: 8,
-                  flexWrap: "wrap",
-                  alignItems: "center",
-                }}
-              >
-                {PUB_TABS.map((t) => (
-                  <button
-                    key={t.id}
-                    className={`pub-tab-btn${pubTab === t.id ? " active" : ""}`}
-                    onClick={() => {
-                      setPubTab(t.id);
-                      setSearch("");
-                    }}
-                  >
-                    <span>{t.emoji}</span>
-                    <span>{t.label}</span>
-                    <span
-                      style={{
-                        fontSize: 9,
-                        fontWeight: 800,
-                        padding: "1px 6px",
-                        borderRadius: 8,
-                        background:
-                          pubTab === t.id ? c.accent + "33" : c.accentSoft,
-                        color: pubTab === t.id ? c.accent : c.textMuted,
-                      }}
-                    >
-                      {getTabCount(t)}
-                    </span>
-                  </button>
-                ))}
-                <div style={{ marginLeft: "auto", position: "relative" }}>
-                  <span
-                    style={{
-                      position: "absolute",
-                      left: 10,
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      fontSize: 12,
-                      color: c.textMuted,
-                      pointerEvents: "none",
-                    }}
-                  >
-                    🔍
-                  </span>
-                  <input
-                    className="pub-search"
-                    placeholder="Buscar publicación…"
-                    value={searchPub}
-                    onChange={(e) => setSearch(e.target.value)}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Grid de tarjetas */}
-            <div
-              className="fade-up"
-              key={pubTab}
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(290px, 1fr))",
-                gap: 14,
-              }}
-            >
-              {pubs.length === 0 ? (
+            {contentSection === "publicaciones" && (
+              <>
                 <div
                   style={{
-                    gridColumn: "1/-1",
-                    padding: 52,
-                    textAlign: "center",
+                    background: c.card,
+                    border: `1.5px solid ${c.border}`,
+                    borderRadius: 20,
+                    padding: "16px 20px",
+                    marginBottom: 16,
+                    boxShadow: "0 2px 16px rgba(107,115,240,0.06)",
                   }}
                 >
-                  <div style={{ fontSize: 36, opacity: 0.2, marginBottom: 10 }}>
-                    📭
-                  </div>
                   <div
                     style={{
-                      fontSize: 13,
-                      fontWeight: 700,
-                      color: c.textMuted,
+                      display: "flex",
+                      gap: 8,
+                      flexWrap: "wrap",
+                      alignItems: "center",
                     }}
                   >
-                    Sin resultados para "{searchPub}"
+                    {PUB_TABS.map((t) => (
+                      <button
+                        key={t.id}
+                        className={`pub-tab-btn${pubTab === t.id ? " active" : ""}`}
+                        onClick={() => {
+                          setPubTab(t.id);
+                          setSearch("");
+                        }}
+                      >
+                        <span>{t.emoji}</span>
+                        <span>{t.label}</span>
+                        <span
+                          style={{
+                            fontSize: 9,
+                            fontWeight: 800,
+                            padding: "1px 6px",
+                            borderRadius: 8,
+                            background:
+                              pubTab === t.id ? c.accent + "33" : c.accentSoft,
+                            color: pubTab === t.id ? c.accent : c.textMuted,
+                          }}
+                        >
+                          {getTabCount(t)}
+                        </span>
+                      </button>
+                    ))}
+                    <div style={{ marginLeft: "auto", position: "relative" }}>
+                      <span
+                        style={{
+                          position: "absolute",
+                          left: 10,
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                          fontSize: 12,
+                          color: c.textMuted,
+                          pointerEvents: "none",
+                        }}
+                      >
+                        🔍
+                      </span>
+                      <input
+                        className="pub-search"
+                        placeholder="Buscar publicación…"
+                        value={searchPub}
+                        onChange={(e) => setSearch(e.target.value)}
+                      />
+                    </div>
                   </div>
                 </div>
-              ) : (
-                pubs.map((pub) => (
-                  <div
-                    key={pub._id}
-                    onClick={() => setSelectedPublication(pub)}
-                    style={{ cursor: "pointer" }}
-                  >
-                    <PubCard publication={pub} />
+
+                <div
+                  className="fade-up"
+                  key={pubTab}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fill, minmax(290px, 1fr))",
+                    gap: 14,
+                  }}
+                >
+                  {pubs.length === 0 ? (
+                    <div
+                      style={{
+                        gridColumn: "1/-1",
+                        padding: 52,
+                        textAlign: "center",
+                      }}
+                    >
+                      <div style={{ fontSize: 36, opacity: 0.2, marginBottom: 10 }}>
+                        📭
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 13,
+                          fontWeight: 700,
+                          color: c.textMuted,
+                        }}
+                      >
+                        {searchPub
+                          ? `Sin resultados para "${searchPub}"`
+                          : "Sin publicaciones"}
+                      </div>
+                    </div>
+                  ) : (
+                    pubs.map((pub) => (
+                      <div
+                        key={pub._id}
+                        onClick={() => setSelectedPublication(pub)}
+                        style={{ cursor: "pointer" }}
+                      >
+                        <PubCard publication={pub} />
+                      </div>
+                    ))
+                  )}
+                </div>
+              </>
+            )}
+
+            {contentSection === "historias" && (
+              <div
+                style={{
+                  background: c.card,
+                  border: `1.5px solid ${c.border}`,
+                  borderRadius: 20,
+                  padding: 16,
+                  boxShadow: "0 2px 16px rgba(107,115,240,0.06)",
+                }}
+              >
+                {sectionLoading ? (
+                  <div style={{ padding: 40, textAlign: "center", color: c.textMuted }}>
+                    Cargando historias…
                   </div>
-                ))
-              )}
-            </div>
+                ) : userStories.length === 0 ? (
+                  <div style={{ padding: 40, textAlign: "center", color: c.textMuted }}>
+                    Sin historias publicadas
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
+                      gap: 14,
+                    }}
+                  >
+                    {userStories.map((item) => {
+                      const status =
+                        STORY_STATUS[item.Status] ||
+                        STORY_STATUS[HistoryStatus.PUBLISHED];
+                      return (
+                        <button
+                          key={item._id}
+                          type="button"
+                          onClick={() => setSelectedStory(item)}
+                          style={{
+                            border: `1.5px solid ${c.border}`,
+                            borderRadius: 18,
+                            overflow: "hidden",
+                            background: c.inputBackground,
+                            textAlign: "left",
+                            cursor: "pointer",
+                            padding: 0,
+                          }}
+                        >
+                          <div
+                            style={{
+                              position: "relative",
+                              height: 220,
+                              background: "#111",
+                            }}
+                          >
+                            {item.MediaData ? (
+                              isStoryVideo(item) ? (
+                                <video
+                                  src={item.MediaData}
+                                  style={{
+                                    width: "100%",
+                                    height: "100%",
+                                    objectFit: "cover",
+                                  }}
+                                  muted
+                                />
+                              ) : (
+                                <img
+                                  src={item.MediaData}
+                                  alt="historia"
+                                  style={{
+                                    width: "100%",
+                                    height: "100%",
+                                    objectFit: "cover",
+                                  }}
+                                />
+                              )
+                            ) : (
+                              <div
+                                style={{
+                                  height: "100%",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  color: c.textMuted,
+                                }}
+                              >
+                                Sin media
+                              </div>
+                            )}
+                            <span
+                              style={{
+                                position: "absolute",
+                                top: 10,
+                                right: 10,
+                                background: status.bg,
+                                color: status.color,
+                                fontSize: 10,
+                                fontWeight: 800,
+                                padding: "4px 8px",
+                                borderRadius: 999,
+                              }}
+                            >
+                              {status.label}
+                            </span>
+                          </div>
+                          <div style={{ padding: 12 }}>
+                            <div
+                              style={{
+                                color: c.textMuted,
+                                fontSize: 11,
+                              }}
+                            >
+                              {item.CreateDate
+                                ? new Date(item.CreateDate).toLocaleString()
+                                : "—"}
+                            </div>
+                            {item.OverlayText ? (
+                              <div
+                                style={{
+                                  color: c.text,
+                                  fontSize: 12,
+                                  marginTop: 4,
+                                  fontWeight: 600,
+                                }}
+                              >
+                                {item.OverlayText}
+                              </div>
+                            ) : null}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {contentSection === "reportes" && (
+              <div
+                style={{
+                  background: c.card,
+                  border: `1.5px solid ${c.border}`,
+                  borderRadius: 20,
+                  padding: 16,
+                  boxShadow: "0 2px 16px rgba(107,115,240,0.06)",
+                  display: "grid",
+                  gap: 10,
+                }}
+              >
+                {sectionLoading ? (
+                  <div style={{ padding: 40, textAlign: "center", color: c.textMuted }}>
+                    Cargando reportes…
+                  </div>
+                ) : userReports.length === 0 ? (
+                  <div style={{ padding: 40, textAlign: "center", color: c.textMuted }}>
+                    Sin reportes contra este usuario
+                  </div>
+                ) : (
+                  userReports.map((report) => {
+                    const reason = getReasonById(report.Type);
+                    const status =
+                      REPORT_STATUS_CFG[Number(report.Status)] ||
+                      REPORT_STATUS_CFG[ReportStatus.PENDING];
+                    return (
+                      <button
+                        key={report._id}
+                        type="button"
+                        onClick={() => navigate(`/moderation/${report._id}`)}
+                        style={{
+                          textAlign: "left",
+                          border: `1.5px solid ${c.border}`,
+                          borderRadius: 14,
+                          padding: "12px 14px",
+                          background: c.inputBackground,
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          gap: 12,
+                        }}
+                      >
+                        <div style={{ minWidth: 0 }}>
+                          <div
+                            style={{
+                              fontSize: 13,
+                              fontWeight: 800,
+                              color: c.text,
+                            }}
+                          >
+                            {reason?.icon || "📋"}{" "}
+                            {reason?.label || report.Type || "Reporte"}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: 11,
+                              color: c.textMuted,
+                              marginTop: 4,
+                            }}
+                          >
+                            {report.Category || "contenido"}
+                            {report.ReporterUser?.Username
+                              ? ` · por @${report.ReporterUser.Username}`
+                              : ""}
+                            {report.CreateDate
+                              ? ` · ${new Date(report.CreateDate).toLocaleString()}`
+                              : ""}
+                          </div>
+                        </div>
+                        <span
+                          style={{
+                            flexShrink: 0,
+                            fontSize: 10,
+                            fontWeight: 800,
+                            color: status.color,
+                            background: `${status.color}18`,
+                            padding: "4px 8px",
+                            borderRadius: 999,
+                          }}
+                        >
+                          {status.label}
+                        </span>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            )}
+
+            {contentSection === "historial" && (
+              <div
+                style={{
+                  background: c.card,
+                  border: `1.5px solid ${c.border}`,
+                  borderRadius: 20,
+                  padding: 16,
+                  boxShadow: "0 2px 16px rgba(107,115,240,0.06)",
+                  display: "grid",
+                  gap: 10,
+                }}
+              >
+                {sectionLoading ? (
+                  <div style={{ padding: 40, textAlign: "center", color: c.textMuted }}>
+                    Cargando historial…
+                  </div>
+                ) : profileEdits.length === 0 ? (
+                  <div style={{ padding: 40, textAlign: "center", color: c.textMuted }}>
+                    Sin cambios de información registrados
+                  </div>
+                ) : (
+                  profileEdits.map((edit) => (
+                    <div
+                      key={edit._id || `${edit.Item}-${edit.CreateDate}`}
+                      style={{
+                        border: `1.5px solid ${c.border}`,
+                        borderRadius: 14,
+                        padding: "12px 14px",
+                        background: c.inputBackground,
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          gap: 10,
+                          marginBottom: 8,
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontSize: 13,
+                            fontWeight: 800,
+                            color: c.text,
+                          }}
+                        >
+                          {PROFILE_EDIT_LABELS[edit.Item] || edit.Item}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 11,
+                            color: c.textMuted,
+                            flexShrink: 0,
+                          }}
+                        >
+                          {edit.CreateDate
+                            ? new Date(edit.CreateDate).toLocaleString()
+                            : "—"}
+                        </div>
+                      </div>
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "1fr auto 1fr",
+                          gap: 10,
+                          alignItems: "center",
+                        }}
+                      >
+                        <div>
+                          <div
+                            style={{
+                              fontSize: 9,
+                              fontWeight: 700,
+                              color: c.textMuted,
+                              textTransform: "uppercase",
+                              marginBottom: 2,
+                            }}
+                          >
+                            Anterior
+                          </div>
+                          <div
+                            style={{
+                              fontSize: 12,
+                              color: c.text,
+                              wordBreak: "break-word",
+                            }}
+                          >
+                            {edit.OldItem || "—"}
+                          </div>
+                        </div>
+                        <div style={{ color: c.accent, fontWeight: 800 }}>→</div>
+                        <div>
+                          <div
+                            style={{
+                              fontSize: 9,
+                              fontWeight: 700,
+                              color: c.textMuted,
+                              textTransform: "uppercase",
+                              marginBottom: 2,
+                            }}
+                          >
+                            Nuevo
+                          </div>
+                          <div
+                            style={{
+                              fontSize: 12,
+                              color: c.text,
+                              wordBreak: "break-word",
+                            }}
+                          >
+                            {edit.NewItem || "—"}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
           </div>
         </div>
       </main>
+
+      {selectedStory && (
+        <div
+          onClick={() => setSelectedStory(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background:
+              theme === "dark" ? "rgba(0,0,0,0.78)" : "rgba(0,0,0,0.45)",
+            zIndex: 1100,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 20,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "100%",
+              maxWidth: 420,
+              background: c.card,
+              borderRadius: 18,
+              overflow: "hidden",
+              border: `1.5px solid ${c.border}`,
+            }}
+          >
+            <div style={{ height: 480, background: "#111" }}>
+              {selectedStory.MediaData ? (
+                isStoryVideo(selectedStory) ? (
+                  <video
+                    src={selectedStory.MediaData}
+                    controls
+                    autoPlay
+                    style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                  />
+                ) : (
+                  <img
+                    src={selectedStory.MediaData}
+                    alt="historia"
+                    style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                  />
+                )
+              ) : null}
+            </div>
+            <div style={{ padding: 14 }}>
+              <div style={{ fontSize: 12, color: c.textMuted }}>
+                {selectedStory.CreateDate
+                  ? new Date(selectedStory.CreateDate).toLocaleString()
+                  : "—"}
+              </div>
+              {selectedStory.OverlayText ? (
+                <div style={{ marginTop: 6, color: c.text, fontWeight: 700 }}>
+                  {selectedStory.OverlayText}
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      )}
 
       <UserPublicationModal
         pub={selectedPublication}

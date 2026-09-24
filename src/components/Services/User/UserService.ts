@@ -107,6 +107,10 @@ export class UserService implements IUserService {
     });
     return result;
   }
+
+  async GetProfileEdits(id: string, page: number = 1): Promise<any> {
+    return Http.get(`/api/users/${id}/profile-edits?page=${page}`);
+  }
 }
 
 const userService = new UserService();

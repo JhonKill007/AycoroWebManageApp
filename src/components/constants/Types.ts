@@ -1,3 +1,5 @@
+import { Colors } from "./Colors";
+
 export const MessageType = Object.freeze({
   TEXT: "TEXT",
   AUDIO: "AUDIO",
@@ -60,6 +62,7 @@ export const VerificationType = Object.freeze({
   GREEN: "green",
   BLUE: "blue",
   GOLD: "gold",
+  PURPLE: "purple",
 });
 
 export const getVerificationColor = (verifyType?: string) => {
@@ -77,6 +80,12 @@ export const getVerificationColor = (verifyType?: string) => {
     case "dorado":
     case "dorada":
       return "#f5b301";
+    case VerificationType.PURPLE:
+    case "morado":
+    case "morada":
+    case "creators":
+    case "creator":
+      return Colors.detailAppColor;
     default:
       return "#22c55e";
   }

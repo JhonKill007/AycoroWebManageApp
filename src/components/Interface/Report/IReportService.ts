@@ -1,4 +1,3 @@
-
 export interface IReportService {
   getAll(
     page: number,
@@ -8,6 +7,7 @@ export interface IReportService {
       type?: string;
       priority?: string;
       sortBy?: string;
+      idUserReported?: string;
     },
   ): Promise<any>;
   updateStatus(id: string, status: number): Promise<any>;

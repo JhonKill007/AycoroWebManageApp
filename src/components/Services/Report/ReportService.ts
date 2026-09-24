@@ -73,6 +73,10 @@ export class ReportService implements IReportService {
       params.append("sortBy", filters.sortBy);
     }
 
+    if (filters?.idUserReported) {
+      params.append("idUserReported", filters.idUserReported);
+    }
+
     let result = await new Promise<any>((resolve, reject) => {
       Http.get(`/api/report/all?${params.toString()}`)
         .then((res) => {
