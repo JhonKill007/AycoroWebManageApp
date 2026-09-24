@@ -50,6 +50,7 @@ export class ReportService implements IReportService {
       type?: string;
       priority?: string;
       sortBy?: string;
+      idUserReported?: string;
     },
   ): Promise<any> {
     const params = new URLSearchParams({
