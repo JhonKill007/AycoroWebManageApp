@@ -61,11 +61,10 @@ const Users = () => {
     Inactive: 0,
     Suspended: 0,
     Banned: 0,
+    Validated: 0,
   });
   const [search, setSearch] = useState<string>("");
-  const [filterStatus, setFilterStatus] = useState<number | undefined>(
-    undefined,
-  );
+  const [userFilter, setUserFilter] = useState("all");
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [page, setPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
@@ -82,7 +81,12 @@ const Users = () => {
       const result = await userService.GetUser(
         page,
         debouncedSearch,
-        filterStatus!,
+        ["verified", "validated", "all"].includes(userFilter)
+          ? undefined
+          : Number(userFilter),
+        userFilter === "verified" || userFilter === "validated"
+          ? userFilter
+          : undefined,
       );
 
       // Estructura de datos según el formato proporcionado
@@ -100,6 +104,7 @@ const Users = () => {
         Inactive: countersData.Inactive || 0,
         Suspended: countersData.Suspended || 0,
         Banned: countersData.Banned || 0,
+        Validated: countersData.Validated || 0,
       });
       setTotalItems(paginationData.total || usersData.length || 0);
       setTotalPages(
@@ -119,12 +124,12 @@ const Users = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [page, debouncedSearch, filterStatus, itemsPerPage, showToast]);
+  }, [page, debouncedSearch, userFilter, itemsPerPage, showToast]);
 
   // Resetear página cuando cambia la búsqueda o el filtro de estado
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, filterStatus]);
+  }, [debouncedSearch, userFilter]);
 
   // Cargar usuarios cuando cambia página, búsqueda o filtro de estado
   useEffect(() => {
@@ -201,7 +206,7 @@ const Users = () => {
   // Resetear filtros
   const clearFilters = useCallback(() => {
     setSearch("");
-    setFilterStatus(undefined);
+    setUserFilter("all");
     setPage(1);
   }, []);
 
@@ -333,7 +338,7 @@ const Users = () => {
           background: ${c.inputBackground};
           border: 1.5px solid ${c.inputBorder};
           border-radius: 10px;
-          padding: 8px 14px 8px 36px;
+          padding: 8px 34px 8px 36px;
           font-size: 12px; color: ${c.text};
           font-family: 'Plus Jakarta Sans', sans-serif;
           outline: none; width: 260px;
@@ -440,48 +445,13 @@ const Users = () => {
             marginBottom: "22px",
           }}
         >
-          <KpiCard
-            emoji="👥"
-            label="Total usuarios"
-            value={counters.Users}
-            colorKey="accent"
-            c={c}
-          />
-          <KpiCard
-            emoji="🟢"
-            label="Activos"
-            value={counters.Active}
-            colorKey="success"
-            c={c}
-          />
-          <KpiCard
-            emoji="✅"
-            label="Verificados"
-            value={counters.Verified}
-            colorKey="success"
-            c={c}
-          />
-          <KpiCard
-            emoji="🟡"
-            label="Suspendidos"
-            value={counters.Suspended}
-            colorKey="warning"
-            c={c}
-          />
-          <KpiCard
-            emoji="🚫"
-            label="Baneados"
-            value={counters.Banned}
-            colorKey="danger"
-            c={c}
-          />
-          <KpiCard
-            emoji="🗑️"
-            label="Eliminados"
-            value={counters.Deleted}
-            colorKey="danger"
-            c={c}
-          />
+          <KpiCard emoji="👥" label="Total usuarios" value={counters.Users} colorKey="accent" c={c} active={userFilter === "all"} onClick={() => setUserFilter("all")} />
+          <KpiCard emoji="🟢" label="Activos" value={counters.Active} colorKey="success" c={c} active={userFilter === String(UserStatus.ACTIVE)} onClick={() => setUserFilter((current) => current === String(UserStatus.ACTIVE) ? "all" : String(UserStatus.ACTIVE))} />
+          <KpiCard emoji="✅" label="Verificados" value={counters.Verified} colorKey="success" c={c} active={userFilter === "verified"} onClick={() => setUserFilter((current) => current === "verified" ? "all" : "verified")} />
+          <KpiCard emoji="📧" label="Correos validados" value={counters.Validated} colorKey="info" c={c} active={userFilter === "validated"} onClick={() => setUserFilter((current) => current === "validated" ? "all" : "validated")} />
+          <KpiCard emoji="🟡" label="Suspendidos" value={counters.Suspended} colorKey="warning" c={c} active={userFilter === String(UserStatus.SUSPENDED)} onClick={() => setUserFilter((current) => current === String(UserStatus.SUSPENDED) ? "all" : String(UserStatus.SUSPENDED))} />
+          <KpiCard emoji="🚫" label="Baneados" value={counters.Banned} colorKey="danger" c={c} active={userFilter === String(UserStatus.BANNED)} onClick={() => setUserFilter((current) => current === String(UserStatus.BANNED) ? "all" : String(UserStatus.BANNED))} />
+          <KpiCard emoji="🗑️" label="Eliminados" value={counters.Deleted} colorKey="danger" c={c} active={userFilter === String(UserStatus.DELETED)} onClick={() => setUserFilter((current) => current === String(UserStatus.DELETED) ? "all" : String(UserStatus.DELETED))} />
         </div>
 
         {/* ── Tabla ── */}
@@ -528,20 +498,27 @@ const Users = () => {
               />
               {search && (
                 <button
+                  type="button"
+                  aria-label="Limpiar búsqueda"
                   onClick={() => setSearch("")}
                   style={{
                     position: "absolute",
                     right: "8px",
                     top: "50%",
                     transform: "translateY(-50%)",
-                    background: "transparent",
-                    border: "none",
+                    width: 22,
+                    height: 22,
+                    borderRadius: 8,
+                    border: `1px solid ${c.border}`,
+                    background: c.card,
                     cursor: "pointer",
-                    fontSize: "12px",
-                    color: c.textMuted,
+                    fontSize: "14px",
+                    fontWeight: 700,
+                    lineHeight: 1,
+                    color: c.text,
                   }}
                 >
-                  ✕
+                  ×
                 </button>
               )}
             </div>
@@ -552,8 +529,12 @@ const Users = () => {
                 <TabChip
                   key={String(s.value)}
                   label={s.label}
-                  active={filterStatus === s.value}
-                  onClick={() => setFilterStatus(s.value as any)}
+                  active={userFilter === String(s.value)}
+                  onClick={() =>
+                    setUserFilter((current) =>
+                      current === String(s.value) ? "all" : String(s.value),
+                    )
+                  }
                   color={s.color}
                   c={c}
                 />
@@ -561,7 +542,7 @@ const Users = () => {
             </div>
 
             {/* Clear filters button */}
-            {(search || filterStatus !== undefined) && (
+            {(search || userFilter !== "all") && (
               <button
                 onClick={clearFilters}
                 style={{

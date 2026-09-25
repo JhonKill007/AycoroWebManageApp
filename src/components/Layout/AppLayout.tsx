@@ -193,6 +193,7 @@ type SearchHit = {
   label: string;
   desc: string;
   path: string;
+  image?: string | null;
 };
 
 // ─── Utils ─────────────────────────────────────────────────────────────
@@ -337,7 +338,20 @@ function SearchPanel({
                 (e.currentTarget.style.background = "transparent")
               }
             >
-              <span style={{ fontSize: 16 }}>{hit.emoji}</span>
+              <span style={{ width: 36, height: 36, flex: "0 0 auto" }}>
+                {hit.image || hit.type === "usuario" ? (
+                  <img
+                    src={hit.image || UserProfile}
+                    alt=""
+                    style={{ width: 36, height: 36, borderRadius: 8, objectFit: "cover", display: "block", background: c.border }}
+                    onError={(event) => {
+                      (event.target as HTMLImageElement).src = UserProfile;
+                    }}
+                  />
+                ) : (
+                  <span style={{ fontSize: 16 }}>{hit.emoji}</span>
+                )}
+              </span>
               <div>
                 <div style={{ fontSize: 12, fontWeight: 700, color: c.text }}>
                   {hit.label}
@@ -1152,31 +1166,44 @@ export default function AycoroAdminNav() {
                 cursor: "pointer",
               }}
             >
-              <div
-                style={{
-                  width: "34px",
-                  height: "34px",
-                  borderRadius: "50%",
-                  background: "linear-gradient(135deg,#6b73f0,#a78bfa)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "13px",
-                  fontWeight: "700",
-                  color: "#fff",
-                  flexShrink: 0,
+              <img
+                src={userData?.profilePhoto || UserProfile}
+                alt=""
+                onError={(event) => {
+                  (event.target as HTMLImageElement).src = UserProfile;
                 }}
-              >
-                AD
-              </div>
-              <div style={{ flex: 1 }}>
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: "50%",
+                  objectFit: "cover",
+                  flexShrink: 0,
+                  background: c.border,
+                }}
+              />
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <div
-                  style={{ fontSize: "12px", fontWeight: "700", color: c.text }}
+                  style={{
+                    fontSize: "12px",
+                    fontWeight: "700",
+                    color: c.text,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
                 >
-                  Admin
+                  {userData?.user?.name || "Admin"}
                 </div>
-                <div style={{ fontSize: "10px", color: c.textMuted }}>
-                  Super Admin
+                <div
+                  style={{
+                    fontSize: "10px",
+                    color: c.textMuted,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {userData?.user?.roleName || "Manager"}
                 </div>
               </div>
               <span
@@ -1202,22 +1229,19 @@ export default function AycoroAdminNav() {
               }}
               onClick={() => navigate("/account")}
             >
-              <div
-                style={{
-                  width: "34px",
-                  height: "34px",
-                  borderRadius: "50%",
-                  background: "linear-gradient(135deg,#6b73f0,#a78bfa)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "13px",
-                  fontWeight: "700",
-                  color: "#fff",
+              <img
+                src={userData?.profilePhoto || UserProfile}
+                alt=""
+                onError={(event) => {
+                  (event.target as HTMLImageElement).src = UserProfile;
                 }}
-              >
-                AD
-              </div>
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: "50%",
+                  objectFit: "cover",
+                }}
+              />
             </div>
           )}
           <div
@@ -1339,9 +1363,37 @@ export default function AycoroAdminNav() {
                 setSearchWord(e.target.value);
                 e.target.value.length >= 1 ? setPanel("search") : closeAll();
               }}
-              // onFocus={() => setPanel("search")}
               onKeyDown={(e) => e.key === "Escape" && closeAll()}
+              style={{ paddingRight: searchWord ? 34 : undefined }}
             />
+            {searchWord ? (
+              <button
+                type="button"
+                aria-label="Limpiar búsqueda"
+                onClick={() => {
+                  setSearchWord("");
+                  closeAll();
+                }}
+                style={{
+                  position: "absolute",
+                  right: 8,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  width: 22,
+                  height: 22,
+                  borderRadius: 8,
+                  border: `1px solid ${c.border}`,
+                  background: c.card,
+                  color: c.text,
+                  fontSize: 14,
+                  fontWeight: 700,
+                  lineHeight: 1,
+                  cursor: "pointer",
+                }}
+              >
+                ×
+              </button>
+            ) : null}
             {panel === "search" && (
               <DropPanel width={400}>
                 <SearchPanel

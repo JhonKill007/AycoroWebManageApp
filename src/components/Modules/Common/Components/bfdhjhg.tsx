@@ -1,5 +1,5 @@
 // ─── Sub-componentes ──────────────────────────────────────────────────
-export const KpiCard = ({ emoji, label, value, colorKey, c }: any) => {
+export const KpiCard = ({ emoji, label, value, colorKey, c, active, onClick }: any) => {
   const map: any = {
     success: { bg: c.successSoft, text: c.success },
     warning: { bg: c.warningSoft, text: c.warning },
@@ -9,16 +9,22 @@ export const KpiCard = ({ emoji, label, value, colorKey, c }: any) => {
   };
   const col = map[colorKey] || map.accent;
   return (
-    <div
+    <button
+      type="button"
+      onClick={onClick}
       style={{
         background: c.card,
-        border: `1.5px solid ${c.border}`,
+        border: `1.5px solid ${active ? col.text : c.border}`,
         borderRadius: "16px",
         padding: "18px 20px",
         display: "flex",
         alignItems: "center",
         gap: "14px",
-        boxShadow: "0 2px 12px rgba(107,115,240,0.06)",
+        boxShadow: active ? `0 0 0 3px ${col.bg}` : "0 2px 12px rgba(107,115,240,0.06)",
+        cursor: onClick ? "pointer" : "default",
+        textAlign: "left",
+        font: "inherit",
+        width: "100%",
       }}
     >
       <div
@@ -58,6 +64,6 @@ export const KpiCard = ({ emoji, label, value, colorKey, c }: any) => {
           {label}
         </div>
       </div>
-    </div>
+    </button>
   );
 };

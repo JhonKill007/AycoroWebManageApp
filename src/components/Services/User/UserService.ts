@@ -2,9 +2,20 @@ import { IUserService } from "../../Interface/User/IUserService";
 import Http from "../Http/HttpClient";
 
 export class UserService implements IUserService {
-  async GetUser(page: number, search: string, status: number): Promise<any> {
+  async GetUser(
+    page: number,
+    search: string,
+    status?: number,
+    segment?: string,
+  ): Promise<any> {
+    const params = new URLSearchParams({
+      page: String(page),
+      search,
+    });
+    if (segment) params.set("segment", segment);
+    if (status !== undefined) params.set("status", String(status));
     let result = await new Promise<any>((resolve, reject) => {
-      Http.get(`/api/users?page=${page}&search=${search}&status=${status}`)
+      Http.get(`/api/users?${params.toString()}`)
         .then((res) => {
           resolve(res);
         })
