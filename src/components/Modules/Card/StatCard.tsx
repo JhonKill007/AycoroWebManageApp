@@ -1,7 +1,17 @@
 
-const StatCard = ({ stat, c }: any) => {
+const StatCard = ({ stat, c, onClick }: any) => {
   return (
     <div
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={(event) => {
+        if (!onClick) return;
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onClick();
+        }
+      }}
       style={{
         background: c.card,
         border: `1.5px solid ${c.border}`,
@@ -12,7 +22,7 @@ const StatCard = ({ stat, c }: any) => {
         gap: "8px",
         boxShadow: `0 2px 16px rgba(107,115,240,0.07)`,
         transition: "transform 0.15s",
-        cursor: "default",
+        cursor: onClick ? "pointer" : "default",
       }}
     >
       <div style={{ fontSize: "22px" }}>{stat.emoji}</div>

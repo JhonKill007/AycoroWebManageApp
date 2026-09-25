@@ -21,6 +21,14 @@ export class AdminHistoryService implements IAdminHistoryService {
     return Http.get(`/api/history/all?${params.toString()}`);
   }
 
+  async GetViews(id: string, page: number = 1): Promise<any> {
+    return Http.get(`/api/history/${id}/views?page=${page}`);
+  }
+
+  async GetLikes(id: string, page: number = 1): Promise<any> {
+    return Http.get(`/api/history/${id}/likes?page=${page}`);
+  }
+
   async GetById(id: string): Promise<any> {
     return Http.get(`/api/history/${id}`);
   }

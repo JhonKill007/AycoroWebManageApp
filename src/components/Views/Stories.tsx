@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Colors } from "../constants/Colors";
 import { Permissions } from "../constants/Permissions";
 import { HistoryStatus } from "../constants/Status";
@@ -57,6 +58,7 @@ const isVideo = (item: any) => {
 };
 
 const Stories = () => {
+  const navigate = useNavigate();
   const { theme } = useThemeContext();
   const { showToast } = useToast();
   const { can } = usePermissions();
@@ -279,7 +281,7 @@ const Stories = () => {
               return (
                 <button
                   key={item._id}
-                  onClick={() => setSelected(item)}
+                  onClick={() => item._id && navigate(`/stories/${item._id}`)}
                   style={{
                     border: `1.5px solid ${c.border}`,
                     borderRadius: 18,

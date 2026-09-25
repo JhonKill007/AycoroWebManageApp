@@ -503,6 +503,7 @@ export function PublicationModal({ pub, c, theme, onClose, onAction }: any) {
 
 // ─── Componente principal ─────────────────────────────────────────────
 const Publications = () => {
+  const navigate = useNavigate();
   const { theme } = useThemeContext();
   const { showToast } = useToast();
   const colors = theme === "dark" ? Colors.dark : Colors.light;
@@ -1017,7 +1018,7 @@ const Publications = () => {
                 <div
                   key={pub._id}
                   className="pub-card"
-                  onClick={() => setSelected(pub)}
+                  onClick={() => pub._id && navigate(`/publications/${pub._id}`)}
                 >
                   <PubCard publication={pub} />
                 </div>

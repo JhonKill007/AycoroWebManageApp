@@ -3,6 +3,14 @@ import { PostParams } from "../../Models/Post/PostParams";
 import Http from "../Http/HttpClient";
 
 export class PostService implements IPostService {
+  async GetLikes(id: string, page: number = 1): Promise<any> {
+    return Http.get(`/api/post/${id}/likes?page=${page}`);
+  }
+
+  async GetComments(id: string): Promise<any> {
+    return Http.get(`/api/post/${id}/comments`);
+  }
+
   async GetById(id: string): Promise<any> {
     const result = await new Promise<any>((resolve, reject) => {
       Http.get(`/api/post/${id}`)

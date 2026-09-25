@@ -2136,7 +2136,7 @@ const Reports = () => {
                 <div
                   key={report._id}
                   className="report-row"
-                  onClick={() => setSelected(report)}
+                  onClick={() => navigate(`/reports/${report._id}`)}
                   style={{
                     display: "grid",
                     gridTemplateColumns: "80px 180px 1fr 120px 90px 100px 80px 120px",
@@ -2332,19 +2332,6 @@ const Reports = () => {
         </div>
       </main>
 
-      {/* Modal detalle */}
-      <ReportDetailModal
-        report={selected}
-        c={c}
-        theme={theme}
-        onClose={() => setSelected(null)}
-        onStatusChange={handleStatusChange}
-        onDeleteItem={handleDeleteReportedContent}
-        onBanUser={handleBanUser}
-        onOpenUser={handleOpenUser}
-        onSendReporterMessage={handleSendReporterMessage}
-        sendingReporterMessage={sendingReporterMessage}
-      />
     </>
   );
 };

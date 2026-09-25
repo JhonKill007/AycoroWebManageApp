@@ -523,6 +523,9 @@ const UserDetail = () => {
   const [perfilPost, setPerfilPost] = useState<PostModel[]>([]);
   const [selectedPublication, setSelectedPublication] =
     useState<PostModel | null>(null);
+  const [followList, setFollowList] = useState<"followers" | "following" | null>(null);
+  const [followUsers, setFollowUsers] = useState<any[]>([]);
+  const [followLoading, setFollowLoading] = useState(false);
   const [isDeletingPublication, setIsDeletingPublication] = useState(false);
   const [archivedPost, setArchivedPost] = useState<PostModel[]>([]);
   const [userPostSection, setUserPostSection] = useState(1);
@@ -1453,11 +1456,13 @@ const UserDetail = () => {
                     label: "Seguidores",
                     value: perfilUser?.Followers ?? 0,
                     color: c.accent,
+                    list: "followers" as const,
                   },
                   {
                     label: "Seguidos",
                     value: perfilUser?.Followings ?? 0,
                     color: c.accent,
+                    list: "following" as const,
                   },
                   {
                     label: "Publicaciones",
@@ -1473,10 +1478,33 @@ const UserDetail = () => {
                   <div
                     key={s.label}
                     className="social-col"
+                    onClick={() => {
+                      const list = (s as { list?: "followers" | "following" }).list;
+                      const userId = perfilUser?.User?._id;
+                      if (!list || !userId) return;
+                      setFollowList(list);
+                      setFollowUsers([]);
+                      setFollowLoading(true);
+                      const request =
+                        list === "followers"
+                          ? userService.GetFollowers(userId)
+                          : userService.GetFollowing(userId);
+                      request
+                        .then((result) => setFollowUsers(result.data?.users || []))
+                        .catch(() =>
+                          showToast({
+                            type: "error",
+                            title: "Error",
+                            description: "No se pudo cargar la lista",
+                          }),
+                        )
+                        .finally(() => setFollowLoading(false));
+                    }}
                     style={{
                       borderRight: i < 3 ? `1px solid ${c.border}` : "none",
                       padding: "14px 10px",
                       gap: 3,
+                      cursor: (s as { list?: string }).list ? "pointer" : "default",
                     }}
                     onMouseEnter={(e) =>
                       ((e.currentTarget as HTMLElement).style.background =
@@ -1830,7 +1858,7 @@ const UserDetail = () => {
                     pubs.map((pub) => (
                       <div
                         key={pub._id}
-                        onClick={() => setSelectedPublication(pub)}
+                        onClick={() => pub._id && navigate(`/publications/${pub._id}`)}
                         style={{ cursor: "pointer" }}
                       >
                         <PubCard publication={pub} />
@@ -1875,7 +1903,7 @@ const UserDetail = () => {
                         <button
                           key={item._id}
                           type="button"
-                          onClick={() => setSelectedStory(item)}
+                          onClick={() => item._id && navigate(`/stories/${item._id}`)}
                           style={{
                             border: `1.5px solid ${c.border}`,
                             borderRadius: 18,
@@ -2006,7 +2034,7 @@ const UserDetail = () => {
                       <button
                         key={report._id}
                         type="button"
-                        onClick={() => navigate(`/moderation/${report._id}`)}
+                        onClick={() => navigate(`/reports/${report._id}`)}
                         style={{
                           textAlign: "left",
                           border: `1.5px solid ${c.border}`,
@@ -2247,6 +2275,91 @@ const UserDetail = () => {
                 </div>
               ) : null}
             </div>
+          </div>
+        </div>
+      )}
+
+      {followList && (
+        <div
+          onClick={() => setFollowList(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: theme === "dark" ? "rgba(0,0,0,0.72)" : "rgba(0,0,0,0.4)",
+            zIndex: 1200,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 20,
+          }}
+        >
+          <div
+            onClick={(event) => event.stopPropagation()}
+            style={{
+              width: "100%",
+              maxWidth: 420,
+              maxHeight: "70vh",
+              overflow: "auto",
+              background: c.card,
+              borderRadius: 18,
+              border: `1.5px solid ${c.border}`,
+              padding: 16,
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
+              <strong style={{ color: c.text }}>
+                {followList === "followers" ? "Seguidores" : "Seguidos"}
+              </strong>
+              <button
+                type="button"
+                onClick={() => setFollowList(null)}
+                style={{ border: "none", background: "transparent", color: c.textMuted, cursor: "pointer" }}
+              >
+                Cerrar
+              </button>
+            </div>
+            {followLoading ? (
+              <div style={{ color: c.textMuted, fontSize: 13 }}>Cargando...</div>
+            ) : followUsers.length === 0 ? (
+              <div style={{ color: c.textMuted, fontSize: 13 }}>No hay usuarios en esta lista.</div>
+            ) : (
+              followUsers.map((person) => (
+                <button
+                  key={person.id}
+                  type="button"
+                  onClick={() => person.username && navigate(`/users/${person.username}`)}
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "8px 0",
+                    border: "none",
+                    background: "transparent",
+                    color: c.text,
+                    cursor: "pointer",
+                    textAlign: "left",
+                    font: "inherit",
+                  }}
+                >
+                  <img
+                    src={person.profilePhoto || UserProfile}
+                    alt=""
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: "50%",
+                      objectFit: "cover",
+                      background: c.border,
+                    }}
+                  />
+                  <span>
+                    <strong style={{ display: "block" }}>{person.name || person.username}</strong>
+                    <span style={{ fontSize: 12, color: c.textMuted }}>@{person.username}</span>
+                  </span>
+                </button>
+              ))
+            )}
           </div>
         </div>
       )}

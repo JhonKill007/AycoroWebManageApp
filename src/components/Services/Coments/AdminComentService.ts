@@ -10,6 +10,10 @@ export class AdminComentService implements IAdminComentService {
     );
   }
 
+  async GetLikes(id: string, page: number = 1): Promise<any> {
+    return Http.get(`/api/coment/${id}/likes?page=${page}`);
+  }
+
   async UpdateStatus(id: string, status: number): Promise<any> {
     return Http.put("/api/coment/status", { id, status });
   }

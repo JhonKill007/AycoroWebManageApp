@@ -201,6 +201,7 @@ const ALL_ITEMS = NAV_ITEMS.flatMap((s) => s.items).sort(
 );
 
 function getActiveId(pathname: string): string {
+  if (pathname === "/online") return "dashboard";
   const match = ALL_ITEMS.find((item) =>
     item.navigate === "/"
       ? pathname === "/"

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Colors } from "../constants/Colors";
 import { Permissions } from "../constants/Permissions";
 import { CommentStatus } from "../constants/Status";
@@ -9,7 +10,6 @@ import AdminContentPreviewModal from "../Modules/Common/Components/AdminContentP
 import { KpiCard } from "../Modules/Common/Components/bfdhjhg";
 import { Pagination } from "../Modules/Common/Components/Pagination";
 import adminComentService from "../Services/Coments/AdminComentService";
-import postService from "../Services/Post/PostService";
 
 const COMMENT_STATUS: Record<
   number,
@@ -49,6 +49,7 @@ function useDebounce<T>(value: T, delay: number): T {
 }
 
 const Comments = () => {
+  const navigate = useNavigate();
   const { theme } = useThemeContext();
   const { showToast } = useToast();
   const { can } = usePermissions();
@@ -143,26 +144,7 @@ const Comments = () => {
       return;
     }
 
-    setLoadingPost(true);
-    setSelectedPost(null);
-    try {
-      const result = await postService.GetById(postId);
-      const post = result?.data ?? result;
-      if (!post || !post._id) {
-        throw new Error("Post not found");
-      }
-      setSelectedPost(post);
-    } catch {
-      showToast({
-        type: "error",
-        title: "Error",
-        description: "No se pudo cargar la publicación",
-        duration: 4000,
-      });
-      setSelectedPost(null);
-    } finally {
-      setLoadingPost(false);
-    }
+    navigate(`/publications/${postId}`);
   };
 
   return (

@@ -6,11 +6,8 @@ import { useHubsContext } from "../context/HubsContext";
 import { useThemeContext } from "../context/ThemeContext";
 import { useToast } from "../context/ToastContext";
 import { LiveActivity } from "../Models/Live/LiveActivity";
-import AdminContentPreviewModal from "../Modules/Common/Components/AdminContentPreviewModal";
 import StatCard from "../Modules/Card/StatCard";
 import analyticsService from "../Services/Analytics/AnalyticsService";
-import adminHistoryService from "../Services/History/AdminHistoryService";
-import postService from "../Services/Post/PostService";
 
 type DashboardStats = {
   activeUsers: { value: number; trend: number | null };
@@ -73,12 +70,14 @@ function RealtimeActivityCard({
   c,
   theme,
   activities,
-  onActivityClick,
+  onActorClick,
+  onTargetClick,
 }: {
   c: any;
   theme: string;
   activities: LiveActivity[];
-  onActivityClick: (activity: LiveActivity) => void;
+  onActorClick: (activity: LiveActivity) => void;
+  onTargetClick: (activity: LiveActivity) => void;
 }) {
   return (
     <section
@@ -166,35 +165,24 @@ function RealtimeActivityCard({
             const color = avatarColor(activity.username || "user");
             const isUserTarget = activity.targetType === "user";
             const activityDate = formatActivityDate(activity.createDate);
-            const canOpen =
-              (activity.targetType === "user" && !!activity.targetUsername) ||
+            const canOpenTarget =
+              (activity.targetType === "user" && !!activity.targetId) ||
               ((activity.targetType === "post" ||
                 activity.targetType === "history") &&
                 !!activity.targetId);
+            const showTarget = canOpenTarget && (activity.targetImage || isUserTarget);
 
             return (
               <div
                 key={activity.id}
-                role={canOpen ? "button" : undefined}
-                tabIndex={canOpen ? 0 : undefined}
-                onClick={() => canOpen && onActivityClick(activity)}
-                onKeyDown={(e) => {
-                  if (!canOpen) return;
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    onActivityClick(activity);
-                  }
-                }}
                 style={{
                   display: "flex",
                   alignItems: "center",
                   gap: 10,
                   padding: "8px 0",
                   minHeight: 34,
-                  cursor: canOpen ? "pointer" : "default",
                   borderRadius: 8,
                 }}
-                title={canOpen ? "Ir al objetivo" : undefined}
               >
                 <div
                   style={{
@@ -248,15 +236,22 @@ function RealtimeActivityCard({
                       flex: 1,
                     }}
                   >
-                    <span
+                    <button
+                      type="button"
+                      onClick={() => activity.username && onActorClick(activity)}
                       style={{
+                        border: "none",
+                        background: "transparent",
+                        padding: 0,
                         color: c.textMuted,
                         fontWeight: 700,
                         marginRight: 7,
+                        cursor: activity.username ? "pointer" : "default",
+                        font: "inherit",
                       }}
                     >
                       {activity.username}
-                    </span>
+                    </button>
                     <span>{activity.message}</span>
                   </div>
                   <div
@@ -280,22 +275,35 @@ function RealtimeActivityCard({
                         {activityDate}
                       </span>
                     )}
-                    {(activity.targetImage || isUserTarget) && (
-                      <img
-                        src={activity.targetImage || UserProfile}
-                        alt=""
+                    {showTarget && (
+                      <button
+                        type="button"
+                        onClick={() => onTargetClick(activity)}
+                        title="Ver el objetivo"
                         style={{
-                          width: 28,
-                          height: 28,
-                          borderRadius: isUserTarget ? "50%" : 4,
-                          objectFit: "cover",
-                          border: `1px solid ${c.border}`,
-                          background: c.border,
+                          border: "none",
+                          background: "transparent",
+                          padding: 0,
+                          cursor: "pointer",
+                          lineHeight: 0,
                         }}
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = UserProfile;
-                        }}
-                      />
+                      >
+                        <img
+                          src={activity.targetImage || UserProfile}
+                          alt=""
+                          style={{
+                            width: 28,
+                            height: 28,
+                            borderRadius: isUserTarget ? "50%" : 4,
+                            objectFit: "cover",
+                            border: `1px solid ${c.border}`,
+                            background: c.border,
+                          }}
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = UserProfile;
+                          }}
+                        />
+                      </button>
                     )}
                   </div>
                 </div>
@@ -314,9 +322,6 @@ const Dashboard = () => {
   const { showToast } = useToast();
   const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats>(emptyStats);
-  const [previewItem, setPreviewItem] = useState<any | null>(null);
-  const [previewKind, setPreviewKind] = useState<"post" | "history">("post");
-  const [previewLoading, setPreviewLoading] = useState(false);
 
   const colors = theme === "dark" ? Colors.dark : Colors.light;
   const c = colors.colors;
@@ -339,36 +344,9 @@ const Dashboard = () => {
     loadDashboardStats();
   }, []);
 
-  const openTargetContent = async (
-    kind: "post" | "history",
-    targetId: string,
-  ) => {
-    setPreviewKind(kind);
-    setPreviewItem(null);
-    setPreviewLoading(true);
-    try {
-      const result =
-        kind === "post"
-          ? await postService.GetById(targetId)
-          : await adminHistoryService.GetById(targetId);
-      const item = result?.data ?? result;
-      if (!item || !item._id) {
-        throw new Error("Target not found");
-      }
-      setPreviewItem(item);
-    } catch {
-      showToast({
-        type: "error",
-        title: "Error",
-        description:
-          kind === "post"
-            ? "No se pudo cargar la publicación"
-            : "No se pudo cargar la historia",
-        duration: 4000,
-      });
-      setPreviewItem(null);
-    } finally {
-      setPreviewLoading(false);
+  const openActorProfile = (activity: LiveActivity) => {
+    if (activity.username) {
+      navigate(`/users/${activity.username}`);
     }
   };
 
@@ -379,12 +357,13 @@ const Dashboard = () => {
     }
 
     if (activity.targetType === "post" && activity.targetId) {
-      void openTargetContent("post", activity.targetId);
+      navigate(`/publications/${activity.targetId}`);
       return;
     }
 
     if (activity.targetType === "history" && activity.targetId) {
-      void openTargetContent("history", activity.targetId);
+      navigate(`/stories/${activity.targetId}`);
+      return;
     }
   };
 
@@ -401,6 +380,7 @@ const Dashboard = () => {
         value: formatNumber(usersConnecting.length),
         trend: null,
         emoji: "🟢",
+        onClick: () => navigate("/online"),
       },
       {
         label: "Registrados hoy",
@@ -489,7 +469,10 @@ const Dashboard = () => {
                 {stats.pendingReports.value} reportes
               </strong>{" "}
               pendientes y{" "}
-              <strong style={{ color: c.warning }}>
+              <strong
+                style={{ color: c.warning, cursor: "pointer" }}
+                onClick={() => navigate("/online")}
+              >
                 {usersConnecting.length} usuarios
               </strong>{" "}
               en linea.
@@ -507,7 +490,12 @@ const Dashboard = () => {
           }}
         >
           {quickStats.map((stat) => (
-            <StatCard key={stat.label} stat={stat} c={c} />
+            <StatCard
+              key={stat.label}
+              stat={stat}
+              c={c}
+              onClick={stat.onClick}
+            />
           ))}
         </div>
 
@@ -515,21 +503,10 @@ const Dashboard = () => {
           c={c}
           theme={theme}
           activities={liveActivities}
-          onActivityClick={handleActivityClick}
+          onActorClick={openActorProfile}
+          onTargetClick={handleActivityClick}
         />
       </main>
-
-      <AdminContentPreviewModal
-        item={previewItem}
-        kind={previewKind}
-        c={c}
-        theme={theme}
-        loading={previewLoading}
-        onClose={() => {
-          setPreviewItem(null);
-          setPreviewLoading(false);
-        }}
-      />
     </>
   );
 };

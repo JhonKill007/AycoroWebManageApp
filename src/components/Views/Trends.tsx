@@ -260,7 +260,7 @@ const Trends = () => {
               posts.map((item) => (
                 <div
                   key={item._id}
-                  onClick={() => setSelectedPost(item)}
+                  onClick={() => item._id && navigate(`/publications/${item._id}`)}
                   style={{
                     background: c.card,
                     border: `1.5px solid ${c.border}`,

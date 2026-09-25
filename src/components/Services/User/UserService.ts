@@ -108,6 +108,14 @@ export class UserService implements IUserService {
     return result;
   }
 
+  async GetFollowers(id: string, page: number = 1): Promise<any> {
+    return Http.get(`/api/users/${id}/followers?page=${page}`);
+  }
+
+  async GetFollowing(id: string, page: number = 1): Promise<any> {
+    return Http.get(`/api/users/${id}/following?page=${page}`);
+  }
+
   async GetProfileEdits(id: string, page: number = 1): Promise<any> {
     return Http.get(`/api/users/${id}/profile-edits?page=${page}`);
   }
