@@ -1475,10 +1475,46 @@ const Analytics = () => {
                     fill="url(#areaGrad)"
                     dot={{ r: 4, fill: activeMC.color, strokeWidth: 0 }}
                     activeDot={{ r: 6, fill: activeMC.color }}
-                    name={activeMC.label}
+                    name={growthMetric === "usuarios" ? "Registros" : activeMC.label}
                   />
+                  {growthMetric === "usuarios" && (
+                    <>
+                      <Area
+                        type="monotone"
+                        dataKey="activos"
+                        stroke="#22c55e"
+                        strokeWidth={2}
+                        fill="transparent"
+                        dot={{ r: 3, fill: "#22c55e", strokeWidth: 0 }}
+                        name="Activos"
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="inactivos"
+                        stroke="#f87171"
+                        strokeWidth={2}
+                        fill="transparent"
+                        dot={{ r: 3, fill: "#f87171", strokeWidth: 0 }}
+                        name="Eliminados o baneados"
+                      />
+                    </>
+                  )}
                 </AreaChart>
               </ResponsiveContainer>
+              {growthMetric === "usuarios" && (
+                <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 8 }}>
+                  {[
+                    { label: "Registros", color: activeMC.color },
+                    { label: "Activos", color: "#22c55e" },
+                    { label: "Eliminados o baneados", color: "#f87171" },
+                  ].map((item) => (
+                    <span key={item.label} style={{ display: "inline-flex", alignItems: "center", gap: 6, color: c.textMuted, fontSize: 12 }}>
+                      <span style={{ width: 10, height: 10, borderRadius: "50%", background: item.color }} />
+                      {item.label}
+                    </span>
+                  ))}
+                </div>
+              )}
               <div
                 style={{
                   display: "flex",

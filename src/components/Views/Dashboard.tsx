@@ -66,6 +66,9 @@ const avatarColor = (username: string) => {
   return colors[Math.abs(hash) % colors.length];
 };
 
+const isVideoPreview = (src?: string) =>
+  /\.(mp4|mov|m4v|webm)(\?|#|$)/i.test(src || "");
+
 function RealtimeActivityCard({
   c,
   theme,
@@ -288,21 +291,39 @@ function RealtimeActivityCard({
                           lineHeight: 0,
                         }}
                       >
-                        <img
-                          src={activity.targetImage || UserProfile}
-                          alt=""
-                          style={{
-                            width: 28,
-                            height: 28,
-                            borderRadius: isUserTarget ? "50%" : 4,
-                            objectFit: "cover",
-                            border: `1px solid ${c.border}`,
-                            background: c.border,
-                          }}
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = UserProfile;
-                          }}
-                        />
+                        {isVideoPreview(activity.targetImage) ? (
+                          <video
+                            src={`${activity.targetImage}#t=0.1`}
+                            muted
+                            playsInline
+                            preload="metadata"
+                            style={{
+                              width: 28,
+                              height: 28,
+                              borderRadius: 4,
+                              objectFit: "cover",
+                              border: `1px solid ${c.border}`,
+                              background: "#111",
+                              pointerEvents: "none",
+                            }}
+                          />
+                        ) : (
+                          <img
+                            src={activity.targetImage || UserProfile}
+                            alt=""
+                            style={{
+                              width: 28,
+                              height: 28,
+                              borderRadius: isUserTarget ? "50%" : 4,
+                              objectFit: "cover",
+                              border: `1px solid ${c.border}`,
+                              background: c.border,
+                            }}
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = UserProfile;
+                            }}
+                          />
+                        )}
                       </button>
                     )}
                   </div>

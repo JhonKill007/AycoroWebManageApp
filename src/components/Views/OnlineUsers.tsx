@@ -1,8 +1,10 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import UserProfile from "../assets/UserProfile.jpeg";
 import { Colors } from "../constants/Colors";
 import { useHubsContext } from "../context/HubsContext";
 import { useThemeContext } from "../context/ThemeContext";
+import userService from "../Services/User/UserService";
 
 const avatarColor = (username: string) => {
   const colors = [
@@ -45,6 +47,32 @@ const OnlineUsers = () => {
       a.localeCompare(b, "es"),
     );
   }, [usersConnecting]);
+  const [photos, setPhotos] = useState<Record<string, string | null>>({});
+
+  useEffect(() => {
+    if (users.length === 0) {
+      setPhotos({});
+      return;
+    }
+    let cancelled = false;
+    userService
+      .GetProfiles(users)
+      .then((result) => {
+        if (cancelled) return;
+        const next: Record<string, string | null> = {};
+        const rows = result?.data?.users || [];
+        rows.forEach((row: any) => {
+          if (row?.username) next[row.username] = row.profilePhoto || null;
+        });
+        setPhotos(next);
+      })
+      .catch(() => {
+        if (!cancelled) setPhotos({});
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [users]);
 
   return (
     <main style={{ flex: 1, overflow: "auto", padding: "26px" }}>
@@ -121,22 +149,21 @@ const OnlineUsers = () => {
                 font: "inherit",
               }}
             >
-              <span
+              <img
+                src={photos[username] || UserProfile}
+                alt=""
                 style={{
                   width: 36,
                   height: 36,
                   borderRadius: "50%",
-                  background: avatarColor(username),
-                  color: "#fff",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontWeight: 700,
+                  objectFit: "cover",
                   flex: "0 0 auto",
+                  background: avatarColor(username),
                 }}
-              >
-                {username.charAt(0).toUpperCase()}
-              </span>
+                onError={(event) => {
+                  (event.target as HTMLImageElement).src = UserProfile;
+                }}
+              />
               <span style={{ fontWeight: 700 }}>{username}</span>
             </button>
           ))

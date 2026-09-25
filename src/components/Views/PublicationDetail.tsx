@@ -163,14 +163,22 @@ const PublicationDetail = () => {
         type="button"
         onClick={() => navigate(-1)}
         style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 8,
           marginBottom: 16,
-          border: "none",
-          background: "transparent",
-          color: c.textMuted,
+          padding: "8px 14px",
+          borderRadius: 12,
+          border: `1px solid ${c.border}`,
+          background: c.card,
+          color: c.text,
+          fontWeight: 700,
+          fontSize: 13,
           cursor: "pointer",
-          font: "inherit",
+          boxShadow: "0 1px 2px rgba(0,0,0,0.12)",
         }}
       >
+        <span aria-hidden="true">←</span>
         Volver
       </button>
       <div

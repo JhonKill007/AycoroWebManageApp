@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import UserProfile from "../assets/UserProfile.jpeg";
 import { Colors } from "../constants/Colors";
@@ -177,7 +177,19 @@ const ReportDetail = () => {
 
   const reason = REPORT_REASONS.find((item) => item.id === report.Type);
   const status = STATUS_CONFIG[report.Status || 0];
-  const category = CATEGORY_LABEL[String(report.Category || "").toLowerCase()] || report.Category;
+  const categoryKey = String(report.Category || "").toLowerCase();
+  const category = CATEGORY_LABEL[categoryKey] || report.Category;
+  const canDeleteContent = [
+    "post",
+    "publication",
+    "publicacion",
+    "publicación",
+    "comment",
+    "comentario",
+    "story",
+    "history",
+    "historia",
+  ].includes(categoryKey);
   const item = report.ReportedItem;
   const messageLabel = MESSAGE_TYPE_LABEL[String(item?.messageType || "").toUpperCase()];
   const resolved = report.Status === REPORT_STATUS.RESOLVED;
@@ -185,11 +197,8 @@ const ReportDetail = () => {
 
   return (
     <main style={{ flex: 1, overflow: "auto", padding: 26 }}>
-      <button
-        type="button"
-        onClick={() => navigate("/reports")}
-        style={{ marginBottom: 16, border: "none", background: "transparent", color: c.textMuted, cursor: "pointer", font: "inherit" }}
-      >
+      <button type="button" onClick={() => navigate("/reports")} style={backButtonStyle(c)}>
+        <span aria-hidden="true">←</span>
         Volver
       </button>
       <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: "0.08em", color: reason?.color || c.accent }}>
@@ -269,15 +278,10 @@ const ReportDetail = () => {
             extra={`${report.ConfirmedReports || 0} reportes confirmados`}
             c={c}
             onOpen={() => report.ReportedUser?.Username && navigate(`/users/${report.ReportedUser.Username}`)}
-          />
-
-          {canModerate ? (
-            <section style={panelStyle(c)}>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <ActionButton disabled={resolved} label="Revisar" onClick={() => void changeStatus(REPORT_STATUS.IN_REVIEW)} color={c.accent} />
-                <ActionButton disabled={resolved} label="Descartar" onClick={() => void changeStatus(REPORT_STATUS.DISMISSED)} color={c.textMuted} />
+            action={
+              canModerate && can(Permissions.SANCTION_USERS) ? (
                 <ActionButton
-                  disabled={resolved || !can(Permissions.SANCTION_USERS)}
+                  disabled={resolved}
                   label="Bannear cuenta"
                   onClick={async () => {
                     if (!report._id) return;
@@ -286,6 +290,16 @@ const ReportDetail = () => {
                   }}
                   color={c.danger}
                 />
+              ) : null
+            }
+          />
+
+          {canModerate ? (
+            <section style={panelStyle(c)}>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <ActionButton disabled={resolved} label="Revisar" onClick={() => void changeStatus(REPORT_STATUS.IN_REVIEW)} color={c.accent} />
+                <ActionButton disabled={resolved} label="Descartar" onClick={() => void changeStatus(REPORT_STATUS.DISMISSED)} color={c.textMuted} />
+                <ActionButton disabled={resolved} label="Resuelto" onClick={() => void changeStatus(REPORT_STATUS.RESOLVED)} color="#16a34a" />
               </div>
               <textarea
                 value={note}
@@ -308,9 +322,55 @@ const ReportDetail = () => {
           ) : null}
         </div>
       </div>
+      {canDeleteContent && canModerate && can(Permissions.DELETE_POSTS) ? (
+        <section style={{ ...panelStyle(c), marginTop: 18 }}>
+          <div style={{ color: c.text, fontWeight: 800, marginBottom: 6 }}>Contenido reportado</div>
+          <div style={{ color: c.textMuted, fontSize: 13, marginBottom: 8 }}>
+            Cambia el estado del contenido a eliminado. Los otros reportes de este mismo contenido quedan resueltos.
+          </div>
+          <ActionButton
+            label="Eliminar contenido"
+            color={c.danger}
+            onClick={async () => {
+              if (!report._id) return;
+              try {
+                await reportService.deleteReportedItem(report._id);
+                showToast({
+                  type: "success",
+                  title: "Contenido eliminado",
+                  description: "El contenido cambió de estado y los reportes abiertos quedaron resueltos",
+                });
+                await load();
+              } catch (error: any) {
+                showToast({
+                  type: "error",
+                  title: "Error",
+                  description: error?.response?.data?.message || "No se pudo eliminar el contenido",
+                });
+              }
+            }}
+          />
+        </section>
+      ) : null}
     </main>
   );
 };
+
+const backButtonStyle = (c: any) => ({
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 8,
+  marginBottom: 16,
+  padding: "8px 14px",
+  borderRadius: 12,
+  border: `1px solid ${c.border}`,
+  background: c.card,
+  color: c.text,
+  fontWeight: 700,
+  fontSize: 13,
+  cursor: "pointer",
+  boxShadow: "0 1px 2px rgba(0,0,0,0.12)",
+});
 
 const panelStyle = (c: any) => ({
   background: c.card,
@@ -337,6 +397,7 @@ const PersonCard = ({
   email,
   photo,
   extra,
+  action,
   c,
   onOpen,
 }: {
@@ -346,21 +407,38 @@ const PersonCard = ({
   email?: string;
   photo?: string;
   extra?: string;
+  action?: React.ReactNode;
   c: any;
   onOpen: () => void;
 }) => (
-  <button type="button" onClick={onOpen} style={{ ...panelStyle(c), textAlign: "left", cursor: username ? "pointer" : "default", color: c.text, font: "inherit" }}>
-    <div style={{ fontSize: 12, color: c.textMuted, fontWeight: 700 }}>{title}</div>
-    <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 10 }}>
-      <img src={photo || UserProfile} alt="" style={{ width: 42, height: 42, borderRadius: "50%", objectFit: "cover" }} />
-      <span>
-        <strong style={{ display: "block" }}>{name || username || "Usuario"}</strong>
-        <span style={{ display: "block", color: c.textMuted, fontSize: 13 }}>{username ? `@${username}` : ""}</span>
-        {email ? <span style={{ display: "block", color: c.textMuted, fontSize: 12 }}>{email}</span> : null}
-        {extra ? <span style={{ display: "block", color: c.danger, fontSize: 12, marginTop: 4 }}>{extra}</span> : null}
-      </span>
-    </div>
-  </button>
+  <section style={panelStyle(c)}>
+    <button
+      type="button"
+      onClick={onOpen}
+      style={{
+        width: "100%",
+        border: "none",
+        background: "transparent",
+        textAlign: "left",
+        cursor: username ? "pointer" : "default",
+        color: c.text,
+        font: "inherit",
+        padding: 0,
+      }}
+    >
+      <div style={{ fontSize: 12, color: c.textMuted, fontWeight: 700 }}>{title}</div>
+      <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 10 }}>
+        <img src={photo || UserProfile} alt="" style={{ width: 42, height: 42, borderRadius: "50%", objectFit: "cover" }} />
+        <span>
+          <strong style={{ display: "block" }}>{name || username || "Usuario"}</strong>
+          <span style={{ display: "block", color: c.textMuted, fontSize: 13 }}>{username ? `@${username}` : ""}</span>
+          {email ? <span style={{ display: "block", color: c.textMuted, fontSize: 12 }}>{email}</span> : null}
+          {extra ? <span style={{ display: "block", color: c.danger, fontSize: 12, marginTop: 4 }}>{extra}</span> : null}
+        </span>
+      </div>
+    </button>
+    {action}
+  </section>
 );
 
 const ActionButton = ({

@@ -116,6 +116,11 @@ export class UserService implements IUserService {
     return Http.get(`/api/users/${id}/following?page=${page}`);
   }
 
+  async GetProfiles(usernames: string[]): Promise<any> {
+    const names = usernames.filter(Boolean).slice(0, 200).join(",");
+    return Http.get(`/api/users/profiles?usernames=${encodeURIComponent(names)}`);
+  }
+
   async GetProfileEdits(id: string, page: number = 1): Promise<any> {
     return Http.get(`/api/users/${id}/profile-edits?page=${page}`);
   }

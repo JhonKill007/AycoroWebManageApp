@@ -566,6 +566,7 @@ const UserDetail = () => {
 
   useEffect(() => {
     if (username) {
+      setFollowList(null);
       loadData();
     }
   }, [username]);
@@ -1561,6 +1562,10 @@ const UserDetail = () => {
                 >
                   {[
                     {
+                      label: "ID",
+                      value: perfilUser?.User?._id || "—",
+                    },
+                    {
                       label: "Email",
                       value: perfilUser?.User?.Email,
                       extra: perfilUser?.User?.Validate ? (
@@ -1658,9 +1663,11 @@ const UserDetail = () => {
                             (item.value && item.value !== "-"
                               ? c.text
                               : c.border),
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
+                          overflow: item.label === "ID" ? "visible" : "hidden",
+                          textOverflow: item.label === "ID" ? "clip" : "ellipsis",
+                          whiteSpace: item.label === "ID" ? "normal" : "nowrap",
+                          wordBreak: item.label === "ID" ? "break-all" : "normal",
+                          fontFamily: item.label === "ID" ? "monospace" : "inherit",
                         }}
                       >
                         {item.value}
@@ -2312,10 +2319,22 @@ const UserDetail = () => {
               </strong>
               <button
                 type="button"
+                aria-label="Cerrar"
                 onClick={() => setFollowList(null)}
-                style={{ border: "none", background: "transparent", color: c.textMuted, cursor: "pointer" }}
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 10,
+                  border: `1px solid ${c.border}`,
+                  background: theme === "dark" ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)",
+                  color: c.text,
+                  fontSize: 18,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  lineHeight: 1,
+                }}
               >
-                Cerrar
+                ×
               </button>
             </div>
             {followLoading ? (
@@ -2327,7 +2346,11 @@ const UserDetail = () => {
                 <button
                   key={person.id}
                   type="button"
-                  onClick={() => person.username && navigate(`/users/${person.username}`)}
+                  onClick={() => {
+                    if (!person.username) return;
+                    setFollowList(null);
+                    navigate(`/users/${person.username}`);
+                  }}
                   style={{
                     width: "100%",
                     display: "flex",
