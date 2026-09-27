@@ -132,6 +132,14 @@ export class UserService implements IUserService {
     return Http.get(`/api/users/profiles?usernames=${encodeURIComponent(names)}`);
   }
 
+  async AddIpBlacklist(ip: string, idUser?: string, reason?: string): Promise<any> {
+    return Http.post(`/api/ip-blacklist`, { ip, idUser, reason });
+  }
+
+  async UnblockIp(ip: string): Promise<any> {
+    return Http.post(`/api/ip-blacklist/unblock`, { ip });
+  }
+
   async GetProfileEdits(id: string, page: number = 1): Promise<any> {
     return Http.get(`/api/users/${id}/profile-edits?page=${page}`);
   }

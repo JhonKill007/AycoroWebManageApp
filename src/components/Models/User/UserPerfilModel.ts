@@ -9,6 +9,12 @@ export class UserPerfilModel {
     public Reports?: number;
     public ProfilePhoto: string | undefined;
     public Post?: PostModel[];
+    public IpBlacklist?: {
+        isBlocked: boolean;
+        reason?: string | null;
+        expiresAt?: string | null;
+        available: boolean;
+    };
 }
 
 

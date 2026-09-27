@@ -540,6 +540,10 @@ const UserDetail = () => {
   const [pubTab, setPubTab] = useState<PubTabId>("activas");
   const [searchPub, setSearch] = useState("");
   const [confirmBan, setConfirmBan] = useState(false);
+  const [confirmIpOpen, setConfirmIpOpen] = useState(false);
+  const [ipSaving, setIpSaving] = useState(false);
+  const [ipReason, setIpReason] = useState("");
+  const [ipAction, setIpAction] = useState<"block" | "unblock">("block");
   const [statusSaved, setStatusSaved] = useState(false);
   const [statusModalOpen, setStatusModalOpen] = useState(false);
   const [confirmStatusOpen, setConfirmStatusOpen] = useState(false);
@@ -1566,6 +1570,19 @@ const UserDetail = () => {
                       value: perfilUser?.User?._id || "—",
                     },
                     {
+                      label: "IP",
+                      value: perfilUser?.User?.IP || "—",
+                      extra: (
+                        <div style={{ marginTop: 4, fontFamily: "inherit", fontWeight: 600 }}>
+                          {!perfilUser?.User?.IP || !perfilUser?.IpBlacklist?.available
+                            ? "Estado: No disponible"
+                            : perfilUser.IpBlacklist.isBlocked
+                              ? `Estado: Bloqueada${perfilUser.IpBlacklist.reason ? ` · ${perfilUser.IpBlacklist.reason}` : ""}`
+                              : "Estado: Permitida"}
+                        </div>
+                      ),
+                    },
+                    {
                       label: "Email",
                       value: perfilUser?.User?.Email,
                       extra: perfilUser?.User?.Validate ? (
@@ -1663,11 +1680,11 @@ const UserDetail = () => {
                             (item.value && item.value !== "-"
                               ? c.text
                               : c.border),
-                          overflow: item.label === "ID" ? "visible" : "hidden",
-                          textOverflow: item.label === "ID" ? "clip" : "ellipsis",
-                          whiteSpace: item.label === "ID" ? "normal" : "nowrap",
-                          wordBreak: item.label === "ID" ? "break-all" : "normal",
-                          fontFamily: item.label === "ID" ? "monospace" : "inherit",
+                          overflow: item.label === "ID" || item.label === "IP" ? "visible" : "hidden",
+                          textOverflow: item.label === "ID" || item.label === "IP" ? "clip" : "ellipsis",
+                          whiteSpace: item.label === "ID" || item.label === "IP" ? "normal" : "nowrap",
+                          wordBreak: item.label === "ID" || item.label === "IP" ? "break-all" : "normal",
+                          fontFamily: item.label === "ID" || item.label === "IP" ? "monospace" : "inherit",
                         }}
                       >
                         {item.value}
@@ -1676,6 +1693,30 @@ const UserDetail = () => {
                     </div>
                   ))}
                 </div>
+                {can(Permissions.SANCTION_USERS) ? (
+                  <button
+                    type="button"
+                    disabled={!perfilUser?.User?.IP || !perfilUser?.IpBlacklist?.available || ipSaving}
+                    onClick={() => {
+                      const blocked = !!perfilUser?.IpBlacklist?.isBlocked;
+                      setIpAction(blocked ? "unblock" : "block");
+                      setIpReason("");
+                      setConfirmIpOpen(true);
+                    }}
+                    style={{
+                      marginTop: 8,
+                      border: `1px solid ${c.danger}55`,
+                      background: "transparent",
+                      color: perfilUser?.User?.IP && perfilUser?.IpBlacklist?.available ? c.danger : c.border,
+                      borderRadius: 10,
+                      padding: "7px 12px",
+                      fontWeight: 700,
+                      cursor: perfilUser?.User?.IP && perfilUser?.IpBlacklist?.available ? "pointer" : "not-allowed",
+                    }}
+                  >
+                    {perfilUser?.IpBlacklist?.isBlocked ? "Desbloquear IP" : "Bloquear IP"}
+                  </button>
+                ) : null}
 
                 {/* Divider */}
                 <div style={{ height: 1, background: c.border }} />
@@ -2543,6 +2584,127 @@ const UserDetail = () => {
                 }}
               >
                 Guardar cambio
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmIpOpen && (
+        <div
+          onClick={() => !ipSaving && setConfirmIpOpen(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 1100,
+            background: "rgba(0,0,0,0.42)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 20,
+          }}
+        >
+          <div
+            onClick={(event) => event.stopPropagation()}
+            style={{
+              width: "100%",
+              maxWidth: 380,
+              background: c.card,
+              border: `1.5px solid ${c.border}`,
+              borderRadius: 16,
+              padding: 18,
+            }}
+          >
+            <div style={{ fontSize: 15, fontWeight: 900, color: c.text }}>
+              {ipAction === "unblock" ? "Desbloquear dirección IP" : "Bloquear dirección IP"}
+            </div>
+            <div style={{ fontSize: 13, color: c.textMuted, lineHeight: 1.5, marginTop: 8 }}>
+              {ipAction === "unblock" ? (
+                <>
+                  Vas a permitir de nuevo las solicitudes desde{" "}
+                  <strong style={{ color: c.text }}>{perfilUser?.User?.IP}</strong>.
+                </>
+              ) : (
+                <>
+                  Estás a punto de bloquear{" "}
+                  <strong style={{ color: c.text }}>{perfilUser?.User?.IP}</strong>.
+                  Las solicitudes futuras desde esta IP no podrán utilizar Aycoro.
+                </>
+              )}
+            </div>
+            {ipAction === "block" ? (
+              <label style={{ display: "block", marginTop: 14, fontSize: 12, color: c.textMuted }}>
+                Razón
+                <textarea
+                  value={ipReason}
+                  onChange={(event) => setIpReason(event.target.value)}
+                  rows={3}
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    marginTop: 6,
+                    boxSizing: "border-box",
+                    borderRadius: 10,
+                    border: `1px solid ${c.border}`,
+                    padding: 8,
+                    color: c.text,
+                    background: "transparent",
+                  }}
+                />
+              </label>
+            ) : null}
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 18 }}>
+              <button type="button" onClick={() => setConfirmIpOpen(false)} disabled={ipSaving}>
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={ipSaving}
+                onClick={async () => {
+                  const ip = perfilUser?.User?.IP;
+                  if (!ip) return;
+                  setIpSaving(true);
+                  try {
+                    if (ipAction === "unblock") {
+                      await userService.UnblockIp(ip);
+                    } else {
+                      await userService.AddIpBlacklist(ip, perfilUser?.User?._id, ipReason.trim());
+                    }
+                    const blocked = ipAction === "block";
+                    setPerfilUser((current) =>
+                      current
+                        ? {
+                            ...current,
+                            IpBlacklist: {
+                              isBlocked: blocked,
+                              reason: blocked ? ipReason.trim() || null : null,
+                              expiresAt: null,
+                              available: true,
+                            },
+                          }
+                        : current,
+                    );
+                    setConfirmIpOpen(false);
+                    showToast({
+                      type: "success",
+                      title: blocked ? "IP bloqueada" : "IP permitida",
+                      description: blocked
+                        ? "Quedó bloqueada. La app puede tardar hasta 30 segundos en aplicarlo."
+                        : "Quedó permitida. La app puede tardar hasta 30 segundos en aplicarlo.",
+                    });
+                  } catch (error: any) {
+                    showToast({
+                      type: "error",
+                      title: "Error",
+                      description: error?.response?.data?.message || "No se pudo actualizar la IP",
+                    });
+                  } finally {
+                    setIpSaving(false);
+                  }
+                }}
+                style={{ background: c.danger, color: "#fff", border: "none", borderRadius: 10, padding: "8px 12px", fontWeight: 700 }}
+              >
+                {ipSaving ? "Guardando..." : ipAction === "unblock" ? "Desbloquear IP" : "Bloquear IP"}
               </button>
             </div>
           </div>
