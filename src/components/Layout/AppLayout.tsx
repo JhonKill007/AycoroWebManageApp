@@ -146,7 +146,7 @@ const NAV_ITEMS: any[] = [
         emoji: "⚙️",
         badge: null,
         navigate: "/settings",
-        permissions: [Permissions.MANAGE_SETTINGS, Permissions.MANAGE_ADMINS, Permissions.DANGER_ZONE],
+        permissions: [Permissions.MANAGE_SETTINGS, Permissions.MANAGE_ADMINS, Permissions.DANGER_ZONE, Permissions.VAULT_ACCESS],
       },
       {
         id: "logs",
@@ -572,7 +572,7 @@ function ProfileMenu({
   onClose: () => void;
 }) {
   const { removeUser } = useUserContext();
-  const { canAny } = usePermissions();
+  const { canAny, isSuperAdmin } = usePermissions();
   const go = (path: string) => {
     navigate(path);
     onClose();
@@ -668,6 +668,7 @@ function ProfileMenu({
               Permissions.MANAGE_SETTINGS,
               Permissions.MANAGE_ADMINS,
               Permissions.DANGER_ZONE,
+              Permissions.VAULT_ACCESS,
             ],
           },
           {
@@ -694,7 +695,9 @@ function ProfileMenu({
         ]
           .filter(
             (item) =>
-              item.permissions.length === 0 || canAny(...item.permissions),
+              item.permissions.length === 0 ||
+              canAny(...item.permissions) ||
+              (item.path === "/settings" && isSuperAdmin),
           )
           .map((item, i) => (
           <div
@@ -789,7 +792,7 @@ function ProfileMenu({
 export default function AycoroAdminNav() {
   const navigate = useNavigate();
   const { userData, saveUser } = useUserContext();
-  const { canAny } = usePermissions();
+  const { canAny, isSuperAdmin } = usePermissions();
 
   const { JoinApp } = useHubsContext();
 
@@ -862,6 +865,7 @@ export default function AycoroAdminNav() {
         ...userData.user!,
         role: data.role,
         roleName: data.roleName,
+        roleType: data.roleType || userData.user!.roleType || "NORMAL",
         permissions: data.permissions,
       },
     });
@@ -880,7 +884,10 @@ export default function AycoroAdminNav() {
   const updatedNavItems = NAV_ITEMS.map((section) => ({
     ...section,
     items: section.items
-      .filter((item: any) => canAny(...item.permissions))
+      .filter((item: any) =>
+        canAny(...item.permissions) ||
+        (item.id === "settings" && isSuperAdmin),
+      )
       .map((item: any) => {
         if (item.id === "reports" || item.id === "moderation") {
           return {

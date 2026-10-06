@@ -4,6 +4,32 @@ import { useThemeContext } from "../context/ThemeContext";
 import { useToast } from "../context/ToastContext";
 import auditService from "../Services/Audit/AuditService";
 
+const categoryFromEvent = (eventType?: string, resource?: string) => {
+  const type = String(eventType || "").toUpperCase();
+  if (type.includes("SECRET") || type.includes("VAULT")) return "Vault";
+  if (type.includes("SYSTEM") || type.includes("ENCRYPTION")) return "Seguridad";
+  if (type.includes("ROLE")) return "Roles";
+  if (type.includes("MANAGER")) return "Managers";
+  if (type.includes("REQUEST") || type.includes("VERIFICATION") || type.includes("USER"))
+    return "Usuarios";
+  if (type.includes("REPORT") || type.includes("MODER")) return "Moderación";
+  const res = String(resource || "").toLowerCase();
+  if (res.includes("vault")) return "Vault";
+  if (res.includes("role")) return "Roles";
+  if (res.includes("manager")) return "Managers";
+  if (res.includes("user") || res.includes("request")) return "Usuarios";
+  if (res.includes("system")) return "Configuración";
+  return "Sistema";
+};
+
+const displayDescription = (item: any) => {
+  if (item.Description) return item.Description;
+  if (item.Action && !/^(GET|POST|PUT|PATCH|DELETE)\s/i.test(item.Action)) {
+    return item.Action;
+  }
+  return `${item.Method || "REQUEST"} ${item.Resource || "request"}`;
+};
+
 const Audit = () => {
   const { theme } = useThemeContext();
   const { showToast } = useToast();
@@ -58,7 +84,8 @@ const Audit = () => {
       >
         <div style={{ fontSize: 18, fontWeight: 800, color: c.text }}>📝 Auditoría de administradores</div>
         <div style={{ fontSize: 13, color: c.textMuted, marginTop: 4 }}>
-          Acciones de managers en el panel: bans, eliminaciones, cambios de estado y más.
+          Quién hizo qué, sobre qué recurso y cuándo. Las filas antiguas siguen
+          mostrando el resumen técnico si no tienen descripción.
         </div>
       </div>
       <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
@@ -68,7 +95,7 @@ const Audit = () => {
             setPage(1);
             setSearch(e.target.value);
           }}
-          placeholder="Buscar email, acción, id..."
+          placeholder="Buscar descripción, email, evento..."
           style={{
             background: c.inputBackground,
             border: `1.5px solid ${c.inputBorder}`,
@@ -115,31 +142,50 @@ const Audit = () => {
             Aún no hay acciones registradas. Aparecerán al guardar cambios en el panel.
           </div>
         ) : (
-          items.map((item) => (
-            <div
-              key={item._id}
-              style={{
-                padding: "14px 18px",
-                borderBottom: `1px solid ${c.border}`,
-                display: "grid",
-                gridTemplateColumns: "180px 1fr 140px",
-                gap: 12,
-              }}
-            >
-              <div style={{ fontSize: 11, color: c.textMuted }}>
-                {item.CreateDate ? new Date(item.CreateDate).toLocaleString("es-DO") : "—"}
-              </div>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: c.text }}>{item.Action}</div>
+          items.map((item) => {
+            const category = categoryFromEvent(item.EventType, item.Resource);
+            return (
+              <div
+                key={item._id}
+                style={{
+                  padding: "14px 18px",
+                  borderBottom: `1px solid ${c.border}`,
+                  display: "grid",
+                  gridTemplateColumns: "180px 1fr 140px",
+                  gap: 12,
+                }}
+              >
                 <div style={{ fontSize: 11, color: c.textMuted }}>
-                  {item.ManagerEmail || item.ManagerId} · {item.Path}
+                  {item.CreateDate ? new Date(item.CreateDate).toLocaleString("es-DO") : "—"}
+                  <div
+                    style={{
+                      marginTop: 6,
+                      display: "inline-block",
+                      fontSize: 10,
+                      fontWeight: 700,
+                      color: c.accent,
+                      background: c.accentSoft || "#ededff",
+                      borderRadius: 999,
+                      padding: "2px 8px",
+                    }}
+                  >
+                    {category}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: c.text }}>
+                    {displayDescription(item)}
+                  </div>
+                  <div style={{ fontSize: 11, color: c.textMuted, marginTop: 3 }}>
+                    {item.ManagerEmail || item.ManagerId} · {item.Path}
+                  </div>
+                </div>
+                <div style={{ fontSize: 11, color: c.textMuted, textAlign: "right" }}>
+                  {item.StatusCode} · {item.Ip || "sin IP"}
                 </div>
               </div>
-              <div style={{ fontSize: 11, color: c.textMuted, textAlign: "right" }}>
-                {item.StatusCode} · {item.Ip || "sin IP"}
-              </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
       <div style={{ marginTop: 16, display: "flex", gap: 8 }}>

@@ -1,24 +1,66 @@
 import { useState } from "react";
 import { Colors } from "../constants/Colors";
-import { Permissions } from "../constants/Permissions";
+import { Permission, Permissions } from "../constants/Permissions";
 import { useThemeContext } from "../context/ThemeContext";
 import { usePermissions } from "../hooks/usePermissions";
 import RolesTab from "../Modules/Settings/Role/Components/RolesTab";
+import SecretsTab from "../Modules/Settings/Secrets/Components/SecretsTab";
+import SystemConfigurationTab from "../Modules/Settings/SystemConfiguration/Components/SystemConfigurationTab";
 import { ManagersTab } from "../Modules/Settings/Team/Components/ManagersTab";
 import VersionsTab from "../Modules/Settings/Version/Components/VersionsTab";
 
-const SECTIONS = [
-  { id: "manager", label: "Manager", emoji: "👮", permission: Permissions.MANAGE_ADMINS },
-  { id: "roles", label: "Roles", emoji: "🎭", permission: Permissions.MANAGE_ADMINS },
-  { id: "versiones", label: "Versiones", emoji: "🚀", permission: Permissions.MANAGE_SETTINGS },
+type SettingsSection = {
+  id: string;
+  label: string;
+  emoji: string;
+  permissions?: Permission[];
+  /** When true, Role.Type SUPERADMIN can see the section without listed permissions. */
+  superAdminOnly?: boolean;
+  requireSuperAdmin?: boolean;
+};
+
+const SECTIONS: SettingsSection[] = [
+  {
+    id: "manager",
+    label: "Manager",
+    emoji: "👮",
+    permissions: [Permissions.MANAGE_ADMINS],
+  },
+  {
+    id: "roles",
+    label: "Roles",
+    emoji: "🎭",
+    permissions: [Permissions.MANAGE_ADMINS],
+  },
+  {
+    id: "versiones",
+    label: "Versiones",
+    emoji: "🚀",
+    permissions: [Permissions.MANAGE_SETTINGS],
+  },
+  {
+    id: "secretos",
+    label: "Secretos",
+    emoji: "🔐",
+    permissions: [Permissions.VAULT_ACCESS],
+  },
+  {
+    id: "sistema",
+    label: "Configuración del sistema",
+    emoji: "🛠️",
+    requireSuperAdmin: true,
+  },
 ];
 
 const Settings = () => {
   const { theme } = useThemeContext();
-  const { can } = usePermissions();
+  const { canAny, isSuperAdmin } = usePermissions();
   const colors = theme === "dark" ? Colors.dark : Colors.light;
   const c = colors.colors;
-  const visibleSections = SECTIONS.filter((section) => can(section.permission));
+  const visibleSections = SECTIONS.filter((section) => {
+    if (section.requireSuperAdmin) return isSuperAdmin;
+    return canAny(...(section.permissions || []));
+  });
   const [activeSection, setActiveSection] = useState(
     () => visibleSections[0]?.id || "versiones",
   );
@@ -31,6 +73,10 @@ const Settings = () => {
         return <RolesTab c={c} theme={theme} />;
       case "versiones":
         return <VersionsTab c={c} theme={theme} />;
+      case "secretos":
+        return <SecretsTab c={c} theme={theme} />;
+      case "sistema":
+        return <SystemConfigurationTab c={c} theme={theme} />;
       default:
         return (
           <div style={{ color: c.textMuted, fontSize: 13 }}>
@@ -85,7 +131,8 @@ const Settings = () => {
             ⚙️ Configuración
           </div>
           <div style={{ fontSize: "13px", color: c.textMuted, lineHeight: 1.5 }}>
-            Solo se muestran ajustes que el panel puede guardar: managers, roles y versiones.
+            Solo se muestran ajustes disponibles para tu rol: managers, roles,
+            versiones, secretos y configuración del sistema.
           </div>
         </div>
         <div

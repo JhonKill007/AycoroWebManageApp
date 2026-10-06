@@ -137,6 +137,18 @@ const PERMS_MATRIX: Permission[] = [
     label: "Ver SessionLog",
     description: "Registros de entradas y sesiones de usuarios",
   },
+  {
+    id: "p22",
+    group: "Vault / Secretos",
+    label: "Acceder a secretos",
+    description: "Entrar a la sección Secretos y listar secretos permitidos",
+  },
+  {
+    id: "p23",
+    group: "Vault / Secretos",
+    label: "Crear secretos",
+    description: "Crear nuevos secretos (requiere también Acceder a secretos en la UI)",
+  },
 ];
 
 // Agrupar permisos por categoría

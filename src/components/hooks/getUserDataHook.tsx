@@ -52,6 +52,7 @@ const useGetUserData = () => {
             gender: response.data.gender,
             role: authorization.data.role,
             roleName: authorization.data.roleName,
+            roleType: authorization.data.roleType || "NORMAL",
             permissions: authorization.data.permissions,
             status: response.data.status,
             verify: response.data.verify,

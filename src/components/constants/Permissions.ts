@@ -20,6 +20,8 @@ export const Permissions = Object.freeze({
   VIEW_COMMENTS: "p19",
   VIEW_TRENDS: "p20",
   ASSIGN_VERIFICATION: "p21",
+  VAULT_ACCESS: "p22",
+  VAULT_CREATE_SECRET: "p23",
 });
 
 export type Permission = (typeof Permissions)[keyof typeof Permissions];
@@ -48,6 +50,7 @@ export const getDefaultAllowedRoute = (granted: string[] | undefined) => {
     [Permissions.MANAGE_SETTINGS, "/settings"],
     [Permissions.MANAGE_ADMINS, "/settings"],
     [Permissions.DANGER_ZONE, "/settings"],
+    [Permissions.VAULT_ACCESS, "/settings"],
     [Permissions.VIEW_ERROR_LOGS, "/logs"],
     [Permissions.VIEW_SESSION_LOGS, "/session"],
   ];

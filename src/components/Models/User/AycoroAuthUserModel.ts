@@ -12,6 +12,8 @@ export class AycoroAuthUserModel {
     public status: number | undefined;
     public role: string | undefined;
     public roleName: string | undefined;
+    /** SUPERADMIN | NORMAL — from backend Role.Type (UI only; auth is server-side). */
+    public roleType: string | undefined;
     public permissions: string[] | undefined;
     public verify: number | undefined;
     public validate: boolean | undefined;
