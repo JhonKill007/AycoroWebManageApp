@@ -40,6 +40,18 @@ export class AnalyticsService implements IAnalyticsService {
     return result;
   }
 
+  async getUsersRegisteredToday(): Promise<any> {
+    return Http.get(withTimeZone(`/api/analytics/today/registrations`));
+  }
+
+  async getPostsToday(): Promise<any> {
+    return Http.get(withTimeZone(`/api/analytics/today/posts`));
+  }
+
+  async getInteractionsToday(): Promise<any> {
+    return Http.get(withTimeZone(`/api/analytics/today/interactions`));
+  }
+
   async getDashboardStats(): Promise<any> {
     let result = await new Promise<any>((resolve, reject) => {
       Http.get(withTimeZone(`/api/analytics/dashboard`))

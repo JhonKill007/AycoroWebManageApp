@@ -250,7 +250,9 @@ function ReportDetailModal({
       : undefined;
   const reportedMediaUrl = reportedItem?.mediaUrl || contentMediaUrl;
   const canDeleteItem = isDeletableContentReport(report);
-  const isResolved = report.Status === REPORT_STATUS.RESOLVED;
+  const isResolved =
+    Number(report.Status) === REPORT_STATUS.RESOLVED ||
+    Number(report.Status) === REPORT_STATUS.DISMISSED;
   const categoryDisplay = getCategoryDisplay(report.Category);
   const shareHint = getReporterShareHint(report);
   const sharePreview = buildReporterSharePayload(report, reporterMessage);
@@ -867,7 +869,7 @@ function ReportDetailModal({
           <button
             disabled={isResolved}
             onClick={() => {
-              onStatusChange(report._id, REPORT_STATUS.DISMISSED);
+              onStatusChange(String(report._id || report.id || ""), REPORT_STATUS.DISMISSED);
               onClose();
             }}
             style={{

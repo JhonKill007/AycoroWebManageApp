@@ -76,6 +76,26 @@ const OnlineUsers = () => {
 
   return (
     <main style={{ flex: 1, overflow: "auto", padding: "26px" }}>
+      <button
+        type="button"
+        onClick={() => navigate("/")}
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 8,
+          marginBottom: 16,
+          padding: "8px 14px",
+          borderRadius: 12,
+          border: `1px solid ${c.border}`,
+          background: c.card,
+          color: c.text,
+          fontWeight: 700,
+          fontSize: 13,
+          cursor: "pointer",
+        }}
+      >
+        ← Volver
+      </button>
       <div
         style={{
           display: "flex",

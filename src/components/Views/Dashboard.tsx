@@ -408,18 +408,21 @@ const Dashboard = () => {
         value: formatNumber(stats.usersRegisteredToday.value),
         trend: stats.usersRegisteredToday.trend,
         emoji: "👥",
+        onClick: () => navigate("/registered"),
       },
       {
         label: "Publicaciones hoy",
         value: formatNumber(stats.postsToday.value),
         trend: stats.postsToday.trend,
         emoji: "🖼️",
+        onClick: () => navigate("/posts-today"),
       },
       {
         label: "Interacciones hoy",
         value: formatNumber(stats.interactionsToday.value),
         trend: stats.interactionsToday.trend,
         emoji: "❤️",
+        onClick: () => navigate("/interactions"),
       },
       {
         label: "Reportes pendientes",
@@ -428,7 +431,7 @@ const Dashboard = () => {
         emoji: "⚠️",
       },
     ],
-    [stats, usersConnecting.length],
+    [navigate, stats, usersConnecting.length],
   );
 
   return (

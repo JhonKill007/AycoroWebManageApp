@@ -5,6 +5,9 @@ export interface IAnalyticsService {
   getUsersByCountry(): Promise<any>;
   getUserGeography(days?: "all" | 7 | 30 | 90): Promise<any>;
   getDashboardStats(): Promise<any>;
+  getUsersRegisteredToday(): Promise<any>;
+  getPostsToday(): Promise<any>;
+  getInteractionsToday(): Promise<any>;
   getDeviceData(days?: number): Promise<any>;
   getGenderData(): Promise<any>;
   getSessionAccess(days?: number): Promise<any>;

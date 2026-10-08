@@ -6,6 +6,7 @@ import Audit from "../Views/Audit";
 import CaseDetails from "../Views/CaseDetails";
 import Dashboard from "../Views/Dashboard";
 import OnlineUsers from "../Views/OnlineUsers";
+import DashboardDay from "../Views/DashboardDay";
 import Login from "../Views/Login";
 import Logs from "../Views/Logs";
 import Moderation from "../Views/Moderation";
@@ -38,6 +39,9 @@ const DashboardRoutes = () => {
           <Route element={<PermissionRoute anyOf={[Permissions.VIEW_DASHBOARD]} />}>
             <Route index element={<Dashboard />} />
             <Route path="/online" element={<OnlineUsers />} />
+            <Route path="/registered" element={<DashboardDay kind="registered" />} />
+            <Route path="/posts-today" element={<DashboardDay kind="posts" />} />
+            <Route path="/interactions" element={<DashboardDay kind="interactions" />} />
           </Route>
           <Route element={<PermissionRoute anyOf={[Permissions.VIEW_MODERATION]} />}>
             <Route path="/reports" element={<Reports />} />

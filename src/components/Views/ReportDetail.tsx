@@ -100,10 +100,26 @@ const ReportDetail = () => {
   }, [id]);
 
   const changeStatus = async (status: number) => {
-    if (!report?._id) return;
+    const reportId = String(report?._id || "");
+    if (!reportId) {
+      showToast({
+        type: "error",
+        title: "Error",
+        description: "No se encontró el identificador del reporte",
+      });
+      return;
+    }
     try {
-      await reportService.updateStatus(report._id, status);
-      await load();
+      await reportService.updateStatus(reportId, status);
+      setReport((current) => (current ? { ...current, Status: status } : current));
+      showToast({
+        type: "success",
+        title: status === REPORT_STATUS.DISMISSED ? "Reporte descartado" : "Estado actualizado",
+        description:
+          status === REPORT_STATUS.DISMISSED
+            ? "El reporte quedó descartado"
+            : "El estado del reporte se actualizó",
+      });
     } catch (error: any) {
       showToast({
         type: "error",
@@ -192,7 +208,9 @@ const ReportDetail = () => {
   ].includes(categoryKey);
   const item = report.ReportedItem;
   const messageLabel = MESSAGE_TYPE_LABEL[String(item?.messageType || "").toUpperCase()];
-  const resolved = report.Status === REPORT_STATUS.RESOLVED;
+  const resolved =
+    Number(report.Status) === REPORT_STATUS.RESOLVED ||
+    Number(report.Status) === REPORT_STATUS.DISMISSED;
   const canModerate = can(Permissions.MODERATE);
 
   return (
