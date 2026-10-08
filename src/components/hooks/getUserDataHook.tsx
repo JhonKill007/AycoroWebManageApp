@@ -1,76 +1,64 @@
-import axios from "axios";
 import { useCallback } from "react";
 import { useEmailValidateContext } from "../context/EmailValidateContext";
-import { useImageBankContext } from "../context/ImageBankContext";
 import { useUserContext } from "../context/UserContext";
-import initializeService from "../Services/Initialize/InitializeService";
-
-const systemLoginKey = process.env.REACT_APP_SYSTEM_LOGIN_KEY;
-const systemLoginPassword = process.env.REACT_APP_SYSTEM_LOGIN_PASSWORD;
+import Http from "../Services/Http/HttpClient";
 
 const useGetUserData = () => {
   const { saveUser } = useUserContext();
-  const { searchImage } = useImageBankContext();
   const { saveEmailWarning } = useEmailValidateContext();
 
   const getUserData = useCallback(async () => {
     try {
-      const AycoroAuthSystem = axios.create({
-        baseURL: process.env.REACT_APP_API_URL,
+      const aycoroToken = localStorage.getItem("aycoroAuthToken");
+      if (!aycoroToken) {
+        localStorage.removeItem("internalToken");
+        localStorage.removeItem("refreshToken");
+        localStorage.removeItem("aycoroAuthToken");
+        window.location.href = "/login";
+        return;
+      }
+
+      const response = await Http.get("/api/session/bootstrap", {
         headers: {
-          "Content-Type": "application/json",
-        },
-      });
-      const token = localStorage.getItem("aycoroAuthToken");
-      const response = await AycoroAuthSystem.get(`/api/AuthSystem/me`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
+          "X-Aycoro-Token": aycoroToken,
         },
       });
 
       if (response.status === 200) {
-        const authorization = await initializeService.initialize(response.data.id);
-        if (!systemLoginKey || !systemLoginPassword) {
-          throw new Error("System login credentials are not configured");
-        }
-
-        const aycoroDataResponse = await AycoroAuthSystem.post("/api/Login", {
-          Key: systemLoginKey,
-          Password: systemLoginPassword,
-        });
-        const { token } = aycoroDataResponse.data;
-        localStorage.setItem("systemToken", token);
+        const profile = response.data.user;
+        const authorization = response.data.authorization;
+        localStorage.setItem("systemToken", response.data.systemToken);
         saveUser({
           user: {
-            id: response.data.id,
-            name: response.data.name,
-            username: response.data.username,
-            email: response.data.email,
+            id: profile.id,
+            name: profile.name,
+            username: profile.username,
+            email: profile.email,
             password: undefined,
-            phone: response.data.phone,
-            birthday: response.data.birthday,
-            gender: response.data.gender,
-            role: authorization.data.role,
-            roleName: authorization.data.roleName,
-            roleType: authorization.data.roleType || "NORMAL",
-            permissions: authorization.data.permissions,
-            status: response.data.status,
-            verify: response.data.verify,
-            validate: response.data.validate,
+            phone: profile.phone,
+            birthday: profile.birthday,
+            gender: profile.gender,
+            role: authorization.role,
+            roleName: authorization.roleName,
+            roleType: authorization.roleType || "NORMAL",
+            permissions: authorization.permissions,
+            status: profile.status,
+            verify: profile.verify,
+            validate: profile.validate,
             perfilData: {
-              presentation: response.data.perfilData.presentation,
-              idMediaDataProfile: response.data.perfilData.idMediaDataProfile,
+              presentation: profile.perfilData.presentation,
+              idMediaDataProfile: profile.perfilData.idMediaDataProfile,
             },
-            createDate: new Date(response.data.createDate),
+            createDate: new Date(profile.createDate),
           },
-          isFollow: response.data.isFollow,
-          profilePhoto: response.data.profilePhoto,
-          followings: response.data.followings,
-          followers: response.data.followers,
-          post: response.data.post,
+          isFollow: profile.isFollow,
+          profilePhoto: profile.profilePhoto,
+          followings: profile.followings,
+          followers: profile.followers,
+          post: profile.post,
         });
 
-        if (!response.data.validate) {
+        if (!profile.validate) {
           saveEmailWarning(true);
         }
       }
@@ -84,7 +72,7 @@ const useGetUserData = () => {
         console.error("Error fetching user data:", err);
       }
     }
-  }, [searchImage, saveUser]);
+  }, [saveUser, saveEmailWarning]);
 
   return getUserData;
 };

@@ -24,8 +24,6 @@ jobs:
             --build-arg REACT_APP_MANAGE_API_URL="${{ secrets.REACT_APP_MANAGE_API_URL }}" \
             --build-arg REACT_APP_CHAT_URL="${{ secrets.REACT_APP_CHAT_URL }}" \
             --build-arg REACT_APP_TITTLE_BASE="${{ secrets.REACT_APP_TITTLE_BASE }}" \
-            --build-arg REACT_APP_SYSTEM_LOGIN_KEY="${{ secrets.REACT_APP_SYSTEM_LOGIN_KEY }}" \
-            --build-arg REACT_APP_SYSTEM_LOGIN_PASSWORD="${{ secrets.REACT_APP_SYSTEM_LOGIN_PASSWORD }}" \
             -t aycoro/manageweb:${{ env.TAG }} .
 
       - name: Save Docker image
