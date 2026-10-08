@@ -21,6 +21,18 @@ type SettingsSection = {
 
 const SECTIONS: SettingsSection[] = [
   {
+    id: "sistema",
+    label: "Configuración del sistema",
+    emoji: "🛠️",
+    requireSuperAdmin: true,
+  },
+  {
+    id: "secretos",
+    label: "Secretos",
+    emoji: "🔐",
+    permissions: [Permissions.VAULT_ACCESS],
+  },
+  {
     id: "manager",
     label: "Manager",
     emoji: "👮",
@@ -37,18 +49,6 @@ const SECTIONS: SettingsSection[] = [
     label: "Versiones",
     emoji: "🚀",
     permissions: [Permissions.MANAGE_SETTINGS],
-  },
-  {
-    id: "secretos",
-    label: "Secretos",
-    emoji: "🔐",
-    permissions: [Permissions.VAULT_ACCESS],
-  },
-  {
-    id: "sistema",
-    label: "Configuración del sistema",
-    emoji: "🛠️",
-    requireSuperAdmin: true,
   },
 ];
 

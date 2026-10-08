@@ -8,6 +8,7 @@ import versionService from "../../../../Services/Version/VersionService";
 import { Pagination } from "../../../Common/Components/Pagination";
 import { formatDate } from "../../Common/Utils";
 import AddVersionModal from "../Modals/AddVersionModal";
+import VersionDetail from "./VersionDetail";
 
 // ─── Configuraciones ───────────────────────────────────────────────────
 const SEVERITY_CONFIG: Record<
@@ -175,6 +176,7 @@ const VersionsTab = ({ c, theme }: { c: any; theme: string }) => {
   const [publishingVersionId, setPublishingVersionId] = useState<string | null>(
     null,
   );
+  const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
 
   // Paginación
   const [page, setPage] = useState<number>(1);
@@ -411,6 +413,16 @@ const VersionsTab = ({ c, theme }: { c: any; theme: string }) => {
       {label}
     </button>
   );
+
+  if (selectedVersionId) {
+    return (
+      <VersionDetail
+        id={selectedVersionId}
+        c={c}
+        onBack={() => setSelectedVersionId(null)}
+      />
+    );
+  }
 
   return (
     <div>
@@ -828,6 +840,7 @@ const VersionsTab = ({ c, theme }: { c: any; theme: string }) => {
               <div
                 key={version._id || Math.random()}
                 className="version-row"
+                onClick={() => version._id && setSelectedVersionId(version._id)}
                 style={{
                   display: "grid",
                   gridTemplateColumns:
@@ -838,6 +851,7 @@ const VersionsTab = ({ c, theme }: { c: any; theme: string }) => {
                   alignItems: "center",
                   transition: "background 0.15s",
                   background: c.card,
+                  cursor: "pointer",
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.background = c.accentSoft;
@@ -863,6 +877,7 @@ const VersionsTab = ({ c, theme }: { c: any; theme: string }) => {
                       href={version.Link}
                       target="_blank"
                       rel="noopener noreferrer"
+                      onClick={(event) => event.stopPropagation()}
                       style={{
                         display: "block",
                         fontSize: 10,
@@ -975,7 +990,7 @@ const VersionsTab = ({ c, theme }: { c: any; theme: string }) => {
                 </div>
 
                 {/* Accion */}
-                <div>
+                <div onClick={(event) => event.stopPropagation()}>
                   <button
                     type="button"
                     disabled={status === 1 || publishingVersionId === version._id}

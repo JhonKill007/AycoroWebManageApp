@@ -43,6 +43,10 @@ export class VersionService implements IVersionService {
     return result;
   }
 
+  async getById(id: string): Promise<any> {
+    return Http.get(`/api/version/${id}`);
+  }
+
   async getCompatibleOptions(type: string): Promise<any> {
     let result = await new Promise<any>((resolve, reject) => {
       Http.get(`/api/version/compatible-options?type=${encodeURIComponent(type)}`)
