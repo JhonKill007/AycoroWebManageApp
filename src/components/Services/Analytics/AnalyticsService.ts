@@ -14,6 +14,19 @@ const withTimeZone = (path: string) => {
 };
 
 export class AnalyticsService implements IAnalyticsService {
+  async getUserGeography(days: "all" | 7 | 30 | 90 = "all"): Promise<any> {
+    let result = await new Promise<any>((resolve, reject) => {
+      Http.get(`/api/analytics/user-geography?days=${days}`)
+        .then((res) => {
+          resolve(res);
+        })
+        .catch((err) => {
+          reject(err);
+        });
+    });
+    return result;
+  }
+
   async getUsersByCountry(): Promise<any> {
     let result = await new Promise<any>((resolve, reject) => {
       Http.get(`/api/analytics/country`)

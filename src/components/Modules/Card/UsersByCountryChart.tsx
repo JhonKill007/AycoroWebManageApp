@@ -9,6 +9,7 @@ import {
 import { Colors } from "../../constants/Colors";
 import { useThemeContext } from "../../context/ThemeContext";
 import analyticsService from "../../Services/Analytics/AnalyticsService";
+import UserGeographyMapModal from "../Analytics/UserGeography/UserGeographyMapModal";
 
 type CountryMetric = {
   country: string;
@@ -39,6 +40,7 @@ const UsersByCountryChart = () => {
   const [countries, setCountries] = useState<CountryMetric[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAll, setShowAll] = useState(false);
+  const [showMap, setShowMap] = useState(false);
 
   useEffect(() => {
     const loadCountries = async () => {
@@ -101,6 +103,22 @@ const UsersByCountryChart = () => {
               Distribución geográfica de {total.toLocaleString()} usuarios
             </div>
           </div>
+          <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+          <button
+            onClick={() => setShowMap(true)}
+            style={{
+              border: `1.5px solid ${c.border}`,
+              background: "transparent",
+              color: c.text,
+              borderRadius: 12,
+              padding: "9px 14px",
+              fontSize: 11,
+              fontWeight: 800,
+              cursor: "pointer",
+            }}
+          >
+            Ver en el mapa
+          </button>
           <button
             onClick={() => setShowAll(true)}
             disabled={countries.length === 0}
@@ -117,6 +135,7 @@ const UsersByCountryChart = () => {
           >
             Ver todos los países
           </button>
+          </div>
         </div>
 
         {loading ? (
@@ -166,6 +185,8 @@ const UsersByCountryChart = () => {
           </div>
         )}
       </section>
+
+      {showMap && <UserGeographyMapModal onClose={() => setShowMap(false)} />}
 
       {showAll && (
         <div

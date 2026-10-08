@@ -3,6 +3,7 @@ export interface IAnalyticsService {
   getMonthlyData(): Promise<any>;
   getActivityResume(): Promise<any>;
   getUsersByCountry(): Promise<any>;
+  getUserGeography(days?: "all" | 7 | 30 | 90): Promise<any>;
   getDashboardStats(): Promise<any>;
   getDeviceData(days?: number): Promise<any>;
   getGenderData(): Promise<any>;
