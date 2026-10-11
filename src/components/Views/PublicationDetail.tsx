@@ -2,8 +2,11 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import UserProfile from "../assets/UserProfile.jpeg";
 import { Colors } from "../constants/Colors";
+import { Permissions } from "../constants/Permissions";
+import { CommentStatus } from "../constants/Status";
 import { useThemeContext } from "../context/ThemeContext";
 import { useToast } from "../context/ToastContext";
+import { usePermissions } from "../hooks/usePermissions";
 import adminComentService from "../Services/Coments/AdminComentService";
 import postService from "../Services/Post/PostService";
 
@@ -18,9 +21,12 @@ type CommentItem = {
   id: string;
   text?: string;
   likes: number;
+  status?: number | string;
   createDate?: string;
   user?: PublicUser | null;
 };
+
+const isDeletedComment = (status: unknown) => Number(status) === CommentStatus.DELETED;
 
 const isVideo = (post: any) => {
   const mime = String(post?.MediaMimeType || "").toLowerCase();
@@ -75,7 +81,9 @@ const PublicationDetail = () => {
   const navigate = useNavigate();
   const { theme } = useThemeContext();
   const { showToast } = useToast();
+  const { can } = usePermissions();
   const c = (theme === "dark" ? Colors.dark : Colors.light).colors;
+  const canModerateComments = can(Permissions.DELETE_POSTS);
   const [post, setPost] = useState<any | null>(null);
   const [likers, setLikers] = useState<PublicUser[]>([]);
   const [likesTotal, setLikesTotal] = useState(0);
@@ -85,6 +93,7 @@ const PublicationDetail = () => {
   const [commentsTotal, setCommentsTotal] = useState(0);
   const [commentLikes, setCommentLikes] = useState<Record<string, PublicUser[]>>({});
   const [openComment, setOpenComment] = useState<string | null>(null);
+  const [updatingCommentId, setUpdatingCommentId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -133,6 +142,35 @@ const PublicationDetail = () => {
     setLikers((current) => [...current, ...(result.data?.users || [])]);
     setLikesPage(nextPage);
     setLikesHasMore(Boolean(result.data?.hasMore));
+  };
+
+  const changeCommentStatus = async (comment: CommentItem) => {
+    const deleted = isDeletedComment(comment.status);
+    const nextStatus = deleted ? CommentStatus.PUBLISHED : CommentStatus.DELETED;
+    setUpdatingCommentId(comment.id);
+    try {
+      await adminComentService.UpdateStatus(comment.id, nextStatus);
+      setComments((current) =>
+        current.map((item) =>
+          item.id === comment.id ? { ...item, status: nextStatus } : item,
+        ),
+      );
+      showToast({
+        type: "success",
+        title: deleted ? "Comentario publicado" : "Comentario eliminado",
+        description: deleted
+          ? "El comentario volvió a estar publicado"
+          : "El comentario quedó marcado como eliminado",
+      });
+    } catch (error: any) {
+      showToast({
+        type: "error",
+        title: "Error",
+        description: error?.response?.data?.message || "No se pudo actualizar el comentario",
+      });
+    } finally {
+      setUpdatingCommentId(null);
+    }
   };
 
   const toggleCommentLikes = async (commentId: string) => {
@@ -248,7 +286,33 @@ const PublicationDetail = () => {
                 {comment.user ? (
                   <PersonRow person={comment.user} c={c} onOpen={openProfile} />
                 ) : null}
+                {isDeletedComment(comment.status) ? (
+                  <div style={{ color: c.danger, fontSize: 12, fontWeight: 800, marginTop: 4 }}>
+                    Este comentario fue eliminado
+                  </div>
+                ) : null}
                 <div style={{ color: c.text, fontSize: 14, margin: "4px 0 8px" }}>{comment.text}</div>
+                {canModerateComments ? (
+                  <button
+                    type="button"
+                    disabled={updatingCommentId === comment.id}
+                    onClick={() => void changeCommentStatus(comment)}
+                    style={{
+                      marginRight: 12,
+                      border: `1px solid ${c.danger}55`,
+                      background: "transparent",
+                      color: isDeletedComment(comment.status) ? c.accent : c.danger,
+                      borderRadius: 10,
+                      padding: "6px 10px",
+                      fontWeight: 700,
+                      fontSize: 12,
+                      cursor: updatingCommentId === comment.id ? "not-allowed" : "pointer",
+                      opacity: updatingCommentId === comment.id ? 0.6 : 1,
+                    }}
+                  >
+                    {isDeletedComment(comment.status) ? "Publicar" : "Eliminar"}
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   onClick={() => void toggleCommentLikes(comment.id)}

@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import UserProfile from "../assets/UserProfile.jpeg";
 import { Colors } from "../constants/Colors";
 import { Permissions } from "../constants/Permissions";
+import { CommentStatus, HistoryStatus, PostStatus } from "../constants/Status";
 import { REPORT_REASONS } from "../constants/ReportsReason";
 import { MessageType } from "../constants/Types";
 import { useThemeContext } from "../context/ThemeContext";
@@ -60,6 +61,20 @@ const REPORT_STATUS = {
   DISMISSED: 4,
 };
 
+const deletedStatusForCategory = (category: string) => {
+  if (["comment", "comentario"].includes(category)) return CommentStatus.DELETED;
+  if (["story", "history", "historia"].includes(category)) return HistoryStatus.DELETED;
+  if (["post", "publication", "publicacion", "publicación"].includes(category)) {
+    return PostStatus.DELETED;
+  }
+  return null;
+};
+
+const isReportedContentDeleted = (category: string, contentStatus: unknown) => {
+  const deletedStatus = deletedStatusForCategory(category);
+  return deletedStatus !== null && Number(contentStatus) === deletedStatus;
+};
+
 const isVideo = (url?: string, mediaType?: string) => {
   const type = String(mediaType || "").toLowerCase();
   return type.includes("video") || /\.(mp4|mov|m4v|webm)(\?|#|$)/i.test(url || "");
@@ -76,6 +91,7 @@ const ReportDetail = () => {
   const [loading, setLoading] = useState(true);
   const [note, setNote] = useState("");
   const [sending, setSending] = useState(false);
+  const [contentRemoved, setContentRemoved] = useState(false);
 
   const load = async () => {
     if (!id) return;
@@ -96,6 +112,7 @@ const ReportDetail = () => {
   };
 
   useEffect(() => {
+    setContentRemoved(false);
     void load();
   }, [id]);
 
@@ -212,6 +229,8 @@ const ReportDetail = () => {
     Number(report.Status) === REPORT_STATUS.RESOLVED ||
     Number(report.Status) === REPORT_STATUS.DISMISSED;
   const canModerate = can(Permissions.MODERATE);
+  const contentDeleted =
+    contentRemoved || isReportedContentDeleted(categoryKey, item?.contentStatus);
 
   return (
     <main style={{ flex: 1, overflow: "auto", padding: 26 }}>
@@ -344,19 +363,36 @@ const ReportDetail = () => {
         <section style={{ ...panelStyle(c), marginTop: 18 }}>
           <div style={{ color: c.text, fontWeight: 800, marginBottom: 6 }}>Contenido reportado</div>
           <div style={{ color: c.textMuted, fontSize: 13, marginBottom: 8 }}>
-            Cambia el estado del contenido a eliminado. Los otros reportes de este mismo contenido quedan resueltos.
+            {contentDeleted
+              ? "Este contenido ya fue eliminado. El reporte queda resuelto."
+              : "Cambia el estado del contenido a eliminado. Los otros reportes de este mismo contenido quedan resueltos."}
           </div>
           <ActionButton
             label="Eliminar contenido"
             color={c.danger}
+            disabled={contentDeleted}
             onClick={async () => {
-              if (!report._id) return;
+              if (!report._id || contentDeleted) return;
               try {
                 await reportService.deleteReportedItem(report._id);
+                const removedStatus = deletedStatusForCategory(categoryKey);
+                setContentRemoved(true);
+                setReport((current) =>
+                  current
+                    ? {
+                        ...current,
+                        Status: REPORT_STATUS.RESOLVED,
+                        ReportedItem: {
+                          ...(current.ReportedItem || {}),
+                          contentStatus: removedStatus,
+                        },
+                      }
+                    : current,
+                );
                 showToast({
                   type: "success",
                   title: "Contenido eliminado",
-                  description: "El contenido cambió de estado y los reportes abiertos quedaron resueltos",
+                  description: "El contenido cambió de estado y el reporte quedó resuelto",
                 });
                 await load();
               } catch (error: any) {

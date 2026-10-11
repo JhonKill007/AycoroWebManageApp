@@ -185,9 +185,30 @@ const isVideoUrl = (url?: string) => /\.(mp4|webm|mov|m4v)$/i.test(url || "");
 
 const isDeletableContentReport = (report: ReportModel) => {
   const category = String(report.Category || "").toLowerCase();
-  return ["post", "publication", "publicacion", "publicación"].includes(
-    category,
-  );
+  return [
+    "post",
+    "publication",
+    "publicacion",
+    "publicación",
+    "comment",
+    "comentario",
+    "story",
+    "history",
+    "historia",
+  ].includes(category);
+};
+
+const isReportedContentDeleted = (report: ReportModel) => {
+  const category = String(report.Category || "").toLowerCase();
+  const status = Number(report.ReportedItem?.contentStatus);
+  if (Number.isNaN(status)) return false;
+  if (["comment", "comentario", "story", "history", "historia"].includes(category)) {
+    return status === 5;
+  }
+  if (["post", "publication", "publicacion", "publicación"].includes(category)) {
+    return status === 8;
+  }
+  return false;
 };
 
 const REPORT_STATUS = {
@@ -250,6 +271,7 @@ function ReportDetailModal({
       : undefined;
   const reportedMediaUrl = reportedItem?.mediaUrl || contentMediaUrl;
   const canDeleteItem = isDeletableContentReport(report);
+  const contentDeleted = isReportedContentDeleted(report);
   const isResolved =
     Number(report.Status) === REPORT_STATUS.RESOLVED ||
     Number(report.Status) === REPORT_STATUS.DISMISSED;
@@ -889,8 +911,9 @@ function ReportDetailModal({
           </button>
           {canDeleteItem && (
             <button
-              disabled={isResolved}
+              disabled={isResolved || contentDeleted}
               onClick={() => {
+                if (isResolved || contentDeleted) return;
                 onDeleteItem(report);
                 onClose();
               }}
@@ -903,8 +926,8 @@ function ReportDetailModal({
                 color: c.danger,
                 fontSize: "12px",
                 fontWeight: "700",
-                cursor: isResolved ? "not-allowed" : "pointer",
-                opacity: isResolved ? 0.5 : 1,
+                cursor: isResolved || contentDeleted ? "not-allowed" : "pointer",
+                opacity: isResolved || contentDeleted ? 0.5 : 1,
               }}
             >
               Eliminar contenido
