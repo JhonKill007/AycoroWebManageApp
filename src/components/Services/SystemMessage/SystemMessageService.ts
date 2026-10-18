@@ -1,8 +1,8 @@
-import axios from "axios";
 import { MessageParams } from "../../Models/Message/MessageParams";
 import { RequestModel } from "../../Models/Request/RequestModel";
 import { MessageStatus } from "../../constants/Status";
 import { ChatType, MessageType } from "../../constants/Types";
+import { aycoroWebApi } from "../Http/aycoroWebApi";
 import userService from "../User/UserService";
 
 type SystemMessageReceiver = {
@@ -60,13 +60,6 @@ export class SystemMessageService {
     profilePhoto?: string,
     options: SystemMessageOptions = {},
   ): Promise<any> {
-    const AycoroAuthSystem = axios.create({
-      baseURL: process.env.REACT_APP_API_URL,
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-
     const token = localStorage.getItem("systemToken");
     const idUserReceiver = receiver?._id || receiver?.IdUser;
 
@@ -80,7 +73,7 @@ export class SystemMessageService {
         }
       : undefined;
 
-    const chatResponse = await AycoroAuthSystem.post(
+    const chatResponse = await aycoroWebApi.post(
       `/api/Chat?idUser=${idUserReceiver}`,
       undefined,
       {
@@ -88,7 +81,7 @@ export class SystemMessageService {
       },
     );
     const idChat = chatResponse.data;
-    const encryptKeyResponse = await AycoroAuthSystem.get(
+    const encryptKeyResponse = await aycoroWebApi.get(
       `/api/Chat/EncryptKey?idChat=${idChat}`,
       {
         headers: authHeaders,
@@ -127,7 +120,7 @@ export class SystemMessageService {
       createDate: `${new Date()}`,
     };
 
-    return AycoroAuthSystem.post(`api/Chat/Message`, message, {
+    return aycoroWebApi.post(`api/Chat/Message`, message, {
       headers: authHeaders,
     });
   }

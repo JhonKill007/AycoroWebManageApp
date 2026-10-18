@@ -1,4 +1,3 @@
-import axios from "axios";
 import { IVersionService } from "../../Interface/Version/IVersionService";
 import { VersionParams } from "../../Models/Version/VersionParams";
 import Http from "../Http/HttpClient";
@@ -61,23 +60,7 @@ export class VersionService implements IVersionService {
   }
 
   async publish(id: string): Promise<any> {
-    const AycoroAuthSystem = axios.create({
-      baseURL: process.env.REACT_APP_API_URL,
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-    // systemToken = cuenta oficial Aycoro (segundo login); así las historias salen como Aycoro.
-    const token = localStorage.getItem("systemToken");
-    const response = await AycoroAuthSystem.put(`/api/Version/Publish`, null, {
-      params: { id },
-      headers: token
-        ? {
-            Authorization: `Bearer ${token}`,
-          }
-        : undefined,
-    });
-    return response;
+    return Http.post(`/api/version/${encodeURIComponent(id)}/publish`);
   }
 }
 
