@@ -62,6 +62,15 @@ export class VersionService implements IVersionService {
   async publish(id: string): Promise<any> {
     return Http.post(`/api/version/${encodeURIComponent(id)}/publish`);
   }
+
+  async addStories(
+    id: string,
+    releaseMedia: VersionParams["ReleaseMedia"],
+  ): Promise<any> {
+    return Http.post(`/api/version/${encodeURIComponent(id)}/stories`, {
+      ReleaseMedia: releaseMedia || [],
+    });
+  }
 }
 
 const versionService = new VersionService();

@@ -19,9 +19,11 @@ import { Colors } from "../constants/Colors";
 import { useThemeContext } from "../context/ThemeContext";
 import { useToast } from "../context/ToastContext";
 import { MessageAnalytics, MessageAnalyticsPeriod } from "../Models/Analytics/MessageAnalyticsModel";
+import { UsageTimeAnalytics, UsageTimePeriod } from "../Models/Analytics/UsageTimeAnalyticsModel";
 import { SessionAccessAnalytics } from "../Models/SessionLog/SessionLogModel";
 import UsersByCountryChart from "../Modules/Card/UsersByCountryChart";
 import analyticsService from "../Services/Analytics/AnalyticsService";
+import UserProfile from "../assets/UserProfile.jpeg";
 
 // ─── Datos mock ───────────────────────────────────────────────────────
 
@@ -48,6 +50,7 @@ const emptyBusiness = {
   topUsers: [] as Array<{
     user: string;
     name: string;
+    profilePhoto?: string | null;
     posts: number;
     likes: number;
     followers: number;
@@ -96,19 +99,6 @@ const MONTH_OPTIONS = [
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────
-
-function getAvatar(name: any) {
-  const palette = [
-    "#7b83f5",
-    "#f87171",
-    "#34d399",
-    "#fbbf24",
-    "#60a5fa",
-    "#a78bfa",
-    "#fb923c",
-  ];
-  return { bg: palette[name.charCodeAt(0) % palette.length] };
-}
 
 function heatColor(val: number, accent: string, max: number) {
   if (val === 0) return "transparent";
@@ -610,6 +600,38 @@ type WeeklyResume = {
   nuevos: number
 };
 
+const emptyUsageTime: UsageTimeAnalytics = {
+  periodDays: 7,
+  averageUsageSeconds: 0,
+  activeUsers: 0,
+  activeUserDays: 0,
+  totalUsageSeconds: 0,
+  completedSessions: 0,
+  authenticatedUsageSessions: 0,
+  legacyUsageSessions: 0,
+  daily: [],
+};
+
+const USAGE_PERIODS: Array<{ value: UsageTimePeriod; label: string }> = [
+  { value: 7, label: "7 días" },
+  { value: 30, label: "30 días" },
+  { value: 90, label: "90 días" },
+];
+
+function formatUsageDuration(totalSeconds: number) {
+  const seconds = Math.max(0, Math.round(totalSeconds || 0));
+  if (seconds >= 3600) {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.round((seconds % 3600) / 60);
+    return minutes > 0 ? `${hours} h ${minutes} min` : `${hours} h`;
+  }
+  const minutes = Math.floor(seconds / 60);
+  const remainder = seconds % 60;
+  if (minutes <= 0) return `${remainder} s`;
+  if (remainder === 0) return `${minutes} min`;
+  return `${minutes} min ${remainder} s`;
+}
+
 const emptySessionAccess: SessionAccessAnalytics = {
   days: 30,
   totalSessions: 0,
@@ -705,6 +727,10 @@ const Analytics = () => {
   const [sessionAccessPeriod, setSessionAccessPeriod] = useState<number>(7);
   const [sessionAccess, setSessionAccess] =
     useState<SessionAccessAnalytics>(emptySessionAccess);
+  const [usagePeriod, setUsagePeriod] = useState<UsageTimePeriod>(7);
+  const [usageTime, setUsageTime] = useState<UsageTimeAnalytics>(emptyUsageTime);
+  const [usageLoading, setUsageLoading] = useState(false);
+  const [usageError, setUsageError] = useState(false);
   const [messagePeriod, setMessagePeriod] =
     useState<MessageAnalyticsPeriod>(7);
   const [messageAnalytics, setMessageAnalytics] =
@@ -759,6 +785,30 @@ const Analytics = () => {
 
     getSessionAccess();
   }, [sessionAccessPeriod]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const getUsageTime = async () => {
+      setUsageLoading(true);
+      setUsageError(false);
+      try {
+        const { data } = await analyticsService.getUsageTime(usagePeriod);
+        if (!cancelled) setUsageTime(data || emptyUsageTime);
+      } catch {
+        if (!cancelled) {
+          setUsageTime(emptyUsageTime);
+          setUsageError(true);
+        }
+      } finally {
+        if (!cancelled) setUsageLoading(false);
+      }
+    };
+
+    getUsageTime();
+    return () => {
+      cancelled = true;
+    };
+  }, [usagePeriod]);
 
   useEffect(() => {
     const getMessageAnalytics = async () => {
@@ -1727,6 +1777,131 @@ const Analytics = () => {
 
           <div className="span-2">
             <SectionCard
+              title="Tiempo promedio de uso"
+              subtitle="Promedio diario por usuario activo, estimado por tiempo de conexión."
+              c={c}
+              action={
+                <div style={{ display: "flex", gap: "5px", flexWrap: "wrap" }}>
+                  {USAGE_PERIODS.map((item) => (
+                    <TabChip
+                      key={item.value}
+                      label={item.label}
+                      active={usagePeriod === item.value}
+                      onClick={() => setUsagePeriod(item.value)}
+                      c={c}
+                    />
+                  ))}
+                </div>
+              }
+            >
+              {usageLoading ? (
+                <div style={{ color: c.textMuted, fontSize: 13, fontWeight: 700 }}>
+                  Cargando tiempo de uso...
+                </div>
+              ) : usageError ? (
+                <div style={{ color: c.danger, fontSize: 13, fontWeight: 700 }}>
+                  No se pudo cargar el tiempo de uso.
+                </div>
+              ) : usageTime.completedSessions <= 0 ? (
+                <div style={{ color: c.textMuted, fontSize: 13, fontWeight: 700 }}>
+                  Sin datos suficientes para este período
+                </div>
+              ) : (
+                <>
+                  <div
+                    style={{
+                      fontSize: 32,
+                      fontWeight: 800,
+                      color: c.accent,
+                      lineHeight: 1.1,
+                    }}
+                  >
+                    {formatUsageDuration(usageTime.averageUsageSeconds)}
+                  </div>
+                  <div
+                    style={{
+                      marginTop: 6,
+                      fontSize: 12,
+                      color: c.textMuted,
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    Promedio diario por usuario activo, estimado por tiempo de conexión.
+                  </div>
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))",
+                      gap: 10,
+                      marginTop: 14,
+                    }}
+                  >
+                    <div style={{ color: c.textMuted, fontSize: 12 }}>
+                      <div style={{ fontWeight: 800, color: c.text }}>
+                        {usageTime.activeUsers.toLocaleString()}
+                      </div>
+                      usuarios activos
+                    </div>
+                    <div style={{ color: c.textMuted, fontSize: 12 }}>
+                      <div style={{ fontWeight: 800, color: c.text }}>
+                        {usageTime.completedSessions.toLocaleString()}
+                      </div>
+                      sesiones completadas
+                    </div>
+                    <div style={{ color: c.textMuted, fontSize: 12 }}>
+                      <div style={{ fontWeight: 800, color: c.text }}>
+                        {formatUsageDuration(usageTime.totalUsageSeconds)}
+                      </div>
+                      tiempo total
+                    </div>
+                  </div>
+                  <ResponsiveContainer width="100%" height={230}>
+                    <AreaChart
+                      data={usageTime.daily.map((day) => ({
+                        ...day,
+                        minutos: Number((day.averageUsageSeconds / 60).toFixed(1)),
+                      }))}
+                      margin={{ top: 16, right: 10, bottom: 0, left: 0 }}
+                    >
+                      <defs>
+                        <linearGradient id="usageMinutesGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor={c.accent} stopOpacity={0.25} />
+                          <stop offset="95%" stopColor={c.accent} stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid stroke={gridColor} vertical={false} />
+                      <XAxis
+                        dataKey="label"
+                        tick={{ fill: tickColor, fontSize: 11 }}
+                        tickLine={false}
+                        axisLine={false}
+                      />
+                      <YAxis
+                        tick={{ fill: tickColor, fontSize: 10 }}
+                        tickLine={false}
+                        axisLine={false}
+                        width={40}
+                      />
+                      <Tooltip content={<CustomTooltip c={c} />} />
+                      <Area
+                        type="monotone"
+                        dataKey="minutos"
+                        name="Minutos promedio"
+                        stroke={c.accent}
+                        strokeWidth={2.5}
+                        fill="url(#usageMinutesGrad)"
+                        dot={false}
+                        activeDot={{ r: 5, fill: c.accent }}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </>
+              )}
+            </SectionCard>
+          </div>
+
+          <div className="span-2">
+            <SectionCard
               title="Envío de mensajes"
               subtitle={`${messageAnalytics.uniqueUsers.toLocaleString()} usuarios enviaron ${messageAnalytics.totalMessages.toLocaleString()} mensajes · promedio ${messageAnalytics.averageMessagesPerUser} mensajes por usuario${
                 messagePeriod === "all" ? " · todo el historial" : ""
@@ -2305,7 +2480,6 @@ const Analytics = () => {
                 </div>
 
                 {business.topUsers.map((u, i) => {
-                  const { bg } = getAvatar(u.user || "u");
                   const medals = ["🥇", "🥈", "🥉"];
                   const maxFollowers = Math.max(
                     1,
@@ -2362,24 +2536,20 @@ const Analytics = () => {
                           gap: "10px",
                         }}
                       >
-                        <div
+                        <img
+                          src={u.profilePhoto || UserProfile}
+                          alt=""
                           style={{
                             width: 34,
                             height: 34,
                             borderRadius: "50%",
-                            background: `${bg}22`,
-                            border: `2px solid ${bg}55`,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            fontSize: "12px",
-                            fontWeight: "700",
-                            color: bg,
+                            objectFit: "cover",
                             flexShrink: 0,
                           }}
-                        >
-                          {String(u.user || "us").slice(0, 2).toUpperCase()}
-                        </div>
+                          onError={(event) => {
+                            (event.target as HTMLImageElement).src = UserProfile;
+                          }}
+                        />
                         <div>
                           <div
                             style={{
@@ -2397,7 +2567,7 @@ const Analytics = () => {
                             )}
                           </div>
                           <div style={{ fontSize: "10px", color: c.textMuted }}>
-                            Miembro activo
+                            {u.name?.trim() || u.user}
                           </div>
                         </div>
                       </div>

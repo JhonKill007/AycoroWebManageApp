@@ -4,6 +4,7 @@ import React, {
   ReactNode,
   useContext,
   useEffect,
+  useRef,
   useState,
 } from "react";
 import { CurrencyConversation } from "../Models/Message/CurrencyConversation";
@@ -39,6 +40,7 @@ interface HubsProviderProps {
 }
 
 export const HubsProvider: React.FC<HubsProviderProps> = ({ children }) => {
+  const connectionRef = useRef<any>();
   const [connection, setConnection] = useState<any>();
   const [usersConnecting, setUsers] = useState<any>([]);
   const [lastMessage, setLastMessage] = useState<MessageParams>();
@@ -61,10 +63,27 @@ export const HubsProvider: React.FC<HubsProviderProps> = ({ children }) => {
 
   const JoinApp = async (Id: string, User: string) => {
     try {
+      const joinPayload = {
+        Id,
+        User,
+        DeviceOS: "manage",
+      };
+
+      if (connectionRef.current) {
+        try {
+          await connectionRef.current.stop();
+        } catch (error) {
+          console.log(error);
+        }
+        connectionRef.current = undefined;
+      }
+
       const connection = new HubConnectionBuilder()
         .withUrl(chatUrl, {
           transport:
             HttpTransportType.WebSockets | HttpTransportType.LongPolling,
+          accessTokenFactory: () =>
+            localStorage.getItem("aycoroAuthToken") ?? "",
         })
         .withAutomaticReconnect()
         .configureLogging(LogLevel.Information)
@@ -97,11 +116,17 @@ export const HubsProvider: React.FC<HubsProviderProps> = ({ children }) => {
         setUsers([]);
       });
 
+      connection.onreconnected(async () => {
+        await connection.invoke("JoinApp", joinPayload);
+        await connection.invoke("JoinManage");
+      });
+
       await connection.start();
-      await connection.invoke("JoinApp", { Id, User });
+      await connection.invoke("JoinApp", joinPayload);
       await connection.invoke("JoinManage");
 
       GetCurrencyConversation(1);
+      connectionRef.current = connection;
       setConnection(connection);
     } catch (e) {
       console.log(e);
@@ -110,13 +135,15 @@ export const HubsProvider: React.FC<HubsProviderProps> = ({ children }) => {
 
   const closeConnection = async () => {
     try {
-      connection.off("ReceiveMessage");
-      connection.off("ReceiveNewChat");
-      connection.off("ReceiveNotify");
-      connection.off("ReceiveLiveActivity");
-      connection.off("ActiveUsers");
-      await connection.stop();
-      await connection.stop();
+      const currentConnection = connectionRef.current ?? connection;
+      if (!currentConnection) return;
+      currentConnection.off("ReceiveMessage");
+      currentConnection.off("ReceiveNewChat");
+      currentConnection.off("ReceiveNotify");
+      currentConnection.off("ReceiveLiveActivity");
+      currentConnection.off("ActiveUsers");
+      await currentConnection.stop();
+      connectionRef.current = undefined;
     } catch (e) {
       console.log(e);
     }

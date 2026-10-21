@@ -117,6 +117,10 @@ export class AnalyticsService implements IAnalyticsService {
     return result;
   }
 
+  async getUsageTime(days: 7 | 30 | 90 = 7): Promise<any> {
+    return Http.get(withTimeZone(`/api/analytics/usage?days=${days}`));
+  }
+
   async getSessionAccess(days = 30): Promise<any> {
     let result = await new Promise<any>((resolve, reject) => {
       Http.get(withTimeZone(`/api/analytics/sessions?days=${days}`))

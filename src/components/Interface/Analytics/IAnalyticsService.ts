@@ -11,6 +11,7 @@ export interface IAnalyticsService {
   getDeviceData(days?: number): Promise<any>;
   getGenderData(): Promise<any>;
   getSessionAccess(days?: number): Promise<any>;
+  getUsageTime(days?: 7 | 30 | 90): Promise<any>;
   getMessageAnalytics(days?: number | "all"): Promise<any>;
   getBusinessAnalytics(): Promise<any>;
   getGrowthDataByMonth(year: number, month: number): Promise<any>;

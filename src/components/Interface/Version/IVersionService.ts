@@ -7,4 +7,5 @@ export interface IVersionService {
   getById(id: string): Promise<any>;
   getCompatibleOptions(type: string): Promise<any>;
   publish(id: string): Promise<any>;
+  addStories(id: string, releaseMedia: VersionParams["ReleaseMedia"]): Promise<any>;
 }
