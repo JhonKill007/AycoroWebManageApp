@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Area,
   AreaChart,
@@ -660,6 +661,7 @@ const MESSAGE_PERIODS: Array<{ value: MessageAnalyticsPeriod; label: string }> =
 
 // ─── Componente principal ─────────────────────────────────────────────
 const Analytics = () => {
+  const navigate = useNavigate();
   const { theme } = useThemeContext();
   const { showToast } = useToast();
   const colors = theme === "dark" ? Colors.dark : Colors.light;
@@ -842,6 +844,15 @@ const Analytics = () => {
       : monthlyResume.users.thisMonth > 0
         ? 100
         : 0;
+  const registrationsShareThisMonth =
+    monthlyResume.users.total > 0
+      ? Number(
+          (
+            (monthlyResume.users.thisMonth / monthlyResume.users.total) *
+            100
+          ).toFixed(1),
+        )
+      : 0;
 
   useEffect(() => {
     const getMonthlyData = async () => {
@@ -1310,6 +1321,10 @@ const Analytics = () => {
                 ["usuarios_mes", monthlyResume.users.thisMonth],
                 ["usuarios_totales", monthlyResume.users.total],
                 ["usuarios_crecimiento_mes_vs_acumulado", usersGrowthVsTotal],
+                [
+                  "registros_mes_porcentaje_del_total",
+                  registrationsShareThisMonth,
+                ],
                 ["publicaciones_mes", monthlyResume.posts.thisMonth],
                 ["retencion_d1", business.retention.d1.rate],
                 ["retencion_d7", business.retention.d7.rate],
@@ -1376,6 +1391,14 @@ const Analytics = () => {
             sub="este mes"
             trend={monthlyResume.interactions.change}
             colorKey="warning"
+            c={c}
+          />
+          <KpiCard
+            emoji="🆕"
+            label="Registros este mes"
+            value={`${registrationsShareThisMonth}%`}
+            sub={`${monthlyResume.users.thisMonth.toLocaleString()} de ${monthlyResume.users.total.toLocaleString()} registros`}
+            colorKey="accent"
             c={c}
           />
           <KpiCard
@@ -2485,9 +2508,14 @@ const Analytics = () => {
                     1,
                     ...business.topUsers.map((item) => item.followers || 0),
                   );
+                  const profilePath = u.user ? `/users/${u.user}` : "";
                   return (
                     <div
                       key={u.user}
+                      role={profilePath ? "link" : undefined}
+                      onClick={() => {
+                        if (profilePath) navigate(profilePath);
+                      }}
                       style={{
                         display: "grid",
                         gridTemplateColumns: "32px 1fr 80px 80px 100px 80px",
@@ -2496,7 +2524,7 @@ const Analytics = () => {
                         borderRadius: "12px",
                         alignItems: "center",
                         transition: "background 0.15s",
-                        cursor: "default",
+                        cursor: profilePath ? "pointer" : "default",
                         background:
                           i === 0
                             ? theme === "dark"
