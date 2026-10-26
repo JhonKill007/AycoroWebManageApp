@@ -73,7 +73,6 @@ export default function Login() {
 
     try {
       const result = await authService.Authenticate(code);
-      console.log("log result:", result);
 
       if (result.data.verify) {
         setToken(

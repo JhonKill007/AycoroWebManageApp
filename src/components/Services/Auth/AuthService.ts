@@ -1,3 +1,4 @@
+import { getManageDeviceId } from "../../auth/manageSession";
 import { IAuthService } from "../../Interface/Auth/IAuthService";
 import Http from "../Http/HttpClient";
 
@@ -6,6 +7,10 @@ export class AuthService implements IAuthService {
     let result = await new Promise<any>((resolve, reject) => {
       Http.post(`/api/auth`, {
         authcode,
+        deviceId: getManageDeviceId(),
+        deviceOS: "manage",
+        deviceModel: "Manage Web",
+        appVersion: "manage",
       })
         .then((res) => {
           resolve(res);

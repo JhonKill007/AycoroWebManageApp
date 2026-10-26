@@ -5,6 +5,11 @@ import React, {
   useEffect,
   useState,
 } from "react";
+import {
+  hasValidManageSession,
+  startManageSessionWatch,
+  subscribeManageSession,
+} from "../auth/manageSession";
 
 interface AuthenticateContextProps {
   Authenticate: boolean;
@@ -23,21 +28,19 @@ interface AuthenticateProviderProps {
 export const AuthenticateProvider: React.FC<AuthenticateProviderProps> = ({
   children,
 }) => {
-  const [Authenticate, setAuthenticateProp] = useState<boolean>(false);
+  const [Authenticate, setAuthenticateProp] = useState<boolean>(() =>
+    hasValidManageSession(),
+  );
 
   useEffect(() => {
-    try {
-      const storedtoken = localStorage.getItem("internalToken");
-      if (storedtoken) {
-        setAuthenticateProp(true);
-      }
-    } catch (err) {
-      console.error("Error al obtener Token de localStorage:", err);
-    }
+    startManageSessionWatch();
+    return subscribeManageSession((authenticated) => {
+      setAuthenticateProp(authenticated);
+    });
   }, []);
 
   const setAuthenticate = () => {
-    setAuthenticateProp(true);
+    setAuthenticateProp(hasValidManageSession());
   };
 
   const clearAuthenticate = () => {

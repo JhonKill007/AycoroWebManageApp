@@ -6,6 +6,7 @@ import React, {
   useEffect,
   useState,
 } from "react";
+import { endManageSession } from "../auth/manageSession";
 import { AycoroAuthUserPerfilModel } from "../Models/User/AycoroAuthUserPerfilModel";
 import { useAuthenticateContext } from "./AuthenticateContext";
 
@@ -72,11 +73,8 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
 
   const removeUser = useCallback(() => {
     try {
-      localStorage.removeItem("internalToken");
-      localStorage.removeItem("refreshToken");
-      localStorage.removeItem("aycoroAuthToken");
       setUserData(undefined);
-      window.location.href = "/login";
+      endManageSession({ redirect: true, revoke: true });
     } catch (err) {
       console.error("Error eliminando user:", err);
     }

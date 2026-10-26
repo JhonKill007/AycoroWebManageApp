@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { endManageSession } from "../auth/manageSession";
 import { useEmailValidateContext } from "../context/EmailValidateContext";
 import { useUserContext } from "../context/UserContext";
 import Http from "../Services/Http/HttpClient";
@@ -11,10 +12,7 @@ const useGetUserData = () => {
     try {
       const aycoroToken = localStorage.getItem("aycoroAuthToken");
       if (!aycoroToken) {
-        localStorage.removeItem("internalToken");
-        localStorage.removeItem("refreshToken");
-        localStorage.removeItem("aycoroAuthToken");
-        window.location.href = "/login";
+        endManageSession();
         return;
       }
 
@@ -63,14 +61,10 @@ const useGetUserData = () => {
         }
       }
     } catch (err: any) {
-      if (err.response?.status === 401 || err.response?.status === 403) {
-        localStorage.removeItem("internalToken");
-        localStorage.removeItem("refreshToken");
-        localStorage.removeItem("aycoroAuthToken");
-        window.location.href = "/login";
-      } else {
-        console.error("Error fetching user data:", err);
+      if (err.response?.status === 401) {
+        return;
       }
+      console.error("Error fetching user data:", err);
     }
   }, [saveUser, saveEmailWarning]);
 
