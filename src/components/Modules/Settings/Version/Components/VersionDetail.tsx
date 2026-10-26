@@ -95,10 +95,24 @@ const VersionDetail = ({
   const [error, setError] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState("");
+  const [compatibleOptions, setCompatibleOptions] = useState<string[]>([]);
+  const [selectedCompatible, setSelectedCompatible] = useState<string[]>([]);
+  const [loadingCompatibleOptions, setLoadingCompatibleOptions] =
+    useState(false);
+  const [savingCompatible, setSavingCompatible] = useState(false);
 
   const loadVersion = useCallback(async () => {
     const response = await versionService.getById(id);
-    setVersion(response.data);
+    const data = response.data;
+    setVersion(data);
+    const current = Array.isArray(data?.CompatibleVersions)
+      ? data.CompatibleVersions.filter(Boolean)
+      : Array.isArray(data?.compatibleVersions)
+        ? data.compatibleVersions
+            .map((item: any) => item?.value)
+            .filter(Boolean)
+        : [];
+    setSelectedCompatible(current);
   }, [id]);
 
   useEffect(() => {
@@ -118,6 +132,31 @@ const VersionDetail = ({
       active = false;
     };
   }, [loadVersion]);
+
+  useEffect(() => {
+    if (!version?._id) return;
+    let active = true;
+    setLoadingCompatibleOptions(true);
+    versionService
+      .getCompatibleOptions(version.Type || "", version._id)
+      .then((response) => {
+        if (!active) return;
+        const options = Array.isArray(response?.data?.data)
+          ? response.data.data.filter(Boolean)
+          : [];
+        setCompatibleOptions(options);
+      })
+      .catch(() => {
+        if (!active) return;
+        setCompatibleOptions([]);
+      })
+      .finally(() => {
+        if (active) setLoadingCompatibleOptions(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [version?._id, version?.Type]);
 
   const handleAddStories = async (
     event: ChangeEvent<HTMLInputElement>,
@@ -235,7 +274,45 @@ const VersionDetail = ({
   const compatible = Array.isArray(version?.compatibleVersions)
     ? version.compatibleVersions
     : [];
+  const savedCompatible = Array.isArray(version?.CompatibleVersions)
+    ? version.CompatibleVersions.filter(Boolean)
+    : compatible.map((item: any) => item?.value).filter(Boolean);
+  const compatibleDirty =
+    selectedCompatible.length !== savedCompatible.length ||
+    selectedCompatible.some((value) => !savedCompatible.includes(value));
   const published = Number(version?.Status) === 1;
+
+  const toggleCompatibleVersion = (value: string) => {
+    setSelectedCompatible((prev) =>
+      prev.includes(value)
+        ? prev.filter((item) => item !== value)
+        : [...prev, value],
+    );
+  };
+
+  const handleSaveCompatible = async () => {
+    setSavingCompatible(true);
+    try {
+      await versionService.updateCompatibleVersions(id, selectedCompatible);
+      await loadVersion();
+      showToast({
+        type: "success",
+        title: "Compatibilidad actualizada",
+        description: "Las versiones compatibles se guardaron sin republicar.",
+        duration: 3500,
+      });
+    } catch (err) {
+      console.error("Error updating compatible versions:", err);
+      showToast({
+        type: "error",
+        title: "Error",
+        description: "No se pudieron guardar las versiones compatibles.",
+        duration: 4000,
+      });
+    } finally {
+      setSavingCompatible(false);
+    }
+  };
 
   return (
     <div>
@@ -286,18 +363,101 @@ const VersionDetail = ({
           </div>
 
           <section style={{ border: `1px solid ${c.border}`, borderRadius: 14, padding: 14 }}>
-            <div style={{ fontWeight: 800, color: c.text, marginBottom: 8 }}>Versiones que dejó activas</div>
-            {compatible.length === 0 ? (
-              <div style={{ color: c.textMuted, fontSize: 13 }}>Esta versión no dejó otras versiones activas.</div>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
+                marginBottom: 8,
+                flexWrap: "wrap",
+              }}
+            >
+              <div style={{ fontWeight: 800, color: c.text }}>Versiones compatibles</div>
+              <button
+                type="button"
+                disabled={!compatibleDirty || savingCompatible}
+                onClick={handleSaveCompatible}
+                style={{
+                  padding: "8px 14px",
+                  borderRadius: 12,
+                  border: "none",
+                  background: Colors.detailAppColor,
+                  color: "#fff",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor:
+                    !compatibleDirty || savingCompatible ? "not-allowed" : "pointer",
+                  opacity: !compatibleDirty || savingCompatible ? 0.55 : 1,
+                }}
+              >
+                {savingCompatible ? "Guardando..." : "Guardar compatibles"}
+              </button>
+            </div>
+            <div style={{ color: c.textMuted, fontSize: 12, marginBottom: 12, lineHeight: 1.45 }}>
+              Agrega o quita versiones soportadas de este registro. No se publica una versión nueva ni se cambian notas, enlace o estado.
+            </div>
+            {loadingCompatibleOptions ? (
+              <div style={{ color: c.textMuted, fontSize: 13 }}>Cargando versiones compatibles...</div>
+            ) : compatibleOptions.length === 0 && selectedCompatible.length === 0 ? (
+              <div style={{ color: c.textMuted, fontSize: 13 }}>No hay versiones de esta plataforma para marcar como compatibles.</div>
             ) : (
-              compatible.map((item: any) => (
-                <div key={item.value} style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "8px 0", borderBottom: `1px solid ${c.border}`, color: c.text, fontSize: 13 }}>
-                  <strong>{item.value}</strong>
-                  <span style={{ color: c.textMuted }}>
-                    {!item.found ? "No encontrada" : STATUS_LABEL[Number(item.status)] || "Sin estado"}
-                  </span>
-                </div>
-              ))
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+                  gap: 8,
+                }}
+              >
+                {Array.from(
+                  new Set([...compatibleOptions, ...selectedCompatible]),
+                ).map((versionValue) => {
+                  const checked = selectedCompatible.includes(versionValue);
+                  const meta = compatible.find(
+                    (item: any) => item?.value === versionValue,
+                  );
+                  return (
+                    <label
+                      key={versionValue}
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 4,
+                        padding: "10px 12px",
+                        borderRadius: 12,
+                        border: `1.5px solid ${
+                          checked ? Colors.detailAppColor : c.border
+                        }`,
+                        background: checked
+                          ? `${Colors.detailAppColor}15`
+                          : "transparent",
+                        color: checked ? Colors.detailAppColor : c.text,
+                        fontSize: 12,
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        userSelect: "none",
+                      }}
+                    >
+                      <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleCompatibleVersion(versionValue)}
+                          style={{ accentColor: Colors.detailAppColor }}
+                        />
+                        <span>{versionValue}</span>
+                      </span>
+                      {meta ? (
+                        <span style={{ color: c.textMuted, fontWeight: 600, paddingLeft: 22 }}>
+                          {!meta.found
+                            ? "No encontrada"
+                            : STATUS_LABEL[Number(meta.status)] || "Sin estado"}
+                        </span>
+                      ) : null}
+                    </label>
+                  );
+                })}
+              </div>
             )}
           </section>
 

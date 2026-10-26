@@ -46,9 +46,12 @@ export class VersionService implements IVersionService {
     return Http.get(`/api/version/${id}`);
   }
 
-  async getCompatibleOptions(type: string): Promise<any> {
+  async getCompatibleOptions(type: string, id?: string): Promise<any> {
+    const params = new URLSearchParams();
+    if (type) params.set("type", type);
+    if (id) params.set("id", id);
     let result = await new Promise<any>((resolve, reject) => {
-      Http.get(`/api/version/compatible-options?type=${encodeURIComponent(type)}`)
+      Http.get(`/api/version/compatible-options?${params.toString()}`)
         .then((res) => {
           resolve(res);
         })
@@ -57,6 +60,15 @@ export class VersionService implements IVersionService {
         });
     });
     return result;
+  }
+
+  async updateCompatibleVersions(
+    id: string,
+    compatibleVersions: string[],
+  ): Promise<any> {
+    return Http.put(`/api/version/${encodeURIComponent(id)}/compatible`, {
+      CompatibleVersions: compatibleVersions,
+    });
   }
 
   async publish(id: string): Promise<any> {

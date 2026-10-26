@@ -5,7 +5,8 @@ export interface IVersionService {
   updateStatus(model: VersionParams): Promise<any>;
   getAll(page: number, search: string): Promise<any>;
   getById(id: string): Promise<any>;
-  getCompatibleOptions(type: string): Promise<any>;
+  getCompatibleOptions(type: string, id?: string): Promise<any>;
+  updateCompatibleVersions(id: string, compatibleVersions: string[]): Promise<any>;
   publish(id: string): Promise<any>;
   addStories(id: string, releaseMedia: VersionParams["ReleaseMedia"]): Promise<any>;
 }
