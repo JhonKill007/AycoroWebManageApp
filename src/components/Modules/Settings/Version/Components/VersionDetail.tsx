@@ -3,6 +3,13 @@ import { Colors } from "../../../../constants/Colors";
 import { useToast } from "../../../../context/ToastContext";
 import { useUploadFile } from "../../../../hooks/useUploadFile";
 import versionService from "../../../../Services/Version/VersionService";
+import {
+  CompatibleEditorMode,
+  mergeEditOptions,
+  readSavedCompatibleValues,
+  restoreCompatibleSelection,
+  shouldShowManageButton,
+} from "../compatibleEditor";
 import { formatDate } from "../../Common/Utils";
 
 const STATUS_LABEL: Record<number, string> = {
@@ -97,22 +104,19 @@ const VersionDetail = ({
   const [uploadProgress, setUploadProgress] = useState("");
   const [compatibleOptions, setCompatibleOptions] = useState<string[]>([]);
   const [selectedCompatible, setSelectedCompatible] = useState<string[]>([]);
+  const [compatibleMode, setCompatibleMode] =
+    useState<CompatibleEditorMode>("view");
   const [loadingCompatibleOptions, setLoadingCompatibleOptions] =
     useState(false);
-  const [savingCompatible, setSavingCompatible] = useState(false);
+  const [compatibleError, setCompatibleError] = useState("");
 
   const loadVersion = useCallback(async () => {
     const response = await versionService.getById(id);
     const data = response.data;
     setVersion(data);
-    const current = Array.isArray(data?.CompatibleVersions)
-      ? data.CompatibleVersions.filter(Boolean)
-      : Array.isArray(data?.compatibleVersions)
-        ? data.compatibleVersions
-            .map((item: any) => item?.value)
-            .filter(Boolean)
-        : [];
-    setSelectedCompatible(current);
+    setSelectedCompatible(readSavedCompatibleValues(data));
+    setCompatibleMode("view");
+    setCompatibleError("");
   }, [id]);
 
   useEffect(() => {
@@ -133,30 +137,35 @@ const VersionDetail = ({
     };
   }, [loadVersion]);
 
-  useEffect(() => {
-    if (!version?._id) return;
-    let active = true;
+  const openCompatibleEditor = async () => {
+    if (!version?._id || compatibleMode !== "view") return;
+    setCompatibleError("");
+    setSelectedCompatible(readSavedCompatibleValues(version));
     setLoadingCompatibleOptions(true);
-    versionService
-      .getCompatibleOptions(version.Type || "", version._id)
-      .then((response) => {
-        if (!active) return;
-        const options = Array.isArray(response?.data?.data)
-          ? response.data.data.filter(Boolean)
-          : [];
-        setCompatibleOptions(options);
-      })
-      .catch(() => {
-        if (!active) return;
-        setCompatibleOptions([]);
-      })
-      .finally(() => {
-        if (active) setLoadingCompatibleOptions(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [version?._id, version?.Type]);
+    setCompatibleMode("edit");
+    try {
+      const response = await versionService.getCompatibleOptions(
+        version.Type || "",
+        version._id,
+      );
+      const options = Array.isArray(response?.data?.data)
+        ? response.data.data.filter(Boolean)
+        : [];
+      setCompatibleOptions(options);
+    } catch {
+      setCompatibleOptions(readSavedCompatibleValues(version));
+      setCompatibleError("No se pudieron cargar las opciones elegibles.");
+    } finally {
+      setLoadingCompatibleOptions(false);
+    }
+  };
+
+  const cancelCompatibleEditor = () => {
+    setSelectedCompatible(restoreCompatibleSelection(readSavedCompatibleValues(version)));
+    setCompatibleOptions([]);
+    setCompatibleError("");
+    setCompatibleMode("view");
+  };
 
   const handleAddStories = async (
     event: ChangeEvent<HTMLInputElement>,
@@ -274,13 +283,13 @@ const VersionDetail = ({
   const compatible = Array.isArray(version?.compatibleVersions)
     ? version.compatibleVersions
     : [];
-  const savedCompatible = Array.isArray(version?.CompatibleVersions)
-    ? version.CompatibleVersions.filter(Boolean)
-    : compatible.map((item: any) => item?.value).filter(Boolean);
+  const savedCompatible = readSavedCompatibleValues(version);
   const compatibleDirty =
     selectedCompatible.length !== savedCompatible.length ||
     selectedCompatible.some((value) => !savedCompatible.includes(value));
   const published = Number(version?.Status) === 1;
+  const editOptions = mergeEditOptions(compatibleOptions, selectedCompatible);
+  const showManageButton = shouldShowManageButton(compatibleMode);
 
   const toggleCompatibleVersion = (value: string) => {
     setSelectedCompatible((prev) =>
@@ -291,26 +300,43 @@ const VersionDetail = ({
   };
 
   const handleSaveCompatible = async () => {
-    setSavingCompatible(true);
+    if (compatibleMode !== "edit") return;
+    setCompatibleMode("saving");
+    setCompatibleError("");
     try {
-      await versionService.updateCompatibleVersions(id, selectedCompatible);
+      const response = await versionService.updateCompatibleVersions(
+        id,
+        selectedCompatible,
+      );
+      const saved = response?.data
+        ? {
+            ...version,
+            ...response.data,
+          }
+        : version;
       await loadVersion();
+      if (Array.isArray(saved?.CompatibleVersions)) {
+        setSelectedCompatible(readSavedCompatibleValues(saved));
+      }
       showToast({
         type: "success",
         title: "Compatibilidad actualizada",
         description: "Las versiones compatibles se guardaron sin republicar.",
         duration: 3500,
       });
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error updating compatible versions:", err);
+      const message =
+        err?.response?.data?.message ||
+        "No se pudieron guardar las versiones compatibles.";
+      setCompatibleError(message);
+      setCompatibleMode("edit");
       showToast({
         type: "error",
         title: "Error",
-        description: "No se pudieron guardar las versiones compatibles.",
+        description: message,
         duration: 4000,
       });
-    } finally {
-      setSavingCompatible(false);
     }
   };
 
@@ -374,33 +400,123 @@ const VersionDetail = ({
               }}
             >
               <div style={{ fontWeight: 800, color: c.text }}>Versiones compatibles</div>
-              <button
-                type="button"
-                disabled={!compatibleDirty || savingCompatible}
-                onClick={handleSaveCompatible}
-                style={{
-                  padding: "8px 14px",
-                  borderRadius: 12,
-                  border: "none",
-                  background: Colors.detailAppColor,
-                  color: "#fff",
-                  fontSize: 12,
-                  fontWeight: 700,
-                  cursor:
-                    !compatibleDirty || savingCompatible ? "not-allowed" : "pointer",
-                  opacity: !compatibleDirty || savingCompatible ? 0.55 : 1,
-                }}
-              >
-                {savingCompatible ? "Guardando..." : "Guardar compatibles"}
-              </button>
+              {showManageButton ? (
+                <button
+                  type="button"
+                  onClick={openCompatibleEditor}
+                  style={{
+                    padding: "8px 14px",
+                    borderRadius: 12,
+                    border: "none",
+                    background: Colors.detailAppColor,
+                    color: "#fff",
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  Gestionar compatibles
+                </button>
+              ) : (
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <button
+                    type="button"
+                    disabled={compatibleMode === "saving"}
+                    onClick={cancelCompatibleEditor}
+                    style={{
+                      padding: "8px 14px",
+                      borderRadius: 12,
+                      border: `1px solid ${c.border}`,
+                      background: "transparent",
+                      color: c.text,
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: compatibleMode === "saving" ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!compatibleDirty || compatibleMode === "saving"}
+                    onClick={handleSaveCompatible}
+                    style={{
+                      padding: "8px 14px",
+                      borderRadius: 12,
+                      border: "none",
+                      background: Colors.detailAppColor,
+                      color: "#fff",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor:
+                        !compatibleDirty || compatibleMode === "saving"
+                          ? "not-allowed"
+                          : "pointer",
+                      opacity: !compatibleDirty || compatibleMode === "saving" ? 0.55 : 1,
+                    }}
+                  >
+                    {compatibleMode === "saving" ? "Guardando..." : "Guardar compatibles"}
+                  </button>
+                </div>
+              )}
             </div>
             <div style={{ color: c.textMuted, fontSize: 12, marginBottom: 12, lineHeight: 1.45 }}>
-              Agrega o quita versiones soportadas de este registro. No se publica una versión nueva ni se cambian notas, enlace o estado.
+              {compatibleMode === "view"
+                ? "Versiones que este registro soporta actualmente. Usa Gestionar compatibles para agregar o quitar soporte sin publicar."
+                : "Solo se pueden marcar versiones de la publicada anterior y sus compatibles. No se publica una versión nueva ni se envían notificaciones."}
             </div>
-            {loadingCompatibleOptions ? (
-              <div style={{ color: c.textMuted, fontSize: 13 }}>Cargando versiones compatibles...</div>
-            ) : compatibleOptions.length === 0 && selectedCompatible.length === 0 ? (
-              <div style={{ color: c.textMuted, fontSize: 13 }}>No hay versiones de esta plataforma para marcar como compatibles.</div>
+            {compatibleError ? (
+              <div style={{ color: "#b42318", fontSize: 12, marginBottom: 12, fontWeight: 700 }}>
+                {compatibleError}
+              </div>
+            ) : null}
+            {compatibleMode === "view" ? (
+              savedCompatible.length === 0 ? (
+                <div style={{ color: c.textMuted, fontSize: 13 }}>
+                  Este registro no tiene versiones compatibles.
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {savedCompatible.map((versionValue) => {
+                    const meta = compatible.find(
+                      (item: any) => item?.value === versionValue,
+                    );
+                    return (
+                      <span
+                        key={versionValue}
+                        style={{
+                          display: "inline-flex",
+                          flexDirection: "column",
+                          gap: 2,
+                          padding: "8px 12px",
+                          borderRadius: 999,
+                          border: `1px solid ${c.border}`,
+                          background: `${Colors.detailAppColor}12`,
+                          color: c.text,
+                          fontSize: 12,
+                          fontWeight: 700,
+                          fontFamily: "monospace",
+                        }}
+                      >
+                        {versionValue}
+                        {meta ? (
+                          <span style={{ color: c.textMuted, fontWeight: 600, fontFamily: "inherit" }}>
+                            {!meta.found
+                              ? "No encontrada"
+                              : STATUS_LABEL[Number(meta.status)] || "Sin estado"}
+                          </span>
+                        ) : null}
+                      </span>
+                    );
+                  })}
+                </div>
+              )
+            ) : loadingCompatibleOptions ? (
+              <div style={{ color: c.textMuted, fontSize: 13 }}>Cargando opciones elegibles...</div>
+            ) : editOptions.length === 0 ? (
+              <div style={{ color: c.textMuted, fontSize: 13 }}>
+                No hay versión publicada anterior ni compatibles actuales para editar.
+              </div>
             ) : (
               <div
                 style={{
@@ -409,9 +525,7 @@ const VersionDetail = ({
                   gap: 8,
                 }}
               >
-                {Array.from(
-                  new Set([...compatibleOptions, ...selectedCompatible]),
-                ).map((versionValue) => {
+                {editOptions.map((versionValue) => {
                   const checked = selectedCompatible.includes(versionValue);
                   const meta = compatible.find(
                     (item: any) => item?.value === versionValue,
@@ -434,7 +548,7 @@ const VersionDetail = ({
                         color: checked ? Colors.detailAppColor : c.text,
                         fontSize: 12,
                         fontWeight: 700,
-                        cursor: "pointer",
+                        cursor: compatibleMode === "saving" ? "not-allowed" : "pointer",
                         userSelect: "none",
                       }}
                     >
@@ -442,6 +556,7 @@ const VersionDetail = ({
                         <input
                           type="checkbox"
                           checked={checked}
+                          disabled={compatibleMode === "saving"}
                           onChange={() => toggleCompatibleVersion(versionValue)}
                           style={{ accentColor: Colors.detailAppColor }}
                         />
