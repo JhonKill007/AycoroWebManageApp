@@ -9,7 +9,7 @@ import {
   readSavedCompatibleValues,
   restoreCompatibleSelection,
   shouldShowManageButton,
-} from "../compatibleEditor";
+} from "./compatibleEditor";
 import { formatDate } from "../../Common/Utils";
 
 const STATUS_LABEL: Record<number, string> = {
