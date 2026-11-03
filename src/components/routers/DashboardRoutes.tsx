@@ -3,6 +3,7 @@ import AppLayout from "../Layout/AppLayout";
 import AccountAdmin from "../Views/AccountAdmin";
 import Analytics from "../Views/Analytics";
 import Audit from "../Views/Audit";
+import BlockedEmailDomains from "../Views/BlockedEmailDomains";
 import CaseDetails from "../Views/CaseDetails";
 import Dashboard from "../Views/Dashboard";
 import OnlineUsers from "../Views/OnlineUsers";
@@ -100,6 +101,9 @@ const DashboardRoutes = () => {
             <Route path="/comments" element={<Comments />} />
           </Route>
           <Route element={<PermissionRoute anyOf={[Permissions.MANAGE_SETTINGS, Permissions.MANAGE_ADMINS, Permissions.DANGER_ZONE, Permissions.VAULT_ACCESS]} allowSuperAdmin />}><Route path="/settings" element={<Settings />} /></Route>
+          <Route element={<PermissionRoute anyOf={[Permissions.MANAGE_SETTINGS]} />}>
+            <Route path="/security/blocked-email-domains" element={<BlockedEmailDomains />} />
+          </Route>
           <Route element={<PermissionRoute anyOf={[Permissions.VIEW_ERROR_LOGS, Permissions.MANAGE_ADMINS]} />}><Route path="/audit" element={<Audit />} /></Route>
           <Route element={<PermissionRoute anyOf={[Permissions.VIEW_ERROR_LOGS]} />}><Route path="/logs" element={<Logs />} /></Route>
           <Route element={<PermissionRoute anyOf={[Permissions.VIEW_SESSION_LOGS]} />}><Route path="/session" element={<SessionLogs />} /></Route>

@@ -138,6 +138,19 @@ const NAV_ITEMS: any[] = [
     ],
   },
   {
+    section: "Seguridad",
+    items: [
+      {
+        id: "blocked-email-domains",
+        label: "Dominios bloqueados",
+        emoji: "🚫",
+        badge: null,
+        navigate: "/security/blocked-email-domains",
+        permissions: [Permissions.MANAGE_SETTINGS],
+      },
+    ],
+  },
+  {
     section: "Sistema",
     items: [
       {
