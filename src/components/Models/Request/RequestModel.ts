@@ -24,6 +24,14 @@ export class VerificationData {
   public identityDocumentType: "passport" | "id_card" | "organization" | undefined;
 }
 
+export class CreatorsProgramData {
+  public category: string | undefined;
+  public identityDocumentType: "passport" | "id_card" | undefined;
+  public termsVersion: string | undefined;
+  public termsAcceptedAt: string | Date | undefined;
+  public reusedGreenVerification: boolean | undefined;
+}
+
 export class ServiceOwnershipData {
   public idItem: string | undefined;
   public itemType: "SERVICE" | undefined;
@@ -42,7 +50,11 @@ export class Request {
   public description: string | undefined;
   public documents: RequestDocument[] | undefined;
   public links: string[] | undefined;
-  public metadata: VerificationData | ServiceOwnershipData | undefined;
+  public metadata:
+    | VerificationData
+    | CreatorsProgramData
+    | ServiceOwnershipData
+    | undefined;
   public createdDate: Date | undefined;
   public reviewedBy: string | undefined;
   public reviewedAt: Date | undefined;

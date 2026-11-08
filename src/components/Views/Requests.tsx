@@ -7,6 +7,7 @@ import { Colors } from "../constants/Colors";
 import { useThemeContext } from "../context/ThemeContext";
 import { useToast } from "../context/ToastContext";
 import {
+  CreatorsProgramData,
   RequestModel,
   RequestStatus,
   RequestType,
@@ -130,6 +131,46 @@ const isImageDocument = (document: any, url: string) => {
   );
 };
 
+const CREATORS_CATEGORY_LABELS: Record<string, string> = {
+  humor: "Humor",
+  music: "Música",
+  fashion_beauty: "Moda y belleza",
+  technology: "Tecnología",
+  travel: "Viajes",
+  fitness: "Fitness",
+  vehicles: "Vehículos",
+  art_culture: "Arte y cultura",
+  sports: "Deportes",
+  news: "Noticias",
+  gaming: "Gaming",
+  gastronomy: "Gastronomía",
+  education: "Educación",
+  lifestyle: "Estilo de vida",
+  business: "Negocios",
+  other: "Otro",
+};
+
+const CREATORS_DOCUMENT_LABELS: Record<string, string> = {
+  passport: "Pasaporte",
+  id_card: "Carnet de identificación",
+};
+
+const formatCreatorsCategory = (value?: string) => {
+  const key = String(value || "")
+    .trim()
+    .toLowerCase();
+  if (!key) return "";
+  return CREATORS_CATEGORY_LABELS[key] || value || "";
+};
+
+const formatCreatorsDocumentType = (value?: string) => {
+  const key = String(value || "")
+    .trim()
+    .toLowerCase();
+  if (!key) return "";
+  return CREATORS_DOCUMENT_LABELS[key] || value || "";
+};
+
 const getMetadataRows = (request: RequestModel) => {
   if (request.requestType === "VERIFICATION") {
     const metadata = request.metadata as VerificationData;
@@ -140,17 +181,34 @@ const getMetadataRows = (request: RequestModel) => {
   }
 
   if (request.requestType === "CREATORS_PROGRAM") {
-    const metadata = request.metadata as VerificationData & {
-      termsVersion?: string;
-      termsAcceptedAt?: string;
-    };
+    const metadata = request.metadata as CreatorsProgramData;
+    const isPending =
+      request.status === "PENDING" || request.status === "IN_REVIEW";
+    const reviewedBy = request.reviewedBy
+      ? request.reviewedBy
+      : isPending
+        ? "Pendiente de revisión"
+        : "N/A";
+    const rejectionReason =
+      request.status === "REJECTED"
+        ? request.rejectionReason || "Sin motivo registrado"
+        : "No aplica";
+
     return [
-      ["Categoria", metadata?.category || "N/A"],
-      ["Documento", metadata?.identityDocumentType || "N/A"],
-      ["Terminos", metadata?.termsVersion || "N/A"],
-      ["Aceptados", metadata?.termsAcceptedAt ? formatDate(metadata.termsAcceptedAt) : "N/A"],
-      ["Revisado por", request.reviewedBy || "N/A"],
-      ["Motivo de rechazo", request.rejectionReason || "N/A"],
+      ["Categoria", formatCreatorsCategory(metadata?.category) || "N/A"],
+      [
+        "Documento",
+        formatCreatorsDocumentType(metadata?.identityDocumentType) || "N/A",
+      ],
+      ["Terminos", metadata?.termsVersion ? `v${metadata.termsVersion}` : "N/A"],
+      [
+        "Aceptados",
+        metadata?.termsAcceptedAt
+          ? formatDate(`${metadata.termsAcceptedAt}`)
+          : "N/A",
+      ],
+      ["Revisado por", reviewedBy],
+      ["Motivo de rechazo", rejectionReason],
     ];
   }
 
