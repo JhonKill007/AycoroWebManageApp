@@ -29,6 +29,7 @@ const STATUS_CONFIG: Record<RequestStatus, { label: string; color: string; bg: s
 const TYPE_CONFIG: Record<RequestType, { label: string; icon: string }> = {
   VERIFICATION: { label: "Verificacion", icon: "V" },
   SERVICE_OWNERSHIP: { label: "Propiedad de servicio", icon: "S" },
+  CREATORS_PROGRAM: { label: "Programa de creadores", icon: "C" },
 };
 
 const EMPTY_STATS = {
@@ -64,8 +65,31 @@ Esto no afecta el funcionamiento de tu cuenta y podrás enviar una nueva solicit
 
 Gracias por tu comprensión. 💜`;
 
+const CREATORS_PROGRAM_APPROVED_MESSAGE = `✅ Programa de Creadores aprobado
+
+¡Tu solicitud fue aprobada! 🎉
+
+Nos complace informarte que ya formas parte del Programa de Creadores de Contenido de Aycoro.
+
+A partir de ahora, tu perfil mostrará la insignia morada del programa, tu categoría de creador y tendrás acceso a Aycoro Studio con las métricas de tu contenido.
+
+Gracias por crear en Aycoro. 💜`;
+
+const CREATORS_PROGRAM_REJECTED_MESSAGE = `❌ Programa de Creadores denegado
+
+No pudimos aprobar tu solicitud.
+
+Tras revisar la información proporcionada, tu solicitud al Programa de Creadores de Contenido de Aycoro no cumple actualmente con los requisitos necesarios para ser aprobada.
+
+Esto no afecta el funcionamiento de tu cuenta y podrás enviar una nueva solicitud cuando dispongas de información o documentación adicional que respalde tu incorporación.
+
+Gracias por tu comprensión. 💜`;
+
 const GREEN_VERIFICATION_NAME_TEMPLATE =
   "Hola {nombre}, solicitaste la verificación verde y para ella el nombre de tu cuenta debe ser mínimo un nombre y un apellido como está en tus documentos de identidad, cambia tu nombre para poder otorgarte la verificación";
+
+const CREATORS_PROGRAM_REVIEW_TEMPLATE =
+  "Hola {nombre}, revisamos tu solicitud al Programa de Creadores de Aycoro. Para continuar necesitamos que completes o corrijas la información de tu solicitud. Cuando esté lista, vuelve a enviarla.";
 
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
@@ -112,6 +136,21 @@ const getMetadataRows = (request: RequestModel) => {
     return [
       ["Tipo de verificacion", metadata?.verifyType || "N/A"],
       ["Categoria", metadata?.category || "N/A"],
+    ];
+  }
+
+  if (request.requestType === "CREATORS_PROGRAM") {
+    const metadata = request.metadata as VerificationData & {
+      termsVersion?: string;
+      termsAcceptedAt?: string;
+    };
+    return [
+      ["Categoria", metadata?.category || "N/A"],
+      ["Documento", metadata?.identityDocumentType || "N/A"],
+      ["Terminos", metadata?.termsVersion || "N/A"],
+      ["Aceptados", metadata?.termsAcceptedAt ? formatDate(metadata.termsAcceptedAt) : "N/A"],
+      ["Revisado por", request.reviewedBy || "N/A"],
+      ["Motivo de rechazo", request.rejectionReason || "N/A"],
     ];
   }
 
@@ -171,6 +210,9 @@ function RequestDetailModal({
   const requesterName = request.User?.Name || request.User?.Username || "usuario";
   const greenVerificationNameMessage =
     GREEN_VERIFICATION_NAME_TEMPLATE.replace("{nombre}", requesterName);
+  const creatorsProgramReviewMessage =
+    CREATORS_PROGRAM_REVIEW_TEMPLATE.replace("{nombre}", requesterName);
+  const isCreatorsProgram = request.requestType === "CREATORS_PROGRAM";
 
   return (
     <div className="request-modal-backdrop" onClick={onClose}>
@@ -365,13 +407,23 @@ function RequestDetailModal({
               </button>
             </div>
             <div className="message-modal-body">
-              <button
-                className="message-template-button"
-                onClick={() => setMessage(greenVerificationNameMessage)}
-                type="button"
-              >
-                Usar plantilla: nombre requerido para verificación verde
-              </button>
+              {isCreatorsProgram ? (
+                <button
+                  className="message-template-button"
+                  onClick={() => setMessage(creatorsProgramReviewMessage)}
+                  type="button"
+                >
+                  Usar plantilla: revisión del Programa de Creadores
+                </button>
+              ) : (
+                <button
+                  className="message-template-button"
+                  onClick={() => setMessage(greenVerificationNameMessage)}
+                  type="button"
+                >
+                  Usar plantilla: nombre requerido para verificación verde
+                </button>
+              )}
               <textarea
                 value={message}
                 onChange={(event) => setMessage(event.target.value)}
@@ -451,6 +503,8 @@ const Requests = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const [stats, setStats] = useState(EMPTY_STATS);
+  const [roster, setRoster] = useState<"active" | "withdrawn" | null>(null);
+  const [rosterRows, setRosterRows] = useState<any[]>([]);
   const itemsPerPage = 10;
   const debouncedSearch = useDebounce(search, 500);
 
@@ -499,6 +553,22 @@ const Requests = () => {
     loadRequests();
   }, [loadRequests]);
 
+  useEffect(() => {
+    if (!roster) return;
+    let cancelled = false;
+    requestService
+      .listCreators(roster, debouncedSearch)
+      .then((response) => {
+        if (!cancelled) setRosterRows(response.data?.data || []);
+      })
+      .catch(() => {
+        if (!cancelled) setRosterRows([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [roster, debouncedSearch]);
+
   const refreshSelected = (updated: RequestModel) => {
     setRequests((prev) =>
       prev.map((request) => (request._id === updated._id ? updated : request)),
@@ -510,19 +580,44 @@ const Requests = () => {
     await systemMessageService.sendRequestMessage(request, message);
   };
 
-  const sendAutomaticVerificationMessage = async (
+  const sendAutomaticDecisionMessage = async (
     request: RequestModel | null,
     message: string,
   ) => {
-    if (request?.requestType !== "VERIFICATION") return true;
+    if (
+      request?.requestType !== "VERIFICATION" &&
+      request?.requestType !== "CREATORS_PROGRAM"
+    ) {
+      return true;
+    }
 
     try {
       await sendRequestMessage(request, message);
       return true;
     } catch (error) {
-      console.error("Error sending automatic verification message:", error);
+      console.error("Error sending automatic request message:", error);
       return false;
     }
+  };
+
+  const getAutomaticDecisionMessage = (
+    request: RequestModel | null,
+    decision: "APPROVED" | "REJECTED",
+    reason?: string,
+  ) => {
+    if (request?.requestType === "CREATORS_PROGRAM") {
+      if (decision === "APPROVED") return CREATORS_PROGRAM_APPROVED_MESSAGE;
+      if (reason?.trim()) {
+        return `${CREATORS_PROGRAM_REJECTED_MESSAGE}
+
+Motivo: ${reason.trim()}`;
+      }
+      return CREATORS_PROGRAM_REJECTED_MESSAGE;
+    }
+
+    return decision === "APPROVED"
+      ? VERIFICATION_APPROVED_MESSAGE
+      : VERIFICATION_REJECTED_MESSAGE;
   };
 
   const handleStatusChange = async (id: string, status: RequestStatus) => {
@@ -554,13 +649,21 @@ const Requests = () => {
   };
 
   const handleReject = async (id: string) => {
+    const currentRequest = selected;
+    let reason: string | undefined;
+    if (currentRequest?.requestType === "CREATORS_PROGRAM") {
+      const typed =
+        window.prompt(
+          "Motivo de rechazo (opcional). Se incluirá en el mensaje al solicitante.",
+        ) || "";
+      reason = typed.trim() || undefined;
+    }
     setIsWorking(true);
     try {
-      const currentRequest = selected;
-      const response = await requestService.reject(id);
-      const messageSent = await sendAutomaticVerificationMessage(
+      const response = await requestService.reject(id, reason);
+      const messageSent = await sendAutomaticDecisionMessage(
         currentRequest,
-        VERIFICATION_REJECTED_MESSAGE,
+        getAutomaticDecisionMessage(currentRequest, "REJECTED", reason),
       );
       refreshSelected(response.data);
       setSelected(null);
@@ -573,11 +676,11 @@ const Requests = () => {
           : "La solicitud fue rechazada, pero no se pudo enviar el mensaje automatico",
         duration: messageSent ? 3000 : 5000,
       });
-    } catch (error) {
+    } catch (error: any) {
       showToast({
         type: "error",
         title: "Error",
-        description: "No se pudo rechazar la solicitud",
+        description: error.response?.data?.message || "No se pudo rechazar la solicitud",
         duration: 4000,
       });
     } finally {
@@ -590,9 +693,9 @@ const Requests = () => {
     try {
       const currentRequest = selected;
       const response = await requestService.apply(id);
-      const messageSent = await sendAutomaticVerificationMessage(
+      const messageSent = await sendAutomaticDecisionMessage(
         currentRequest,
-        VERIFICATION_APPROVED_MESSAGE,
+        getAutomaticDecisionMessage(currentRequest, "APPROVED"),
       );
       refreshSelected(response.data.request);
       setSelected(null);
@@ -753,7 +856,18 @@ const Requests = () => {
           <div>
             <div className="page-title">Solicitudes</div>
             <div className="page-subtitle">
-              Revision de verificaciones y reclamos de propiedad de servicio.
+              Revision de verificaciones, propiedad de servicio y programa de creadores.
+            </div>
+            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+              <button className="chip" type="button" onClick={() => setRoster(null)}>
+                Solicitudes
+              </button>
+              <button className="chip" type="button" onClick={() => setRoster("active")}>
+                Creadores activos
+              </button>
+              <button className="chip" type="button" onClick={() => setRoster("withdrawn")}>
+                Retirados
+              </button>
             </div>
           </div>
         </div>
@@ -777,6 +891,32 @@ const Requests = () => {
           </div>
         </div>
 
+        {roster && (
+          <div className="request-panel" style={{ marginBottom: 16 }}>
+            {rosterRows.length === 0 ? (
+              <div className="empty-state">No hay creadores para mostrar</div>
+            ) : (
+              rosterRows.map((row) => (
+                <div key={String(row._id)} className="request-row">
+                  <div>@{row.Username || row.Name}</div>
+                  <div>{row.CreatorsCategory || "Sin categoría"}</div>
+                  <div>
+                    {roster === "withdrawn"
+                      ? row.CreatorsWithdrawalReason
+                      : "Activo"}
+                  </div>
+                  <div className="hide-mobile">
+                    {row.CreatorsJoinedAt ? formatDate(row.CreatorsJoinedAt) : ""}
+                    {row.CreatorsWithdrawnAt
+                      ? ` · ${formatDate(row.CreatorsWithdrawnAt)}`
+                      : ""}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
         <div className="request-panel">
           <div className="toolbar">
             <input
@@ -797,7 +937,7 @@ const Requests = () => {
               ),
             )}
             <div style={{ flex: 1 }} />
-            {(["todos", "VERIFICATION", "SERVICE_OWNERSHIP"] as const).map((type) => (
+            {(["todos", "VERIFICATION", "SERVICE_OWNERSHIP", "CREATORS_PROGRAM"] as const).map((type) => (
               <button
                 key={type}
                 className={`chip${filterType === type ? " active" : ""}`}

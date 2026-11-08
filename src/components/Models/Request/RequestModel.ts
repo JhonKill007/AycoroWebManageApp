@@ -1,6 +1,6 @@
 import { MediaDataParams } from "../MediaData/MediaDataParams";
 
-export type RequestType = "VERIFICATION" | "SERVICE_OWNERSHIP";
+export type RequestType = "VERIFICATION" | "SERVICE_OWNERSHIP" | "CREATORS_PROGRAM";
 export type RequestStatus = "PENDING" | "IN_REVIEW" | "APPROVED" | "REJECTED";
 
 export class RequestDocument {
@@ -44,6 +44,9 @@ export class Request {
   public links: string[] | undefined;
   public metadata: VerificationData | ServiceOwnershipData | undefined;
   public createdDate: Date | undefined;
+  public reviewedBy: string | undefined;
+  public reviewedAt: Date | undefined;
+  public rejectionReason: string | undefined;
   public User: any;
   public ProfilePhotoUser: string | undefined;
 }

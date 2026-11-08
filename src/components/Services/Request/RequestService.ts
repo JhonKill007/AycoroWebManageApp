@@ -55,14 +55,14 @@ export class RequestService implements IRequestService {
     return result;
   }
 
-  async reject(id: string): Promise<any> {
-    let result = await new Promise<any>((resolve, reject) => {
-      Http.put(`/api/request/${id}/reject`)
+  async reject(id: string, reason?: string): Promise<any> {
+    let result = await new Promise<any>((resolve, rejectPromise) => {
+      Http.put(`/api/request/${id}/reject`, { reason })
         .then((res) => {
           resolve(res);
         })
         .catch((err) => {
-          reject(err);
+          rejectPromise(err);
         });
     });
     return result;
@@ -79,6 +79,11 @@ export class RequestService implements IRequestService {
         });
     });
     return result;
+  }
+
+  async listCreators(state: "active" | "withdrawn", search: string): Promise<any> {
+    const params = new URLSearchParams({ state, search });
+    return Http.get(`/api/request/creators?${params.toString()}`);
   }
 }
 
