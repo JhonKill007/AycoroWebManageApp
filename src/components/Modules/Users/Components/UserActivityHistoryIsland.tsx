@@ -155,7 +155,13 @@ const ActivityPreviewBlock = ({
       <div className="uah-preview">
         <div className="uah-preview-user">
           {photo ? (
-            <img className="uah-preview-avatar" src={photo} alt="" />
+            <img
+              className="uah-preview-avatar"
+              src={photo}
+              alt=""
+              width={28}
+              height={28}
+            />
           ) : (
             <div className="uah-preview-avatar" />
           )}
@@ -196,6 +202,8 @@ const ActivityPreviewBlock = ({
             className="uah-preview-media"
             src={media}
             alt=""
+            width={96}
+            height={96}
             style={{ marginTop: text ? 6 : 0 }}
           />
         ) : null}
@@ -207,7 +215,13 @@ const ActivityPreviewBlock = ({
   if (media) {
     return (
       <div className="uah-preview">
-        <img className="uah-preview-media" src={media} alt="" />
+        <img
+          className="uah-preview-media"
+          src={media}
+          alt=""
+          width={96}
+          height={96}
+        />
       </div>
     );
   }
@@ -243,6 +257,66 @@ const mergeActivityPages = (
   return [...prev, ...unique];
 };
 
+type ScrollAnchor = {
+  id: string;
+  /** Distance from container top border to the anchored row top. */
+  offsetFromTop: number;
+  scrollTop: number;
+  scrollHeight: number;
+};
+
+const captureScrollAnchor = (
+  container: HTMLElement | null,
+): ScrollAnchor | null => {
+  if (!container) return null;
+  const containerRect = container.getBoundingClientRect();
+  const rows = container.querySelectorAll<HTMLElement>("[data-activity-id]");
+  for (const row of Array.from(rows)) {
+    const rect = row.getBoundingClientRect();
+    // First row that intersects or sits below the visible top edge.
+    if (rect.bottom > containerRect.top + 1) {
+      const id = row.dataset.activityId;
+      if (!id) continue;
+      return {
+        id,
+        offsetFromTop: rect.top - containerRect.top,
+        scrollTop: container.scrollTop,
+        scrollHeight: container.scrollHeight,
+      };
+    }
+  }
+  return {
+    id: "",
+    offsetFromTop: 0,
+    scrollTop: container.scrollTop,
+    scrollHeight: container.scrollHeight,
+  };
+};
+
+const restoreScrollAnchor = (
+  container: HTMLElement | null,
+  anchor: ScrollAnchor,
+) => {
+  if (!container) return;
+
+  if (anchor.id) {
+    const row = container.querySelector<HTMLElement>(
+      `[data-activity-id="${CSS.escape(anchor.id)}"]`,
+    );
+    if (row) {
+      const containerRect = container.getBoundingClientRect();
+      const rowRect = row.getBoundingClientRect();
+      const currentOffset = rowRect.top - containerRect.top;
+      container.scrollTop += currentOffset - anchor.offsetFromTop;
+      return;
+    }
+  }
+
+  // Fallback: compensate scrollHeight growth from prepended content.
+  const delta = container.scrollHeight - anchor.scrollHeight;
+  container.scrollTop = anchor.scrollTop + delta;
+};
+
 const UserActivityHistoryIsland = ({ userId, colors, style }: Props) => {
   const { theme } = useThemeContext();
   const [items, setItems] = useState<UserActivityItem[]>([]);
@@ -258,11 +332,10 @@ const UserActivityHistoryIsland = ({ userId, colors, style }: Props) => {
   const bodyRef = useRef<HTMLDivElement | null>(null);
   const fetchInFlightRef = useRef(false);
   const requestSeqRef = useRef(0);
+  /** Only true for initial load / filter / user changes — never after load-older. */
   const stickToBottomRef = useRef(true);
-  const pendingScrollRestoreRef = useRef<{
-    prevHeight: number;
-    prevTop: number;
-  } | null>(null);
+  /** Set synchronously before prepending older rows; consumed once in useLayoutEffect. */
+  const pendingAnchorRef = useRef<ScrollAnchor | null>(null);
 
   const cssVars = useMemo(
     () =>
@@ -302,15 +375,11 @@ const UserActivityHistoryIsland = ({ userId, colors, style }: Props) => {
 
       const seq = ++requestSeqRef.current;
       if (append) {
-        const el = bodyRef.current;
-        pendingScrollRestoreRef.current = el
-          ? { prevHeight: el.scrollHeight, prevTop: el.scrollTop }
-          : null;
         stickToBottomRef.current = false;
         setLoadingMore(true);
       } else {
         stickToBottomRef.current = true;
-        pendingScrollRestoreRef.current = null;
+        pendingAnchorRef.current = null;
         setLoading(true);
         setError(null);
       }
@@ -336,7 +405,20 @@ const UserActivityHistoryIsland = ({ userId, colors, style }: Props) => {
           : [];
         const pagination = payload?.pagination || {};
 
-        setItems((prev) => mergeActivityPages(prev, pageItems, append));
+        // Capture anchor against the still-current DOM (before prepend paints).
+        if (append) {
+          pendingAnchorRef.current = captureScrollAnchor(bodyRef.current);
+          stickToBottomRef.current = false;
+        }
+
+        setItems((prev) => {
+          const next = mergeActivityPages(prev, pageItems, append);
+          // No DOM change → drop anchor so a later render cannot mis-restore.
+          if (append && next === prev) {
+            pendingAnchorRef.current = null;
+          }
+          return next;
+        });
         setNextCursor(pagination.nextCursor || null);
         setHasMore(Boolean(pagination.hasMore));
       } catch (err: any) {
@@ -352,7 +434,7 @@ const UserActivityHistoryIsland = ({ userId, colors, style }: Props) => {
           setHasMore(false);
           setNextCursor(null);
         }
-        pendingScrollRestoreRef.current = null;
+        pendingAnchorRef.current = null;
       } finally {
         if (seq === requestSeqRef.current) {
           setLoading(false);
@@ -372,26 +454,29 @@ const UserActivityHistoryIsland = ({ userId, colors, style }: Props) => {
     setHasMore(false);
     setError(null);
     stickToBottomRef.current = true;
-    pendingScrollRestoreRef.current = null;
+    pendingAnchorRef.current = null;
     void fetchPage(null, false);
   }, [fetchPage]);
 
+  // A) Initial / filter / user → stick to bottom (once).
+  // B) Load-older → restore anchored activity; never scroll to end.
   useLayoutEffect(() => {
     const el = bodyRef.current;
-    if (!el) return;
+    if (!el || loading) return;
 
-    const restore = pendingScrollRestoreRef.current;
-    if (restore) {
-      const delta = el.scrollHeight - restore.prevHeight;
-      el.scrollTop = restore.prevTop + delta;
-      pendingScrollRestoreRef.current = null;
+    const anchor = pendingAnchorRef.current;
+    if (anchor) {
+      restoreScrollAnchor(el, anchor);
+      pendingAnchorRef.current = null;
+      stickToBottomRef.current = false;
       return;
     }
 
-    if (stickToBottomRef.current && !loading) {
+    if (stickToBottomRef.current) {
       el.scrollTop = el.scrollHeight;
+      stickToBottomRef.current = false;
     }
-  }, [displayItems, loading, loadingMore, error]);
+  }, [displayItems, loading]);
 
   const onLoadOlder = () => {
     if (!hasMore || loadingMore || loading || fetchInFlightRef.current) return;
@@ -471,7 +556,11 @@ const UserActivityHistoryIsland = ({ userId, colors, style }: Props) => {
               {displayItems.map((item) => {
                 const icon = iconForAction(item.action);
                 return (
-                  <div className="uah-item" key={item.id}>
+                  <div
+                    className="uah-item"
+                    key={item.id}
+                    data-activity-id={item.id}
+                  >
                     <div className="uah-rail">
                       <div className="uah-rail-line" aria-hidden />
                       <div

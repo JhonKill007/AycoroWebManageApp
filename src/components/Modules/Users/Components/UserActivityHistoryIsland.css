@@ -60,7 +60,11 @@
 .uah-load-older {
   display: flex;
   justify-content: center;
+  align-items: center;
   padding: 0 0 14px;
+  /* Keep chrome height stable so button ↔ loading text does not shift rows. */
+  min-height: 46px;
+  box-sizing: content-box;
 }
 
 .uah-loading-inline {
@@ -68,6 +72,7 @@
   font-weight: 600;
   color: var(--uah-muted);
   padding: 8px 4px;
+  line-height: 1.2;
 }
 
 .uah-list {
@@ -167,12 +172,14 @@
   height: 96px;
   max-width: 96px;
   max-height: 96px;
+  aspect-ratio: 1 / 1;
   border-radius: 10px;
   object-fit: cover;
   display: block;
   background: var(--uah-input-bg);
   border: 1px solid var(--uah-border);
   opacity: 0.92;
+  flex-shrink: 0;
 }
 
 .uah-preview-user {
@@ -185,6 +192,7 @@
 .uah-preview-avatar {
   width: 28px;
   height: 28px;
+  aspect-ratio: 1 / 1;
   border-radius: 50%;
   object-fit: cover;
   background: var(--uah-input-bg);
