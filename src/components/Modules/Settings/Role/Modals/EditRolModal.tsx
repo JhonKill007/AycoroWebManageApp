@@ -36,6 +36,12 @@ const PERMS_MATRIX: Permission[] = [
     description: "Lista de usuarios registrados",
   },
   {
+    id: "p24",
+    group: "Usuarios",
+    label: "Ver historial de actividad",
+    description: "Consultar UserActivityLog de un usuario (isla de historial)",
+  },
+  {
     id: "p4",
     group: "Usuarios",
     label: "Editar usuarios",

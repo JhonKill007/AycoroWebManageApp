@@ -22,6 +22,8 @@ export const Permissions = Object.freeze({
   ASSIGN_VERIFICATION: "p21",
   VAULT_ACCESS: "p22",
   VAULT_CREATE_SECRET: "p23",
+  /** Consulta del historial UserActivityLog de un usuario. Independiente de VIEW_USERS. */
+  VIEW_USER_ACTIVITY_HISTORY: "p24",
 });
 
 export type Permission = (typeof Permissions)[keyof typeof Permissions];
