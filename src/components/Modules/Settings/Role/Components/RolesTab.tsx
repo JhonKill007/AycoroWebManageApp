@@ -676,7 +676,14 @@ const RolesTab = ({ c, theme }: { c: any; theme: string }) => {
                         borderRadius: 12,
                       }}
                     >
-                      {role?.Permissions?.length || 0} permisos
+                      {Array.from(
+                        new Set(
+                          (role?.Permissions || [])
+                            .map((id) => String(id || "").trim())
+                            .filter(Boolean),
+                        ),
+                      ).length}{" "}
+                      permisos
                     </span>
                   </div>
                   <div
