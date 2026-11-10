@@ -972,14 +972,41 @@ const UserDetail = () => {
         }
         .content-stat-cell:hover { transform: translateY(-2px); }
 
+        /* History slot: empty in-flow so photo/stats define row height;
+           island fills via absolute inset (scroll stays internal). */
+        .user-detail-overview.uah-with-history {
+          align-items: stretch;
+        }
+        .user-detail-activity-slot {
+          position: relative;
+          flex: 1.15 1 0;
+          min-width: 280px;
+          min-height: 0;
+          align-self: stretch;
+        }
+        .user-detail-activity-slot > .uah-island {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          min-height: 0;
+          max-height: none;
+        }
+
         @media (max-width: 1200px) {
           .user-detail-overview.uah-with-history {
             display: grid !important;
             grid-template-columns: 220px minmax(0, 1fr) !important;
             gap: 14px !important;
           }
-          .user-detail-overview.uah-with-history .user-detail-activity-card {
+          .user-detail-overview.uah-with-history .user-detail-activity-slot {
             grid-column: 1 / -1;
+            position: relative;
+            height: 420px;
+            min-height: 360px;
+            max-height: 520px;
+            min-width: 0;
+            flex: none;
           }
         }
 
@@ -1004,7 +1031,14 @@ const UserDetail = () => {
             padding: 24px 18px !important;
           }
           .user-detail-info-card { width: 100%; min-width: 0; }
-          .user-detail-activity-card { width: 100%; min-width: 0; }
+          .user-detail-activity-slot {
+            width: 100%;
+            min-width: 0;
+            height: 380px;
+            min-height: 300px;
+            max-height: 480px;
+            flex: none;
+          }
           .user-detail-overview-toolbar {
             flex-wrap: wrap;
             gap: 8px !important;
@@ -1805,14 +1839,9 @@ const UserDetail = () => {
             </div>
 
             {canViewActivityHistory && showActivityHistory && userId ? (
-              <UserActivityHistoryIsland
-                userId={userId}
-                colors={c}
-                style={{
-                  flex: "1.15 1 0",
-                  minWidth: 280,
-                }}
-              />
+              <div className="user-detail-activity-slot">
+                <UserActivityHistoryIsland userId={userId} colors={c} />
+              </div>
             ) : null}
           </div>
 

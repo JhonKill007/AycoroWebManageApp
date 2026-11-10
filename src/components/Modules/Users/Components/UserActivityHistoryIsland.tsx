@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { CSSProperties } from "react";
 import { Colors } from "../../../constants/Colors";
 import { useThemeContext } from "../../../context/ThemeContext";
@@ -216,6 +223,26 @@ const ActivityPreviewBlock = ({
   return null;
 };
 
+/** Stable chronological order for presentation (oldest → newest). */
+const activitySortKey = (item: UserActivityItem) => {
+  const t = new Date(item.createDate).getTime();
+  return Number.isFinite(t) ? t : 0;
+};
+
+const mergeActivityPages = (
+  prev: UserActivityItem[],
+  pageItems: UserActivityItem[],
+  append: boolean,
+) => {
+  if (!append) return pageItems;
+  if (!pageItems.length) return prev;
+  const seen = new Set(prev.map((item) => item.id));
+  const unique = pageItems.filter((item) => item.id && !seen.has(item.id));
+  if (!unique.length) return prev;
+  // API returns CreateDate DESC; older pages append after newer ones.
+  return [...prev, ...unique];
+};
+
 const UserActivityHistoryIsland = ({ userId, colors, style }: Props) => {
   const { theme } = useThemeContext();
   const [items, setItems] = useState<UserActivityItem[]>([]);
@@ -227,6 +254,15 @@ const UserActivityHistoryIsland = ({ userId, colors, style }: Props) => {
   const [action, setAction] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+
+  const bodyRef = useRef<HTMLDivElement | null>(null);
+  const fetchInFlightRef = useRef(false);
+  const requestSeqRef = useRef(0);
+  const stickToBottomRef = useRef(true);
+  const pendingScrollRestoreRef = useRef<{
+    prevHeight: number;
+    prevTop: number;
+  } | null>(null);
 
   const cssVars = useMemo(
     () =>
@@ -248,11 +284,33 @@ const UserActivityHistoryIsland = ({ userId, colors, style }: Props) => {
     [colors, theme],
   );
 
+  // API order: newest → oldest. Presentation: oldest → newest (no column-reverse).
+  const displayItems = useMemo(() => {
+    if (items.length <= 1) return items;
+    return [...items].sort((a, b) => {
+      const dt = activitySortKey(a) - activitySortKey(b);
+      if (dt !== 0) return dt;
+      return String(a.id).localeCompare(String(b.id));
+    });
+  }, [items]);
+
   const fetchPage = useCallback(
     async (cursor?: string | null, append = false) => {
       if (!userId) return;
-      if (append) setLoadingMore(true);
-      else {
+      if (fetchInFlightRef.current) return;
+      fetchInFlightRef.current = true;
+
+      const seq = ++requestSeqRef.current;
+      if (append) {
+        const el = bodyRef.current;
+        pendingScrollRestoreRef.current = el
+          ? { prevHeight: el.scrollHeight, prevTop: el.scrollTop }
+          : null;
+        stickToBottomRef.current = false;
+        setLoadingMore(true);
+      } else {
+        stickToBottomRef.current = true;
+        pendingScrollRestoreRef.current = null;
         setLoading(true);
         setError(null);
       }
@@ -260,21 +318,29 @@ const UserActivityHistoryIsland = ({ userId, colors, style }: Props) => {
       try {
         const response = await userService.GetActivityHistory(userId, {
           action: action || undefined,
-          dateFrom: dateFrom ? new Date(`${dateFrom}T00:00:00.000Z`).toISOString() : undefined,
-          dateTo: dateTo ? new Date(`${dateTo}T23:59:59.999Z`).toISOString() : undefined,
+          dateFrom: dateFrom
+            ? new Date(`${dateFrom}T00:00:00.000Z`).toISOString()
+            : undefined,
+          dateTo: dateTo
+            ? new Date(`${dateTo}T23:59:59.999Z`).toISOString()
+            : undefined,
           cursor: cursor || undefined,
           limit: 30,
         });
+
+        if (seq !== requestSeqRef.current) return;
+
         const payload = response?.data ?? response;
         const pageItems: UserActivityItem[] = Array.isArray(payload?.data)
           ? payload.data
           : [];
         const pagination = payload?.pagination || {};
 
-        setItems((prev) => (append ? [...prev, ...pageItems] : pageItems));
+        setItems((prev) => mergeActivityPages(prev, pageItems, append));
         setNextCursor(pagination.nextCursor || null);
         setHasMore(Boolean(pagination.hasMore));
       } catch (err: any) {
+        if (seq !== requestSeqRef.current) return;
         const status = err?.response?.status;
         if (status === 403) {
           setError("No tienes permiso para ver el historial de actividad.");
@@ -286,20 +352,51 @@ const UserActivityHistoryIsland = ({ userId, colors, style }: Props) => {
           setHasMore(false);
           setNextCursor(null);
         }
+        pendingScrollRestoreRef.current = null;
       } finally {
-        setLoading(false);
-        setLoadingMore(false);
+        if (seq === requestSeqRef.current) {
+          setLoading(false);
+          setLoadingMore(false);
+        }
+        fetchInFlightRef.current = false;
       }
     },
     [userId, action, dateFrom, dateTo],
   );
 
   useEffect(() => {
+    requestSeqRef.current += 1;
+    fetchInFlightRef.current = false;
     setItems([]);
     setNextCursor(null);
     setHasMore(false);
+    setError(null);
+    stickToBottomRef.current = true;
+    pendingScrollRestoreRef.current = null;
     void fetchPage(null, false);
   }, [fetchPage]);
+
+  useLayoutEffect(() => {
+    const el = bodyRef.current;
+    if (!el) return;
+
+    const restore = pendingScrollRestoreRef.current;
+    if (restore) {
+      const delta = el.scrollHeight - restore.prevHeight;
+      el.scrollTop = restore.prevTop + delta;
+      pendingScrollRestoreRef.current = null;
+      return;
+    }
+
+    if (stickToBottomRef.current && !loading) {
+      el.scrollTop = el.scrollHeight;
+    }
+  }, [displayItems, loading, loadingMore, error]);
+
+  const onLoadOlder = () => {
+    if (!hasMore || loadingMore || loading || fetchInFlightRef.current) return;
+    void fetchPage(nextCursor, true);
+  };
 
   return (
     <div
@@ -342,7 +439,7 @@ const UserActivityHistoryIsland = ({ userId, colors, style }: Props) => {
         </div>
       </div>
 
-      <div className="uah-body">
+      <div className="uah-body" ref={bodyRef}>
         {loading ? (
           <div className="uah-loading">Cargando actividades…</div>
         ) : error ? (
@@ -351,8 +448,27 @@ const UserActivityHistoryIsland = ({ userId, colors, style }: Props) => {
           <div className="uah-empty">Sin actividades registradas</div>
         ) : (
           <div className="uah-column">
+            {(hasMore || loadingMore) && (
+              <div className="uah-load-older">
+                {loadingMore ? (
+                  <div className="uah-loading-inline">
+                    Cargando actividades anteriores…
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    className="uah-load-more"
+                    disabled={loadingMore}
+                    onClick={onLoadOlder}
+                  >
+                    Cargar actividades anteriores
+                  </button>
+                )}
+              </div>
+            )}
+
             <div className="uah-list">
-              {items.map((item) => {
+              {displayItems.map((item) => {
                 const icon = iconForAction(item.action);
                 return (
                   <div className="uah-item" key={item.id}>
@@ -382,19 +498,6 @@ const UserActivityHistoryIsland = ({ userId, colors, style }: Props) => {
           </div>
         )}
       </div>
-
-      {hasMore ? (
-        <div className="uah-footer">
-          <button
-            type="button"
-            className="uah-load-more"
-            disabled={loadingMore}
-            onClick={() => void fetchPage(nextCursor, true)}
-          >
-            {loadingMore ? "Cargando…" : "Cargar más actividades"}
-          </button>
-        </div>
-      ) : null}
     </div>
   );
 };
