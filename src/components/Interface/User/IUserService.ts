@@ -1,3 +1,5 @@
+import type { UserActivityHistoryQuery } from "../../Models/User/UserActivityHistory";
+
 export interface IUserService {
   GetUser(page: number, search: string, status: number): Promise<any>;
   SuspendUser(id: string): Promise<any>;
@@ -8,4 +10,5 @@ export interface IUserService {
   GetUserByUsername(username: string): Promise<any>;
   AssignVerification(id: string, verifyType: string): Promise<any>;
   GetProfileEdits(id: string, page?: number): Promise<any>;
+  GetActivityHistory(id: string, query?: UserActivityHistoryQuery): Promise<any>;
 }

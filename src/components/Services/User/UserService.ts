@@ -143,6 +143,30 @@ export class UserService implements IUserService {
   async GetProfileEdits(id: string, page: number = 1): Promise<any> {
     return Http.get(`/api/users/${id}/profile-edits?page=${page}`);
   }
+
+  async GetActivityHistory(
+    id: string,
+    query: {
+      action?: string;
+      dateFrom?: string;
+      dateTo?: string;
+      cursor?: string;
+      limit?: number;
+      source?: string;
+    } = {},
+  ): Promise<any> {
+    const params = new URLSearchParams();
+    if (query.action) params.set("action", query.action);
+    if (query.dateFrom) params.set("dateFrom", query.dateFrom);
+    if (query.dateTo) params.set("dateTo", query.dateTo);
+    if (query.cursor) params.set("cursor", query.cursor);
+    if (query.limit) params.set("limit", String(query.limit));
+    if (query.source) params.set("source", query.source);
+    const qs = params.toString();
+    return Http.get(
+      `/api/users/${id}/activity-history${qs ? `?${qs}` : ""}`,
+    );
+  }
 }
 
 const userService = new UserService();

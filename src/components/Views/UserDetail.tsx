@@ -21,6 +21,7 @@ import { PostModel } from "../Models/Post/PostModel";
 import { UserPerfilModel } from "../Models/User/UserPerfilModel";
 import PubCard from "../Modules/Users/Components/PubCard";
 import AssignVerificationModal from "../Modules/Users/Components/AssignVerificationModal";
+import UserActivityHistoryIsland from "../Modules/Users/Components/UserActivityHistoryIsland";
 import VerifiedBadge from "../Modules/Common/Components/VerifiedBadge";
 import postService from "../Services/Post/PostService";
 import systemMessageService from "../Services/SystemMessage/SystemMessageService";
@@ -560,6 +561,8 @@ const UserDetail = () => {
   const [profileEdits, setProfileEdits] = useState<any[]>([]);
   const [sectionLoading, setSectionLoading] = useState(false);
   const [selectedStory, setSelectedStory] = useState<any | null>(null);
+  const canViewActivityHistory = can(Permissions.VIEW_USER_ACTIVITY_HISTORY);
+  const [showActivityHistory, setShowActivityHistory] = useState(false);
 
   const [loadingData, setLoadingData] = useState({
     user: true,
@@ -584,6 +587,7 @@ const UserDetail = () => {
     setProfileEdits([]);
     setContentSection("publicaciones");
     setSelectedStory(null);
+    setShowActivityHistory(false);
 
     try {
       const [userResponse, postResponse] = await Promise.all([
@@ -968,6 +972,17 @@ const UserDetail = () => {
         }
         .content-stat-cell:hover { transform: translateY(-2px); }
 
+        @media (max-width: 1200px) {
+          .user-detail-overview.uah-with-history {
+            display: grid !important;
+            grid-template-columns: 220px minmax(0, 1fr) !important;
+            gap: 14px !important;
+          }
+          .user-detail-overview.uah-with-history .user-detail-activity-card {
+            grid-column: 1 / -1;
+          }
+        }
+
         @media (max-width: 768px) {
           .user-detail-content { padding: 0 14px 28px !important; }
           .user-detail-status {
@@ -977,7 +992,8 @@ const UserDetail = () => {
             width: 100% !important;
           }
           .user-detail-status .action-btn { width: 100%; min-height: 42px; }
-          .user-detail-overview {
+          .user-detail-overview,
+          .user-detail-overview.uah-with-history {
             display: grid !important;
             grid-template-columns: minmax(0, 1fr) !important;
             gap: 12px !important;
@@ -988,6 +1004,11 @@ const UserDetail = () => {
             padding: 24px 18px !important;
           }
           .user-detail-info-card { width: 100%; min-width: 0; }
+          .user-detail-activity-card { width: 100%; min-width: 0; }
+          .user-detail-overview-toolbar {
+            flex-wrap: wrap;
+            gap: 8px !important;
+          }
           .user-detail-info-grid {
             grid-template-columns: minmax(0, 1fr) !important;
             gap: 10px !important;
@@ -1295,11 +1316,43 @@ const UserDetail = () => {
           </div>
 
           {/* ══════════════════════════════════════════
-              BLOQUE 2 — Foto de perfil (izq) + Red social (der)
-              Alineados de forma PARALELA / side by side
+              BLOQUE 2 — Foto + info (+ historial de actividad)
           ══════════════════════════════════════════ */}
+          {canViewActivityHistory && (
+            <div
+              className="user-detail-overview-toolbar"
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                marginBottom: 10,
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setShowActivityHistory((v) => !v)}
+                style={{
+                  border: `1px solid ${showActivityHistory ? c.accent : c.border}`,
+                  background: showActivityHistory ? c.accentSoft : "transparent",
+                  color: showActivityHistory ? c.accent : c.textMuted,
+                  borderRadius: 10,
+                  padding: "7px 12px",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                {showActivityHistory
+                  ? "Ocultar historial de actividad"
+                  : "Mostrar historial de actividad"}
+              </button>
+            </div>
+          )}
           <div
-            className="user-detail-overview"
+            className={`user-detail-overview${
+              canViewActivityHistory && showActivityHistory
+                ? " uah-with-history"
+                : ""
+            }`}
             style={{
               display: "flex",
               gap: 20,
@@ -1423,7 +1476,8 @@ const UserDetail = () => {
             <div
               className="user-detail-info-card"
               style={{
-                flex: 1,
+                flex: showActivityHistory && canViewActivityHistory ? "1 1 0" : 1,
+                minWidth: 0,
                 background: c.card,
                 border: `1.5px solid ${c.border}`,
                 borderRadius: 20,
@@ -1749,6 +1803,17 @@ const UserDetail = () => {
                 )}
               </div>
             </div>
+
+            {canViewActivityHistory && showActivityHistory && userId ? (
+              <UserActivityHistoryIsland
+                userId={userId}
+                colors={c}
+                style={{
+                  flex: "1.15 1 0",
+                  minWidth: 280,
+                }}
+              />
+            ) : null}
           </div>
 
           {/* ══════════════════════════════════════════
