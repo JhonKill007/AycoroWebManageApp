@@ -29,7 +29,7 @@ export class AnalyticsService implements IAnalyticsService {
 
   async getUsersByCountry(): Promise<any> {
     let result = await new Promise<any>((resolve, reject) => {
-      Http.get(`/api/analytics/country`)
+      Http.get(withTimeZone(`/api/analytics/country`))
         .then((res) => {
           resolve(res);
         })
@@ -184,6 +184,28 @@ export class AnalyticsService implements IAnalyticsService {
         });
     });
     return result;
+  }
+
+  async getExportMeta(): Promise<any> {
+    return Http.get(`/api/analytics/export/meta`);
+  }
+
+  async exportAnalytics(payload: {
+    format: "csv" | "xlsx" | "pdf";
+    period: string;
+    customStart?: string;
+    customEnd?: string;
+    sections: string[];
+    includeDefinitions?: boolean;
+  }): Promise<any> {
+    const timezone =
+      Intl.DateTimeFormat().resolvedOptions().timeZone ||
+      "America/Santo_Domingo";
+    return Http.post(
+      `/api/analytics/export?timezone=${encodeURIComponent(timezone)}`,
+      payload,
+      { responseType: "blob" },
+    );
   }
 }
 

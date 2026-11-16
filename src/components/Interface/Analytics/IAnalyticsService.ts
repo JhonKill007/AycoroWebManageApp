@@ -15,4 +15,13 @@ export interface IAnalyticsService {
   getMessageAnalytics(days?: number | "all"): Promise<any>;
   getBusinessAnalytics(): Promise<any>;
   getGrowthDataByMonth(year: number, month: number): Promise<any>;
+  getExportMeta(): Promise<any>;
+  exportAnalytics(payload: {
+    format: "csv" | "xlsx" | "pdf";
+    period: string;
+    customStart?: string;
+    customEnd?: string;
+    sections: string[];
+    includeDefinitions?: boolean;
+  }): Promise<any>;
 }

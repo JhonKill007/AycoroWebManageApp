@@ -24,6 +24,7 @@ import { UsageTimeAnalytics, UsageTimePeriod } from "../Models/Analytics/UsageTi
 import { SessionAccessAnalytics } from "../Models/SessionLog/SessionLogModel";
 import UsersByCountryChart from "../Modules/Card/UsersByCountryChart";
 import analyticsService from "../Services/Analytics/AnalyticsService";
+import ExportAnalyticsModal from "../Modules/Analytics/ExportAnalyticsModal";
 import UserProfile from "../assets/UserProfile.jpeg";
 
 // ─── Datos mock ───────────────────────────────────────────────────────
@@ -47,7 +48,18 @@ const emptyBusiness = {
     d30: { cohort: 0, returned: 0, rate: 0 },
     weekly: [] as Array<{ semana: string; retencion: number; cohort: number }>,
   },
-  funnel: { registered: 0, validated: 0, posted: 0, returnedD1: 0 },
+  funnel: {
+    registered: 0,
+    eligible: 0,
+    validated: 0,
+    posted: 0,
+    returnedD1: 0,
+  },
+  activeUsers: {
+    dau: 0,
+    mau: 0,
+    source: "SessionLog",
+  },
   topUsers: [] as Array<{
     user: string;
     name: string;
@@ -57,6 +69,7 @@ const emptyBusiness = {
     followers: number;
     verified: boolean;
   }>,
+  loadError: false,
 };
 
 type HeatMetric =
@@ -590,6 +603,12 @@ type MonthlyResume = {
   lastMonth: number;
   total: number;
   change: number;
+  historicalTotal?: number;
+  shareOfHistorical?: number;
+  growthMom?: number;
+  eligibleCurrent?: number;
+  activeStatus?: number;
+  liveCurrent?: number;
 };
 
 
@@ -744,6 +763,8 @@ const Analytics = () => {
   const [genderUsers, setGenderUsers] = useState<PieDatum[]>([]);
   const [genderPosts, setGenderPosts] = useState<PieDatum[]>([]);
   const [business, setBusiness] = useState(emptyBusiness);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [monthlyLoadError, setMonthlyLoadError] = useState(false);
 
   useEffect(() => {
     const getDeviceData = async () => {
@@ -830,40 +851,33 @@ const Analytics = () => {
     ...heatmap.map((cell) => Number(cell[heatMetric]) || 0),
   );
 
-  const usersBeforeThisMonth = Math.max(
-    0,
-    monthlyResume.users.total - monthlyResume.users.thisMonth,
-  );
-  const usersGrowthVsTotal =
-    usersBeforeThisMonth > 0
-      ? Number(
-          ((monthlyResume.users.thisMonth / usersBeforeThisMonth) * 100).toFixed(
-            2,
-          ),
-        )
-      : monthlyResume.users.thisMonth > 0
-        ? 100
-        : 0;
+  // MoM growth vs previous month (from API). Distinct from share-of-historical.
+  const usersMomGrowth = Number(monthlyResume.users.change || 0);
   const registrationsShareThisMonth =
-    monthlyResume.users.total > 0
-      ? Number(
-          (
-            (monthlyResume.users.thisMonth / monthlyResume.users.total) *
-            100
-          ).toFixed(1),
-        )
-      : 0;
+    typeof monthlyResume.users.shareOfHistorical === "number"
+      ? monthlyResume.users.shareOfHistorical
+      : monthlyResume.users.total > 0
+        ? Number(
+            (
+              (monthlyResume.users.thisMonth / monthlyResume.users.total) *
+              100
+            ).toFixed(1),
+          )
+        : 0;
 
   useEffect(() => {
     const getMonthlyData = async () => {
       try {
         const { data } = await analyticsService.getMonthlyData();
         setMonthlyResume(data);
+        setMonthlyLoadError(false);
       } catch {
+        setMonthlyLoadError(true);
         showToast({
           type: "error",
-          title: "Error",
-          description: "No se pudieron cargar las métricas mensuales.",
+          title: "Error de Analytics",
+          description:
+            "No se pudieron cargar las métricas mensuales. Los ceros pueden indicar error, no ausencia de datos.",
         });
       }
     };
@@ -877,15 +891,29 @@ const Analytics = () => {
         const { data } = await analyticsService.getBusinessAnalytics();
         setBusiness({
           retention: data?.retention || emptyBusiness.retention,
-          funnel: data?.funnel || emptyBusiness.funnel,
+          funnel: {
+            ...emptyBusiness.funnel,
+            ...(data?.funnel || {}),
+          },
+          activeUsers: {
+            ...emptyBusiness.activeUsers,
+            ...(data?.activeUsers || {}),
+          },
           topUsers: data?.topUsers || [],
+          loadError: false,
         });
       } catch {
-        setBusiness(emptyBusiness);
+        setBusiness({ ...emptyBusiness, loadError: true });
+        showToast({
+          type: "error",
+          title: "Error de Analytics",
+          description:
+            "No se pudieron cargar retención, funnel ni DAU/MAU.",
+        });
       }
     };
     getBusiness();
-  }, []);
+  }, [showToast]);
 
   useEffect(() => {
     const getGrowthData = async () => {
@@ -1305,72 +1333,77 @@ const Analytics = () => {
             <div
               style={{ fontSize: "13px", color: c.textMuted, lineHeight: 1.5 }}
             >
-              Métricas de crecimiento, actividad y retención de tu comunidad. Los
-              usuarios dentro de la app subieron un{" "}
+              Crecimiento MoM de nuevos registros:{" "}
+              <strong style={{ color: c.accent }}>{usersMomGrowth}%</strong>
+              {" · "}
+              Participación del mes sobre histórico:{" "}
               <strong style={{ color: c.accent }}>
-                {usersGrowthVsTotal}%
-              </strong>{" "}
-              este mes.
+                {registrationsShareThisMonth}%
+              </strong>
+              {monthlyLoadError || business.loadError
+                ? " · Algunas métricas no pudieron cargarse."
+                : ""}
             </div>
           </div>
-          <button
-            className="pill-cta"
-            onClick={() => {
-              const rows = [
-                ["metrica", "valor"],
-                ["usuarios_mes", monthlyResume.users.thisMonth],
-                ["usuarios_totales", monthlyResume.users.total],
-                ["usuarios_crecimiento_mes_vs_acumulado", usersGrowthVsTotal],
-                [
-                  "registros_mes_porcentaje_del_total",
-                  registrationsShareThisMonth,
-                ],
-                ["publicaciones_mes", monthlyResume.posts.thisMonth],
-                ["retencion_d1", business.retention.d1.rate],
-                ["retencion_d7", business.retention.d7.rate],
-                ["retencion_d30", business.retention.d30.rate],
-                ["usuarios_validados", business.funnel.validated],
-                ["usuarios_con_post", business.funnel.posted],
-              ];
-              const csv = rows.map((row) => row.join(",")).join("\n");
-              const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-              const url = URL.createObjectURL(blob);
-              const link = document.createElement("a");
-              link.href = url;
-              link.download = "aycoro-analytics.csv";
-              link.click();
-              URL.revokeObjectURL(url);
-            }}
-          >
-            Exportar CSV →
+          <button className="pill-cta" onClick={() => setExportOpen(true)}>
+            Exportar →
           </button>
         </div>
+
+        {exportOpen && (
+          <ExportAnalyticsModal
+            c={c}
+            theme={theme === "dark" ? "dark" : "light"}
+            onClose={() => setExportOpen(false)}
+            onError={(description) =>
+              showToast({ type: "error", title: "Exportación", description })
+            }
+            onSuccess={(description) =>
+              showToast({ type: "success", title: "Exportación", description })
+            }
+          />
+        )}
 
         {/* ── KPI Cards ── */}
         <div className="analytics-kpi-grid">
           <KpiCard
             emoji="👥"
-            label="Usuarios este mes"
+            label="Nuevos registros (mes)"
             value={monthlyResume.users.thisMonth}
-            sub="este mes"
+            sub="cuentas creadas este mes (histórico bruto)"
             trend={monthlyResume.users.change}
             colorKey="accent"
             c={c}
           />
-          {/* <KpiCard
-            emoji="🟢"
-            label="Usuarios en línea"
-            value="136"
-            sub="en este momento"
-            trend={+5}
+          <KpiCard
+            emoji="✅"
+            label="Usuarios válidos"
+            value={monthlyResume.users.eligibleCurrent ?? "—"}
+            sub="ACTIVE + INACTIVE + SUSPENDED"
             colorKey="success"
             c={c}
-          /> */}
+          />
+          <KpiCard
+            emoji="🟢"
+            label="DAU"
+            value={business.activeUsers?.dau ?? 0}
+            sub="usuarios únicos con SessionLog hoy"
+            colorKey="success"
+            c={c}
+          />
+          <KpiCard
+            emoji="📆"
+            label="MAU"
+            value={business.activeUsers?.mau ?? 0}
+            sub="usuarios únicos con SessionLog (30d)"
+            colorKey="info"
+            c={c}
+          />
           <KpiCard
             emoji="📝"
             label="Publicaciones este mes"
             value={monthlyResume.posts.thisMonth}
-            sub="este mes"
+            sub="creadas este mes"
             trend={monthlyResume.posts.change}
             colorKey="info"
             c={c}
@@ -1379,7 +1412,7 @@ const Analytics = () => {
             emoji="💬"
             label="Conversaciones este mes"
             value={monthlyResume.chats.thisMonth}
-            sub="este mes"
+            sub="chats creados este mes"
             trend={monthlyResume.chats.change}
             colorKey="accent"
             c={c}
@@ -1388,16 +1421,16 @@ const Analytics = () => {
             emoji="❤️"
             label="Interacciones este mes"
             value={monthlyResume.interactions.thisMonth}
-            sub="este mes"
+            sub="likes + comentarios"
             trend={monthlyResume.interactions.change}
             colorKey="warning"
             c={c}
           />
           <KpiCard
             emoji="🆕"
-            label="Registros este mes"
+            label="% del histórico (mes)"
             value={`${registrationsShareThisMonth}%`}
-            sub={`${monthlyResume.users.thisMonth.toLocaleString()} de ${monthlyResume.users.total.toLocaleString()} registros`}
+            sub={`${monthlyResume.users.thisMonth.toLocaleString()} de ${monthlyResume.users.total.toLocaleString()} registros históricos`}
             colorKey="accent"
             c={c}
           />
@@ -1431,23 +1464,23 @@ const Analytics = () => {
         <div className="analytics-kpi-grid">
           <KpiCard
             emoji="👥"
-            label="Usuarios historicos"
+            label="Registros históricos"
             value={monthlyResume.users.total}
-            sub="todos los tiempos"
+            sub="incluye eliminados/baneados"
             colorKey="accent"
             c={c}
           />
           <KpiCard
             emoji="📝"
-            label="Publicaciones historicas"
+            label="Publicaciones históricas"
             value={monthlyResume.posts.total}
-            sub="todos los tiempos"
+            sub={`LIVE ahora: ${monthlyResume.posts.liveCurrent ?? "—"}`}
             colorKey="info"
             c={c}
           />
           <KpiCard
             emoji="💬"
-            label="Conversaciones historicas"
+            label="Conversaciones históricas"
             value={monthlyResume.chats.total}
             sub="todos los tiempos"
             colorKey="accent"
@@ -1455,9 +1488,44 @@ const Analytics = () => {
           />
           <KpiCard
             emoji="❤️"
-            label="Interacciones historicas"
+            label="Interacciones históricas"
             value={monthlyResume.interactions.total}
-            sub="todos los tiempos"
+            sub="likes + comentarios"
+            colorKey="warning"
+            c={c}
+          />
+        </div>
+
+        <div className="analytics-kpi-grid">
+          <KpiCard
+            emoji="🧾"
+            label="Funnel · Registrados"
+            value={business.funnel.registered}
+            sub="histórico de cuentas creadas"
+            colorKey="accent"
+            c={c}
+          />
+          <KpiCard
+            emoji="✔️"
+            label="Funnel · Válidos"
+            value={business.funnel.eligible ?? 0}
+            sub="no eliminados ni baneados"
+            colorKey="success"
+            c={c}
+          />
+          <KpiCard
+            emoji="📧"
+            label="Funnel · Validados"
+            value={business.funnel.validated}
+            sub="IsValidated = true"
+            colorKey="info"
+            c={c}
+          />
+          <KpiCard
+            emoji="📤"
+            label="Funnel · Con publicación"
+            value={business.funnel.posted}
+            sub="al menos 1 post LIVE"
             colorKey="warning"
             c={c}
           />
