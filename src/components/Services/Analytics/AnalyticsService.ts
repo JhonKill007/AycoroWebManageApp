@@ -78,6 +78,14 @@ export class AnalyticsService implements IAnalyticsService {
     return result;
   }
 
+  async getPeriodOverview(period = "this_month"): Promise<any> {
+    return Http.get(
+      withTimeZone(
+        `/api/analytics/period-overview?period=${encodeURIComponent(period)}`,
+      ),
+    );
+  }
+
   async getActivityResume(): Promise<any> {
     let result = await new Promise<any>((resolve, reject) => {
       Http.get(withTimeZone(`/api/analytics/activity`))

@@ -1,6 +1,7 @@
 export interface IAnalyticsService {
   getGrowthData(year: number): Promise<any>;
   getMonthlyData(): Promise<any>;
+  getPeriodOverview(period?: string): Promise<any>;
   getActivityResume(): Promise<any>;
   getUsersByCountry(): Promise<any>;
   getUserGeography(days?: "all" | 7 | 30 | 90): Promise<any>;

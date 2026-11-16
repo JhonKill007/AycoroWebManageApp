@@ -8,6 +8,8 @@ type ExportPeriod =
   | "90d"
   | "this_month"
   | "last_month"
+  | "last_3_months"
+  | "last_6_months"
   | "this_year"
   | "all"
   | "custom";
@@ -18,9 +20,11 @@ const PERIOD_OPTIONS: { value: ExportPeriod; label: string }[] = [
   { value: "7d", label: "Últimos 7 días" },
   { value: "30d", label: "Últimos 30 días" },
   { value: "90d", label: "Últimos 90 días" },
-  { value: "this_month", label: "Mes actual" },
+  { value: "this_month", label: "Este mes" },
+  { value: "last_3_months", label: "Últimos 3 meses" },
+  { value: "last_6_months", label: "Últimos 6 meses" },
   { value: "last_month", label: "Mes anterior" },
-  { value: "this_year", label: "Año actual" },
+  { value: "this_year", label: "Este año" },
   { value: "all", label: "Histórico completo" },
   { value: "custom", label: "Rango personalizado" },
 ];
@@ -39,6 +43,7 @@ const DEFAULT_SECTIONS = [
 interface ExportAnalyticsModalProps {
   c: any;
   theme: string;
+  initialPeriod?: ExportPeriod | string;
   onClose: () => void;
   onError: (message: string) => void;
   onSuccess: (message: string) => void;
@@ -47,12 +52,17 @@ interface ExportAnalyticsModalProps {
 const ExportAnalyticsModal = ({
   c,
   theme,
+  initialPeriod = "this_month",
   onClose,
   onError,
   onSuccess,
 }: ExportAnalyticsModalProps) => {
   const [format, setFormat] = useState<ExportFormat>("xlsx");
-  const [period, setPeriod] = useState<ExportPeriod>("30d");
+  const [period, setPeriod] = useState<ExportPeriod>(
+    (PERIOD_OPTIONS.some((p) => p.value === initialPeriod)
+      ? initialPeriod
+      : "this_month") as ExportPeriod,
+  );
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
   const [sections, setSections] = useState<Set<string>>(
@@ -257,6 +267,23 @@ const ExportAnalyticsModal = ({
               </option>
             ))}
           </select>
+          <div
+            style={{
+              marginTop: 8,
+              fontSize: 12,
+              color: c.textMuted,
+              lineHeight: 1.4,
+            }}
+          >
+            Se exportará el período:{" "}
+            <strong style={{ color: c.text }}>
+              {PERIOD_OPTIONS.find((p) => p.value === period)?.label || period}
+            </strong>
+            {initialPeriod && period !== initialPeriod
+              ? " (diferente del filtro activo en Analytics)"
+              : " (alineado con el filtro global de Analytics)"}
+            .
+          </div>
           {period === "custom" && (
             <div
               style={{

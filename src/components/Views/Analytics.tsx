@@ -87,6 +87,99 @@ type DailyActivePoint = {
   recurrentes: number;
 };
 
+type GlobalPeriodPreset =
+  | "this_month"
+  | "last_3_months"
+  | "last_6_months"
+  | "this_year";
+
+const GLOBAL_PERIOD_OPTIONS: Array<{ value: GlobalPeriodPreset; label: string }> = [
+  { value: "this_month", label: "Este mes" },
+  { value: "last_3_months", label: "Últimos 3 meses" },
+  { value: "last_6_months", label: "Últimos 6 meses" },
+  { value: "this_year", label: "Este año" },
+];
+
+const emptyPeriodOverview = {
+  period: {
+    preset: "this_month" as GlobalPeriodPreset,
+    label: "Este mes",
+    shortLabel: "Este mes",
+    granularity: "day" as "day" | "month",
+    comparisonNote: "",
+    elapsedDays: 0,
+  },
+  flow: {
+    users: { current: 0, previous: 0, change: null as number | null, shareOfHistorical: 0 },
+    posts: { current: 0, previous: 0, change: null as number | null },
+    chats: { current: 0, previous: 0, change: null as number | null },
+    interactions: { current: 0, previous: 0, change: null as number | null },
+    newEligibleInPeriod: 0,
+  },
+  snapshots: {
+    eligibleCurrent: 0,
+    activeStatus: 0,
+    historicalUsers: 0,
+    historicalPosts: 0,
+    historicalChats: 0,
+    historicalInteractions: 0,
+    livePosts: 0,
+    note: "",
+  },
+  funnel: {
+    registered: 0,
+    eligible: 0,
+    validated: 0,
+    posted: 0,
+  },
+  activeUsers: {
+    dauAverage: 0,
+    dauToday: 0,
+    mau: 0,
+    uniqueActiveInPeriod: 0,
+    dauAverageNote: "",
+    mauNote: "",
+    uniqueActiveNote: "",
+  },
+  retention: {
+    d1: { cohort: 0, returned: 0, rate: 0, insufficient: true },
+    d7: { cohort: 0, returned: 0, rate: 0, insufficient: true },
+    d15: { cohort: 0, returned: 0, rate: 0, insufficient: true },
+    d30: { cohort: 0, returned: 0, rate: 0, insufficient: true },
+    note: "",
+  },
+  growth: {
+    granularity: "day" as "day" | "month",
+    xKey: "dia",
+    series: [] as any[],
+    summary: {
+      totalUsers: 0,
+      totalPosts: 0,
+      avgUsersPerDay: 0,
+      avgPostsPerDay: 0,
+      usersChange: null as number | null,
+      postsChange: null as number | null,
+      bestMonth: null as null | { label: string; usuarios: number },
+    },
+  },
+};
+
+const formatTrend = (change: number | null | undefined) =>
+  change === null || change === undefined ? "N/D" : change;
+
+const retentionValue = (row?: {
+  rate?: number;
+  insufficient?: boolean;
+}) => (row?.insufficient ? "Sin datos" : `${row?.rate ?? 0}%`);
+
+const retentionSub = (
+  row: { returned?: number; cohort?: number; insufficient?: boolean } | undefined,
+  suffix: string,
+) =>
+  row?.insufficient
+    ? "Sin datos suficientes (cohortes inmaduras)"
+    : `${row?.returned ?? 0}/${row?.cohort ?? 0} ${suffix}`;
+
 type HeatMetric =
   | "total"
   | "registrations"
@@ -198,15 +291,27 @@ function KpiCard({ emoji, label, value, sub, trend, colorKey, c }: any) {
             style={{
               fontSize: "11px",
               fontWeight: "700",
-              color: trend >= 0 ? c.success : c.danger,
-              background: trend >= 0 ? c.successSoft : c.dangerSoft,
+              color:
+                trend === "N/D"
+                  ? c.textMuted
+                  : trend >= 0
+                    ? c.success
+                    : c.danger,
+              background:
+                trend === "N/D"
+                  ? c.border
+                  : trend >= 0
+                    ? c.successSoft
+                    : c.dangerSoft,
               padding: "3px 9px",
               borderRadius: "20px",
               whiteSpace: "nowrap",
               flexShrink: 0,
             }}
           >
-            {trend >= 0 ? "↑" : "↓"} {Math.abs(trend)}%
+            {trend === "N/D"
+              ? "N/D"
+              : `${trend >= 0 ? "↑" : "↓"} ${Math.abs(Number(trend))}%`}
           </span>
         )}
       </div>
@@ -750,6 +855,11 @@ const Analytics = () => {
 
   const [growthMetric, setGrowthMetric] = useState("usuarios");
   const [growthPeriod, setGrowthPeriod] = useState<"year" | "month">("month");
+  const [globalPeriod, setGlobalPeriod] =
+    useState<GlobalPeriodPreset>("this_month");
+  const [periodOverview, setPeriodOverview] = useState(emptyPeriodOverview);
+  const [periodLoading, setPeriodLoading] = useState(true);
+  const [periodError, setPeriodError] = useState(false);
 
   const [selectedYear, setSelectedYear] = useState<number>(
     new Date().getFullYear(),
@@ -894,19 +1004,10 @@ const Analytics = () => {
     ...heatmap.map((cell) => Number(cell[heatMetric]) || 0),
   );
 
-  // MoM growth vs previous month (from API). Distinct from share-of-historical.
-  const usersMomGrowth = Number(monthlyResume.users.change || 0);
-  const registrationsShareThisMonth =
-    typeof monthlyResume.users.shareOfHistorical === "number"
-      ? monthlyResume.users.shareOfHistorical
-      : monthlyResume.users.total > 0
-        ? Number(
-            (
-              (monthlyResume.users.thisMonth / monthlyResume.users.total) *
-              100
-            ).toFixed(1),
-          )
-        : 0;
+  const usersMomGrowth = formatTrend(periodOverview.flow.users.change);
+  const registrationsShareThisMonth = Number(
+    periodOverview.flow.users.shareOfHistorical || 0,
+  );
 
   useEffect(() => {
     const getMonthlyData = async () => {
@@ -916,17 +1017,106 @@ const Analytics = () => {
         setMonthlyLoadError(false);
       } catch {
         setMonthlyLoadError(true);
-        showToast({
-          type: "error",
-          title: "Error de Analytics",
-          description:
-            "No se pudieron cargar las métricas mensuales. Los ceros pueden indicar error, no ausencia de datos.",
-        });
       }
     };
-
     getMonthlyData();
-  }, [showToast]);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadPeriod = async () => {
+      setPeriodLoading(true);
+      setPeriodError(false);
+      try {
+        const { data } = await analyticsService.getPeriodOverview(globalPeriod);
+        if (cancelled) return;
+        setPeriodOverview({
+          ...emptyPeriodOverview,
+          ...data,
+          period: { ...emptyPeriodOverview.period, ...(data?.period || {}) },
+          flow: {
+            ...emptyPeriodOverview.flow,
+            ...(data?.flow || {}),
+            users: {
+              ...emptyPeriodOverview.flow.users,
+              ...(data?.flow?.users || {}),
+            },
+            posts: {
+              ...emptyPeriodOverview.flow.posts,
+              ...(data?.flow?.posts || {}),
+            },
+            chats: {
+              ...emptyPeriodOverview.flow.chats,
+              ...(data?.flow?.chats || {}),
+            },
+            interactions: {
+              ...emptyPeriodOverview.flow.interactions,
+              ...(data?.flow?.interactions || {}),
+            },
+          },
+          snapshots: {
+            ...emptyPeriodOverview.snapshots,
+            ...(data?.snapshots || {}),
+          },
+          funnel: { ...emptyPeriodOverview.funnel, ...(data?.funnel || {}) },
+          activeUsers: {
+            ...emptyPeriodOverview.activeUsers,
+            ...(data?.activeUsers || {}),
+          },
+          retention: {
+            ...emptyPeriodOverview.retention,
+            ...(data?.retention || {}),
+            d1: {
+              ...emptyPeriodOverview.retention.d1,
+              ...(data?.retention?.d1 || {}),
+            },
+            d7: {
+              ...emptyPeriodOverview.retention.d7,
+              ...(data?.retention?.d7 || {}),
+            },
+            d15: {
+              ...emptyPeriodOverview.retention.d15,
+              ...(data?.retention?.d15 || {}),
+            },
+            d30: {
+              ...emptyPeriodOverview.retention.d30,
+              ...(data?.retention?.d30 || {}),
+            },
+          },
+          growth: {
+            ...emptyPeriodOverview.growth,
+            ...(data?.growth || {}),
+            summary: {
+              ...emptyPeriodOverview.growth.summary,
+              ...(data?.growth?.summary || {}),
+            },
+          },
+        });
+        setDataForMonth(
+          Array.isArray(data?.growth?.series) ? data.growth.series : [],
+        );
+        setGrowthPeriod(data?.growth?.granularity === "day" ? "month" : "year");
+      } catch {
+        if (!cancelled) {
+          setPeriodError(true);
+          setPeriodOverview(emptyPeriodOverview);
+          setDataForMonth([]);
+          showToast({
+            type: "error",
+            title: "Error de Analytics",
+            description:
+              "No se pudieron cargar las métricas del período seleccionado.",
+          });
+        }
+      } finally {
+        if (!cancelled) setPeriodLoading(false);
+      }
+    };
+    loadPeriod();
+    return () => {
+      cancelled = true;
+    };
+  }, [globalPeriod, showToast]);
 
   useEffect(() => {
     const getBusiness = async () => {
@@ -959,79 +1149,12 @@ const Analytics = () => {
           type: "error",
           title: "Error de Analytics",
           description:
-            "No se pudieron cargar retención, funnel ni DAU/MAU.",
+            "No se pudieron cargar top usuarios u otras métricas de negocio.",
         });
       }
     };
     getBusiness();
   }, [showToast]);
-
-  useEffect(() => {
-    const getGrowthData = async () => {
-      const { data } =
-        growthPeriod === "month"
-          ? await analyticsService.getGrowthDataByMonth(
-            selectedYear,
-            selectedMonth,
-          )
-          : await analyticsService.getGrowthData(selectedYear);
-      setDataForMonth(data);
-    };
-
-    getGrowthData();
-  }, [growthPeriod, selectedMonth, selectedYear]);
-
-  useEffect(() => {
-    const getGrowthYearComparison = async () => {
-      const [currentYearResponse, previousYearResponse] = await Promise.all([
-        analyticsService.getGrowthData(selectedYear),
-        analyticsService.getGrowthData(selectedYear - 1),
-      ]);
-
-      setGrowthYearData(currentYearResponse.data || []);
-      setGrowthPreviousYearData(previousYearResponse.data || []);
-    };
-
-    getGrowthYearComparison();
-  }, [selectedYear]);
-
-  useEffect(() => {
-    const getGrowthYearsCatalog = async () => {
-      const startYear = 2025;
-      const catalogCurrentYear = new Date().getFullYear();
-      const years = Array.from(
-        { length: Math.max(1, catalogCurrentYear - startYear + 1) },
-        (_, index) => startYear + index,
-      );
-      const responses = await Promise.all(
-        years.map(async (year) => {
-          const { data } = await analyticsService.getGrowthData(year);
-          return { year, data: data || [] };
-        }),
-      );
-      setGrowthYearsCatalog(responses);
-    };
-
-    getGrowthYearsCatalog();
-  }, []);
-
-  useEffect(() => {
-    const getGrowthMonthComparison = async () => {
-      const previousMonth = selectedMonth === 1 ? 12 : selectedMonth - 1;
-      const previousMonthYear =
-        selectedMonth === 1 ? selectedYear - 1 : selectedYear;
-
-      const [currentMonthResponse, previousMonthResponse] = await Promise.all([
-        analyticsService.getGrowthDataByMonth(selectedYear, selectedMonth),
-        analyticsService.getGrowthDataByMonth(previousMonthYear, previousMonth),
-      ]);
-
-      setGrowthSelectedMonthData(currentMonthResponse.data || []);
-      setGrowthPreviousMonthData(previousMonthResponse.data || []);
-    };
-
-    getGrowthMonthComparison();
-  }, [selectedMonth, selectedYear]);
 
   const gridColor =
     theme === "dark" ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)";
@@ -1384,16 +1507,22 @@ const Analytics = () => {
             <div
               style={{ fontSize: "13px", color: c.textMuted, lineHeight: 1.5 }}
             >
-              Crecimiento MoM de nuevos registros:{" "}
-              <strong style={{ color: c.accent }}>{usersMomGrowth}%</strong>
+              Variación vs período comparable:{" "}
+              <strong style={{ color: c.accent }}>
+                {usersMomGrowth === "N/D" ? "N/D" : `${usersMomGrowth}%`}
+              </strong>
               {" · "}
-              Participación del mes sobre histórico:{" "}
+              Participación sobre histórico:{" "}
               <strong style={{ color: c.accent }}>
                 {registrationsShareThisMonth}%
               </strong>
-              {monthlyLoadError || business.loadError
-                ? " · Algunas métricas no pudieron cargarse."
-                : ""}
+              {" · "}
+              {periodOverview.period.label}
+              {periodLoading
+                ? " · Cargando…"
+                : periodError || business.loadError
+                  ? " · Algunas métricas no pudieron cargarse."
+                  : ""}
             </div>
           </div>
           <button className="pill-cta" onClick={() => setExportOpen(true)}>
@@ -1405,6 +1534,7 @@ const Analytics = () => {
           <ExportAnalyticsModal
             c={c}
             theme={theme === "dark" ? "dark" : "light"}
+            initialPeriod={globalPeriod}
             onClose={() => setExportOpen(false)}
             onError={(description) =>
               showToast({ type: "error", title: "Exportación", description })
@@ -1415,141 +1545,224 @@ const Analytics = () => {
           />
         )}
 
-        {/* ── KPI Cards ── */}
-        <div className="analytics-kpi-grid">
+        {/* ── Global period selector ── */}
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+            marginBottom: 16,
+          }}
+        >
+          <div
+            style={{
+              display: "inline-flex",
+              flexWrap: "wrap",
+              gap: 4,
+              padding: 4,
+              borderRadius: 14,
+              border: `1.5px solid ${c.border}`,
+              background: theme === "dark" ? "rgba(255,255,255,0.03)" : c.card,
+            }}
+            role="tablist"
+            aria-label="Período de Analytics"
+          >
+            {GLOBAL_PERIOD_OPTIONS.map((opt) => {
+              const active = globalPeriod === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setGlobalPeriod(opt.value)}
+                  style={{
+                    border: "none",
+                    cursor: "pointer",
+                    borderRadius: 10,
+                    padding: "8px 14px",
+                    fontSize: 12,
+                    fontWeight: 700,
+                    fontFamily: "Plus Jakarta Sans, sans-serif",
+                    color: active ? "#fff" : c.textMuted,
+                    background: active ? c.accent : "transparent",
+                    transition: "background 0.15s, color 0.15s",
+                  }}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+          <div style={{ fontSize: 12, color: c.textMuted }}>
+            {periodLoading
+              ? "Actualizando métricas…"
+              : periodOverview.period.label}
+          </div>
+        </div>
+
+        {/* ── KPI Cards (global period) ── */}
+        <div
+          className="analytics-kpi-grid"
+          style={{ opacity: periodLoading ? 0.55 : 1, transition: "opacity 0.2s" }}
+        >
           <KpiCard
             emoji="👥"
-            label="Nuevos registros (mes)"
-            value={monthlyResume.users.thisMonth}
-            sub="cuentas creadas este mes (histórico bruto)"
-            trend={monthlyResume.users.change}
+            label={`Nuevos registros · ${periodOverview.period.shortLabel}`}
+            value={periodLoading ? "…" : periodOverview.flow.users.current}
+            sub="cuentas creadas en el período"
+            trend={periodLoading ? undefined : formatTrend(periodOverview.flow.users.change)}
             colorKey="accent"
             c={c}
           />
           <KpiCard
             emoji="✅"
             label="Usuarios válidos"
-            value={monthlyResume.users.eligibleCurrent ?? "—"}
-            sub="ACTIVE + INACTIVE + SUSPENDED"
+            value={periodLoading ? "…" : periodOverview.snapshots.eligibleCurrent}
+            sub="Snapshot a hoy · ACTIVE+INACTIVE+SUSPENDED"
+            colorKey="success"
+            c={c}
+          />
+          <KpiCard
+            emoji="🌱"
+            label="Nuevos válidos del período"
+            value={periodLoading ? "…" : periodOverview.flow.newEligibleInPeriod}
+            sub="registros del período que siguen elegibles"
             colorKey="success"
             c={c}
           />
           <KpiCard
             emoji="🟢"
-            label="DAU"
-            value={business.activeUsers?.dau ?? 0}
-            sub="usuarios únicos con SessionLog hoy"
+            label="DAU promedio"
+            value={periodLoading ? "…" : periodOverview.activeUsers.dauAverage}
+            sub={periodOverview.activeUsers.dauAverageNote || "promedio diario SessionLog"}
             colorKey="success"
             c={c}
           />
           <KpiCard
             emoji="📆"
-            label="MAU"
-            value={business.activeUsers?.mau ?? 0}
-            sub="usuarios únicos con SessionLog (30d)"
+            label="MAU (snapshot 30d)"
+            value={periodLoading ? "…" : periodOverview.activeUsers.mau}
+            sub={periodOverview.activeUsers.mauNote || "ventana móvil 30d actual"}
+            colorKey="info"
+            c={c}
+          />
+          <KpiCard
+            emoji="👤"
+            label="Activos únicos del período"
+            value={
+              periodLoading ? "…" : periodOverview.activeUsers.uniqueActiveInPeriod
+            }
+            sub={periodOverview.activeUsers.uniqueActiveNote || "SessionLog en el rango"}
             colorKey="info"
             c={c}
           />
           <KpiCard
             emoji="📝"
-            label="Publicaciones este mes"
-            value={monthlyResume.posts.thisMonth}
-            sub="creadas este mes"
-            trend={monthlyResume.posts.change}
+            label={`Publicaciones · ${periodOverview.period.shortLabel}`}
+            value={periodLoading ? "…" : periodOverview.flow.posts.current}
+            sub="creadas en el período"
+            trend={periodLoading ? undefined : formatTrend(periodOverview.flow.posts.change)}
             colorKey="info"
             c={c}
           />
           <KpiCard
             emoji="💬"
-            label="Conversaciones este mes"
-            value={monthlyResume.chats.thisMonth}
-            sub="chats creados este mes"
-            trend={monthlyResume.chats.change}
+            label={`Conversaciones · ${periodOverview.period.shortLabel}`}
+            value={periodLoading ? "…" : periodOverview.flow.chats.current}
+            sub="chats creados en el período"
+            trend={periodLoading ? undefined : formatTrend(periodOverview.flow.chats.change)}
             colorKey="accent"
             c={c}
           />
           <KpiCard
             emoji="❤️"
-            label="Interacciones este mes"
-            value={monthlyResume.interactions.thisMonth}
-            sub="likes + comentarios"
-            trend={monthlyResume.interactions.change}
+            label={`Interacciones · ${periodOverview.period.shortLabel}`}
+            value={periodLoading ? "…" : periodOverview.flow.interactions.current}
+            sub="likes + comentarios en el período"
+            trend={
+              periodLoading
+                ? undefined
+                : formatTrend(periodOverview.flow.interactions.change)
+            }
             colorKey="warning"
             c={c}
           />
           <KpiCard
             emoji="🆕"
-            label="% del histórico (mes)"
-            value={`${registrationsShareThisMonth}%`}
-            sub={`${monthlyResume.users.thisMonth.toLocaleString()} de ${monthlyResume.users.total.toLocaleString()} registros históricos`}
+            label="% del histórico"
+            value={periodLoading ? "…" : `${registrationsShareThisMonth}%`}
+            sub={`${periodOverview.flow.users.current.toLocaleString()} de ${periodOverview.snapshots.historicalUsers.toLocaleString()} registros históricos`}
             colorKey="accent"
             c={c}
           />
           <KpiCard
             emoji="📈"
             label="Retención D1"
-            value={`${business.retention.d1.rate}%`}
-            sub={`${business.retention.d1.returned}/${business.retention.d1.cohort} volvieron al día siguiente`}
+            value={periodLoading ? "…" : retentionValue(periodOverview.retention.d1)}
+            sub={retentionSub(periodOverview.retention.d1, "· cohortes del período")}
             colorKey="success"
             c={c}
           />
           <KpiCard
             emoji="📅"
             label="Retención D7"
-            value={`${business.retention.d7.rate}%`}
-            sub={`${business.retention.d7.returned}/${business.retention.d7.cohort} a la semana`}
+            value={periodLoading ? "…" : retentionValue(periodOverview.retention.d7)}
+            sub={retentionSub(periodOverview.retention.d7, "· cohortes del período")}
             colorKey="info"
             c={c}
           />
           <KpiCard
             emoji="🗓️"
             label="Retención D15"
-            value={`${business.retention.d15.rate}%`}
-            sub={`${business.retention.d15.returned}/${business.retention.d15.cohort} a los 15 días`}
+            value={periodLoading ? "…" : retentionValue(periodOverview.retention.d15)}
+            sub={retentionSub(periodOverview.retention.d15, "· cohortes del período")}
             colorKey="accent"
             c={c}
           />
           <KpiCard
             emoji="⏳"
             label="Retención D30"
-            value={`${business.retention.d30.rate}%`}
-            sub={`${business.retention.d30.returned}/${business.retention.d30.cohort} al mes`}
+            value={periodLoading ? "…" : retentionValue(periodOverview.retention.d30)}
+            sub={retentionSub(periodOverview.retention.d30, "· cohortes del período")}
             colorKey="warning"
             c={c}
           />
         </div>
 
-        {/* ── Grid de gráficos ── */}
+        {/* ── Snapshots de referencia (no filtrados por período) ── */}
         <div className="analytics-kpi-grid">
           <KpiCard
             emoji="👥"
             label="Registros históricos"
-            value={monthlyResume.users.total}
-            sub="incluye eliminados/baneados"
+            value={periodOverview.snapshots.historicalUsers}
+            sub="referencia · no filtrado por período"
             colorKey="accent"
             c={c}
           />
           <KpiCard
             emoji="📝"
             label="Publicaciones históricas"
-            value={monthlyResume.posts.total}
-            sub={`LIVE ahora: ${monthlyResume.posts.liveCurrent ?? "—"}`}
+            value={periodOverview.snapshots.historicalPosts}
+            sub={`LIVE ahora: ${periodOverview.snapshots.livePosts ?? "—"}`}
             colorKey="info"
             c={c}
           />
           <KpiCard
             emoji="💬"
             label="Conversaciones históricas"
-            value={monthlyResume.chats.total}
-            sub="todos los tiempos"
+            value={periodOverview.snapshots.historicalChats}
+            sub="referencia · todos los tiempos"
             colorKey="accent"
             c={c}
           />
           <KpiCard
             emoji="❤️"
             label="Interacciones históricas"
-            value={monthlyResume.interactions.total}
-            sub="likes + comentarios"
+            value={periodOverview.snapshots.historicalInteractions}
+            sub="referencia · likes + comentarios"
             colorKey="warning"
             c={c}
           />
@@ -1559,32 +1772,32 @@ const Analytics = () => {
           <KpiCard
             emoji="🧾"
             label="Funnel · Registrados"
-            value={business.funnel.registered}
-            sub="histórico de cuentas creadas"
+            value={periodOverview.funnel.registered}
+            sub="snapshot histórico"
             colorKey="accent"
             c={c}
           />
           <KpiCard
             emoji="✔️"
             label="Funnel · Válidos"
-            value={business.funnel.eligible ?? 0}
-            sub="no eliminados ni baneados"
+            value={periodOverview.funnel.eligible ?? 0}
+            sub="snapshot a hoy"
             colorKey="success"
             c={c}
           />
           <KpiCard
             emoji="📧"
             label="Funnel · Validados"
-            value={business.funnel.validated}
-            sub="IsValidated = true"
+            value={periodOverview.funnel.validated}
+            sub="IsValidated = true · snapshot"
             colorKey="info"
             c={c}
           />
           <KpiCard
             emoji="📤"
             label="Funnel · Con publicación"
-            value={business.funnel.posted}
-            sub="al menos 1 post LIVE"
+            value={periodOverview.funnel.posted}
+            sub="al menos 1 post LIVE · snapshot"
             colorKey="warning"
             c={c}
           />
@@ -1592,33 +1805,18 @@ const Analytics = () => {
 
         <div className="analytics-grid">
 
-          {/* 1. Crecimiento (span 2) */}
+          {/* 1. Crecimiento (span 2) — sincronizado con filtro global */}
           <div className="span-2">
             <SectionCard
               title="Crecimiento de la comunidad"
-              subtitle="Evolucion mensual de usuarios, publicaciones y conversaciones"
+              subtitle={`${periodOverview.period.label} · ${
+                periodOverview.growth.granularity === "day"
+                  ? "serie diaria"
+                  : "serie mensual"
+              }`}
               c={c}
               action={
                 <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-                  <TabChip
-                    label="Mes"
-                    active={growthPeriod === "month"}
-                    onClick={() => setGrowthPeriod("month")}
-                    c={c}
-                  />
-                  <TabChip
-                    label="Año"
-                    active={growthPeriod === "year"}
-                    onClick={() => setGrowthPeriod("year")}
-                    c={c}
-                  />
-                  <span
-                    style={{
-                      width: 1,
-                      background: c.border,
-                      margin: "0 2px",
-                    }}
-                  />
                   {Object.keys(METRIC_CONFIG).map((k) => (
                     <TabChip
                       key={k}
@@ -1631,6 +1829,21 @@ const Analytics = () => {
                 </div>
               }
             >
+              {periodLoading ? (
+                <div
+                  style={{
+                    height: 220,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: c.textMuted,
+                    fontSize: 13,
+                  }}
+                >
+                  Cargando crecimiento del período…
+                </div>
+              ) : (
+              <>
               <ResponsiveContainer width="100%" height={220}>
                 <AreaChart
                   data={dataForMonth}
@@ -1652,7 +1865,7 @@ const Analytics = () => {
                   </defs>
                   <CartesianGrid stroke={gridColor} vertical={false} />
                   <XAxis
-                    dataKey={growthPeriod === "month" ? "dia" : "mes"}
+                    dataKey={periodOverview.growth.xKey || (growthPeriod === "month" ? "dia" : "mes")}
                     tick={{ fill: tickColor, fontSize: 11 }}
                     tickLine={false}
                     axisLine={false}
@@ -1715,52 +1928,8 @@ const Analytics = () => {
                   ))}
                 </div>
               )}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "12px",
-                  flexWrap: "wrap",
-                  marginTop: "10px",
-                }}
-              >
-                <YearSelectBox
-                  selectedYear={selectedYear}
-                  onYearChange={setSelectedYear}
-                  c={c}
-                />
-                {growthPeriod === "month" && (
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontSize: "12px",
-                        fontWeight: "600",
-                        color: c.textMuted,
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      Mes:
-                    </span>
-                    <select
-                      className="select-control"
-                      value={selectedMonth}
-                      onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                    >
-                      {MONTH_OPTIONS.map((month, index) => (
-                        <option key={month} value={index + 1}>
-                          {month}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-              </div>
+              </>
+              )}
               <div
                 style={{
                   display: "flex",
@@ -1770,46 +1939,43 @@ const Analytics = () => {
                 }}
               >
                 {renderGrowthMetric({
-                  label: "Promedio actual",
-                  value: growthDailyAverageLabel,
-                  sub:
-                    growthPeriod === "month"
-                      ? "Segun los dias con registros del periodo"
-                      : "Segun los dias cursados del ano",
+                  label: "Total registros del período",
+                  value: formatGrowthNumber(periodOverview.growth.summary.totalUsers),
+                  sub: periodOverview.period.shortLabel,
+                  trend:
+                    periodOverview.growth.summary.usersChange === null
+                      ? undefined
+                      : periodOverview.growth.summary.usersChange ?? undefined,
                 })}
                 {renderGrowthMetric({
-                  label: growthFullPeriodLabel,
-                  value: growthFullPeriodAverageLabel,
-                  sub:
-                    growthPeriod === "month"
-                      ? "Divide entre todos los dias del mes"
-                      : "Divide entre todos los dias del ano",
+                  label: "Promedio registros / día",
+                  value: `${formatGrowthNumber(periodOverview.growth.summary.avgUsersPerDay, 1)} /día`,
+                  sub: `${periodOverview.period.elapsedDays || 0} días transcurridos`,
+                })}
+                {renderGrowthMetric({
+                  label: "Total publicaciones del período",
+                  value: formatGrowthNumber(periodOverview.growth.summary.totalPosts),
+                  sub: periodOverview.period.shortLabel,
+                  trend:
+                    periodOverview.growth.summary.postsChange === null
+                      ? undefined
+                      : periodOverview.growth.summary.postsChange ?? undefined,
+                })}
+                {renderGrowthMetric({
+                  label: "Promedio publicaciones / día",
+                  value: `${formatGrowthNumber(periodOverview.growth.summary.avgPostsPerDay, 1)} /día`,
+                  sub: periodOverview.period.comparisonNote || "sobre días del período",
                   accent: c.text,
                 })}
-                {renderGrowthMetric({
-                  label: "Total mes seleccionado",
-                  value: formatGrowthNumber(growthSelectedMonthTotal),
-                  sub: "Comparado con el mes anterior",
-                  trend: growthMonthChange,
-                })}
-                {renderGrowthMetric({
-                  label: "Total ano seleccionado",
-                  value: formatGrowthNumber(growthYearTotal),
-                  sub: "Comparado con el ano anterior",
-                  trend: growthYearChange,
-                })}
-                {renderGrowthMetric({
-                  label:
-                    growthPeriod === "month"
-                      ? "Mejor promedio mensual"
-                      : "Mejor promedio anual",
-                  value: `${formatGrowthNumber(bestGrowthPeriod.average, 1)} ${growthUnit}`,
-                  sub:
-                    growthPeriod === "month"
-                      ? `${bestGrowthPeriod.label} ${bestGrowthPeriod.period} - Total ${formatGrowthNumber(bestGrowthPeriod.total)} ${growthTotalUnit}`
-                      : `Ano ${bestGrowthPeriod.period} - Total ${formatGrowthNumber(bestGrowthPeriod.total)} ${growthTotalUnit}`,
-                  accent: c.success,
-                })}
+                {periodOverview.growth.summary.bestMonth &&
+                  renderGrowthMetric({
+                    label: "Mejor mes del período",
+                    value: formatGrowthNumber(
+                      periodOverview.growth.summary.bestMonth.usuarios,
+                    ),
+                    sub: periodOverview.growth.summary.bestMonth.label,
+                    accent: c.success,
+                  })}
               </div>
             </SectionCard>
           </div>
