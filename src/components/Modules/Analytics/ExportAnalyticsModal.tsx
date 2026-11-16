@@ -31,6 +31,7 @@ const DEFAULT_SECTIONS = [
   "active_users",
   "content",
   "retention",
+  "top_users",
   "funnel",
   "definitions",
 ];
@@ -82,6 +83,7 @@ const ExportAnalyticsModal = ({
           { id: "conversations", label: "Conversaciones y mensajes" },
           { id: "sessions", label: "Sesiones" },
           { id: "retention", label: "Retención" },
+          { id: "top_users", label: "Usuarios destacados" },
           { id: "funnel", label: "Funnel" },
           { id: "definitions", label: "Definiciones" },
         ]);

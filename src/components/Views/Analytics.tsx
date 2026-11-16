@@ -11,6 +11,7 @@ import {
   LineChart,
   Pie,
   PieChart,
+  Legend,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -45,6 +46,7 @@ const emptyBusiness = {
   retention: {
     d1: { cohort: 0, returned: 0, rate: 0 },
     d7: { cohort: 0, returned: 0, rate: 0 },
+    d15: { cohort: 0, returned: 0, rate: 0 },
     d30: { cohort: 0, returned: 0, rate: 0 },
     weekly: [] as Array<{ semana: string; retencion: number; cohort: number }>,
   },
@@ -69,7 +71,20 @@ const emptyBusiness = {
     followers: number;
     verified: boolean;
   }>,
+  topUsersMeta: {
+    ranking: "",
+    period: { label: "Mes actual" },
+    followNote: "",
+  },
   loadError: false,
+};
+
+type DailyActivePoint = {
+  dateKey: string;
+  dia: string;
+  dau: number;
+  nuevosActivos: number;
+  recurrentes: number;
 };
 
 type HeatMetric =
@@ -745,6 +760,13 @@ const Analytics = () => {
 
   const [activityPeriod, setActivityPeriod] = useState<string>("7d");
   const [newUsersPeriod, setNewUsersPeriod] = useState<string>("7d");
+  const [dailyActivePeriod, setDailyActivePeriod] = useState<string>("7d");
+  const [dailyActive, setDailyActive] = useState<{
+    days7: DailyActivePoint[];
+    days30: DailyActivePoint[];
+  }>({ days7: [], days30: [] });
+  const [dailyActiveLoading, setDailyActiveLoading] = useState(false);
+  const [dailyActiveError, setDailyActiveError] = useState(false);
   const [sessionAccessPeriod, setSessionAccessPeriod] = useState<number>(7);
   const [sessionAccess, setSessionAccess] =
     useState<SessionAccessAnalytics>(emptySessionAccess);
@@ -790,14 +812,35 @@ const Analytics = () => {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
     const getActivityResume = async () => {
-      const { data } = await analyticsService.getActivityResume();
-      setWeeklyActivityResume(data.weekly);
-      setMonthlyActivityResume(data.monthly);
-      setHeatmap(Array.isArray(data.heatmap) ? data.heatmap : []);
+      setDailyActiveLoading(true);
+      setDailyActiveError(false);
+      try {
+        const { data } = await analyticsService.getActivityResume();
+        if (cancelled) return;
+        setWeeklyActivityResume(data.weekly);
+        setMonthlyActivityResume(data.monthly);
+        setHeatmap(Array.isArray(data.heatmap) ? data.heatmap : []);
+        setDailyActive({
+          days7: Array.isArray(data?.dailyActive?.days7)
+            ? data.dailyActive.days7
+            : [],
+          days30: Array.isArray(data?.dailyActive?.days30)
+            ? data.dailyActive.days30
+            : [],
+        });
+      } catch {
+        if (!cancelled) setDailyActiveError(true);
+      } finally {
+        if (!cancelled) setDailyActiveLoading(false);
+      }
     };
 
     getActivityResume();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -890,7 +933,11 @@ const Analytics = () => {
       try {
         const { data } = await analyticsService.getBusinessAnalytics();
         setBusiness({
-          retention: data?.retention || emptyBusiness.retention,
+          retention: {
+            ...emptyBusiness.retention,
+            ...(data?.retention || {}),
+            d15: data?.retention?.d15 || emptyBusiness.retention.d15,
+          },
           funnel: {
             ...emptyBusiness.funnel,
             ...(data?.funnel || {}),
@@ -900,6 +947,10 @@ const Analytics = () => {
             ...(data?.activeUsers || {}),
           },
           topUsers: data?.topUsers || [],
+          topUsersMeta: {
+            ...emptyBusiness.topUsersMeta,
+            ...(data?.topUsersMeta || {}),
+          },
           loadError: false,
         });
       } catch {
@@ -1448,6 +1499,14 @@ const Analytics = () => {
             value={`${business.retention.d7.rate}%`}
             sub={`${business.retention.d7.returned}/${business.retention.d7.cohort} a la semana`}
             colorKey="info"
+            c={c}
+          />
+          <KpiCard
+            emoji="🗓️"
+            label="Retención D15"
+            value={`${business.retention.d15.rate}%`}
+            sub={`${business.retention.d15.returned}/${business.retention.d15.cohort} a los 15 días`}
+            colorKey="accent"
             c={c}
           />
           <KpiCard
@@ -2473,10 +2532,10 @@ const Analytics = () => {
             </div>
           </SectionCard>
 
-          {/* 6. Nuevos usuarios diarios */}
+          {/* 6. Nuevos usuarios diarios + Usuarios activos diarios */}
           <SectionCard
             title="Nuevos usuarios diarios"
-            subtitle="Registros por día esta semana"
+            subtitle="Registros por día (no confundir con nuevos activos del DAU)"
             c={c}
             action={
               <div style={{ display: "flex", gap: "5px" }}>
@@ -2519,10 +2578,13 @@ const Analytics = () => {
                   radius={[6, 6, 0, 0]}
                   maxBarSize={32}
                 >
-                  {weeklyActivityResume.map((_, i) => (
+                  {(newUsersPeriod === "7d"
+                    ? weeklyActivityResume
+                    : monthlyActivityResume
+                  ).map((_, i) => (
                     <Cell
                       key={i}
-                      fill={`${accentHex}${Math.round((0.4 + i * 0.09) * 255)
+                      fill={`${accentHex}${Math.round((0.4 + (i % 7) * 0.09) * 255)
                         .toString(16)
                         .padStart(2, "0")}`}
                     />
@@ -2532,11 +2594,126 @@ const Analytics = () => {
             </ResponsiveContainer>
           </SectionCard>
 
+          <SectionCard
+            title="Usuarios activos diarios"
+            subtitle="SessionLog · nuevos activos vs recurrentes"
+            c={c}
+            action={
+              <div style={{ display: "flex", gap: "5px" }}>
+                {["7d", "30d"].map((p) => (
+                  <TabChip
+                    key={p}
+                    label={p}
+                    active={dailyActivePeriod === p}
+                    onClick={() => setDailyActivePeriod(p)}
+                    c={c}
+                  />
+                ))}
+              </div>
+            }
+          >
+            {dailyActiveLoading ? (
+              <div
+                style={{
+                  height: 200,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: c.textMuted,
+                  fontSize: 13,
+                }}
+              >
+                Cargando actividad diaria…
+              </div>
+            ) : dailyActiveError ? (
+              <div
+                style={{
+                  height: 200,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: c.textMuted,
+                  fontSize: 13,
+                }}
+              >
+                No se pudo cargar el DAU diario.
+              </div>
+            ) : (
+              (() => {
+                const series =
+                  dailyActivePeriod === "7d"
+                    ? dailyActive.days7
+                    : dailyActive.days30;
+                const hasData = series.some((d) => d.dau > 0);
+                if (!hasData) {
+                  return (
+                    <div
+                      style={{
+                        height: 200,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: c.textMuted,
+                        fontSize: 13,
+                      }}
+                    >
+                      Sin actividad de SessionLog en el período.
+                    </div>
+                  );
+                }
+                return (
+                  <ResponsiveContainer width="100%" height={200}>
+                    <BarChart
+                      data={series}
+                      margin={{ top: 5, right: 10, bottom: 0, left: -10 }}
+                    >
+                      <CartesianGrid stroke={gridColor} vertical={false} />
+                      <XAxis
+                        dataKey="dia"
+                        tick={{ fill: tickColor, fontSize: 11 }}
+                        tickLine={false}
+                        axisLine={false}
+                      />
+                      <YAxis
+                        tick={{ fill: tickColor, fontSize: 10 }}
+                        tickLine={false}
+                        axisLine={false}
+                      />
+                      <Tooltip
+                        content={<CustomTooltip c={c} />}
+                        cursor={{ fill: c.accentSoft }}
+                      />
+                      <Legend
+                        wrapperStyle={{ fontSize: 11, paddingTop: 4 }}
+                        iconType="square"
+                      />
+                      <Bar
+                        dataKey="nuevosActivos"
+                        name="Nuevos activos"
+                        stackId="dau"
+                        fill="#7c3aed"
+                        maxBarSize={32}
+                      />
+                      <Bar
+                        dataKey="recurrentes"
+                        name="Recurrentes"
+                        stackId="dau"
+                        fill="#10b981"
+                        radius={[6, 6, 0, 0]}
+                        maxBarSize={32}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                );
+              })()
+            )}
+          </SectionCard>
+
           {/* 7. Top usuarios (span 2) */}
           <div className="span-2">
             <SectionCard
               title="🏆 Top usuarios"
-              subtitle="Usuarios más activos de la comunidad este mes"
+              subtitle={`${business.topUsersMeta?.period?.label || "Mes actual"} · posts / likes / nuevos seguidores del mes · solo ACTIVE`}
               c={c}
             >
               <div
@@ -2552,7 +2729,7 @@ const Analytics = () => {
                     marginBottom: "4px",
                   }}
                 >
-                  {["#", "Usuario", "Posts", "Likes", "Seguidores", ""].map(
+                  {["#", "Usuario", "Posts mes", "Likes mes", "Seguidores mes", ""].map(
                     (h) => (
                       <div
                         key={h}
