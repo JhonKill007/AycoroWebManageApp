@@ -13,6 +13,11 @@ export interface MessageAnalytics {
   totalMessages: number;
   uniqueUsers: number;
   averageMessagesPerUser: number;
+  averageMessagesPerDay?: number;
+  averageUniqueSendersPerDay?: number;
+  averagesNote?: string;
+  includesPartialToday?: boolean;
+  averageDays?: number;
   series: Array<{
     day: string;
     label: string;

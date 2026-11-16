@@ -12,6 +12,7 @@ import {
   Pie,
   PieChart,
   Legend,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -137,9 +138,11 @@ const emptyPeriodOverview = {
     dauToday: 0,
     mau: 0,
     uniqueActiveInPeriod: 0,
+    activeAuthorsInPeriod: 0,
     dauAverageNote: "",
     mauNote: "",
     uniqueActiveNote: "",
+    activeAuthorsNote: "",
   },
   retention: {
     d1: { cohort: 0, returned: 0, rate: 0, insufficient: true },
@@ -777,6 +780,10 @@ const emptySessionAccess: SessionAccessAnalytics = {
   totalSessions: 0,
   uniqueUsers: 0,
   averageSessionsPerUser: 0,
+  averageSessionsPerDay: 0,
+  averageUniqueUsersPerDay: 0,
+  averagesNote: "",
+  includesPartialToday: true,
   series: [],
   topUsers: [],
 };
@@ -787,6 +794,11 @@ const emptyMessageAnalytics: MessageAnalytics = {
   totalMessages: 0,
   uniqueUsers: 0,
   averageMessagesPerUser: 0,
+  averageMessagesPerDay: 0,
+  averageUniqueSendersPerDay: 0,
+  averagesNote: "",
+  includesPartialToday: true,
+  averageDays: 0,
   series: [],
   topUsers: [],
 };
@@ -954,12 +966,28 @@ const Analytics = () => {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
     const getSessionAccess = async () => {
-      const { data } = await analyticsService.getSessionAccess(sessionAccessPeriod);
-      setSessionAccess(data || emptySessionAccess);
+      try {
+        const { data } = await analyticsService.getSessionAccess(
+          sessionAccessPeriod,
+        );
+        if (cancelled) return;
+        setSessionAccess({
+          ...emptySessionAccess,
+          ...(data || {}),
+          series: Array.isArray(data?.series) ? data.series : [],
+          topUsers: Array.isArray(data?.topUsers) ? data.topUsers : [],
+        });
+      } catch {
+        if (!cancelled) setSessionAccess(emptySessionAccess);
+      }
     };
 
     getSessionAccess();
+    return () => {
+      cancelled = true;
+    };
   }, [sessionAccessPeriod]);
 
   useEffect(() => {
@@ -987,16 +1015,37 @@ const Analytics = () => {
   }, [usagePeriod]);
 
   useEffect(() => {
+    let cancelled = false;
     const getMessageAnalytics = async () => {
+      // Clear previous period so KPIs/cards never mix while loading.
+      setMessageAnalytics({
+        ...emptyMessageAnalytics,
+        period: messagePeriod,
+      });
       try {
         const { data } = await analyticsService.getMessageAnalytics(messagePeriod);
-        setMessageAnalytics(data || emptyMessageAnalytics);
+        if (cancelled) return;
+        setMessageAnalytics({
+          ...emptyMessageAnalytics,
+          ...(data || {}),
+          period: data?.period ?? messagePeriod,
+          series: Array.isArray(data?.series) ? data.series : [],
+          topUsers: Array.isArray(data?.topUsers) ? data.topUsers : [],
+        });
       } catch {
-        setMessageAnalytics(emptyMessageAnalytics);
+        if (!cancelled) {
+          setMessageAnalytics({
+            ...emptyMessageAnalytics,
+            period: messagePeriod,
+          });
+        }
       }
     };
 
     getMessageAnalytics();
+    return () => {
+      cancelled = true;
+    };
   }, [messagePeriod]);
 
   const heatmapMax = Math.max(
@@ -1092,15 +1141,10 @@ const Analytics = () => {
             },
           },
         });
-        setDataForMonth(
-          Array.isArray(data?.growth?.series) ? data.growth.series : [],
-        );
-        setGrowthPeriod(data?.growth?.granularity === "day" ? "month" : "year");
       } catch {
         if (!cancelled) {
           setPeriodError(true);
           setPeriodOverview(emptyPeriodOverview);
-          setDataForMonth([]);
           showToast({
             type: "error",
             title: "Error de Analytics",
@@ -1117,6 +1161,87 @@ const Analytics = () => {
       cancelled = true;
     };
   }, [globalPeriod, showToast]);
+
+  useEffect(() => {
+    const getGrowthData = async () => {
+      try {
+        const { data } =
+          growthPeriod === "month"
+            ? await analyticsService.getGrowthDataByMonth(
+                selectedYear,
+                selectedMonth,
+              )
+            : await analyticsService.getGrowthData(selectedYear);
+        setDataForMonth(data || []);
+      } catch {
+        setDataForMonth([]);
+      }
+    };
+    getGrowthData();
+  }, [growthPeriod, selectedMonth, selectedYear]);
+
+  useEffect(() => {
+    const getGrowthYearComparison = async () => {
+      try {
+        const [currentYearResponse, previousYearResponse] = await Promise.all([
+          analyticsService.getGrowthData(selectedYear),
+          analyticsService.getGrowthData(selectedYear - 1),
+        ]);
+        setGrowthYearData(currentYearResponse.data || []);
+        setGrowthPreviousYearData(previousYearResponse.data || []);
+      } catch {
+        setGrowthYearData([]);
+        setGrowthPreviousYearData([]);
+      }
+    };
+    getGrowthYearComparison();
+  }, [selectedYear]);
+
+  useEffect(() => {
+    const getGrowthYearsCatalog = async () => {
+      const startYear = 2025;
+      const catalogCurrentYear = new Date().getFullYear();
+      const years = Array.from(
+        { length: Math.max(1, catalogCurrentYear - startYear + 1) },
+        (_, index) => startYear + index,
+      );
+      try {
+        const responses = await Promise.all(
+          years.map(async (year) => {
+            const { data } = await analyticsService.getGrowthData(year);
+            return { year, data: data || [] };
+          }),
+        );
+        setGrowthYearsCatalog(responses);
+      } catch {
+        setGrowthYearsCatalog([]);
+      }
+    };
+    getGrowthYearsCatalog();
+  }, []);
+
+  useEffect(() => {
+    const getGrowthMonthComparison = async () => {
+      const previousMonth = selectedMonth === 1 ? 12 : selectedMonth - 1;
+      const previousMonthYear =
+        selectedMonth === 1 ? selectedYear - 1 : selectedYear;
+      try {
+        const [currentMonthResponse, previousMonthResponse] = await Promise.all([
+          analyticsService.getGrowthDataByMonth(selectedYear, selectedMonth),
+          analyticsService.getGrowthDataByMonth(
+            previousMonthYear,
+            previousMonth,
+          ),
+        ]);
+        setGrowthSelectedMonthData(currentMonthResponse.data || []);
+        setGrowthPreviousMonthData(previousMonthResponse.data || []);
+      } catch {
+        setGrowthSelectedMonthData([]);
+        setGrowthPreviousMonthData([]);
+      }
+    };
+    getGrowthMonthComparison();
+  }, [selectedMonth, selectedYear]);
 
   useEffect(() => {
     const getBusiness = async () => {
@@ -1457,6 +1582,7 @@ const Analytics = () => {
 
         @media (max-width: 520px) {
           .analytics-kpi-grid { grid-template-columns: 1fr; gap: 10px; }
+          .session-daily-averages { grid-template-columns: 1fr !important; }
           .analytics-kpi-card { padding: 14px !important; gap: 8px !important; }
           .analytics-kpi-icon { width: 36px !important; height: 36px !important; font-size: 17px !important; }
           .analytics-kpi-value { font-size: 24px !important; }
@@ -1650,16 +1776,6 @@ const Analytics = () => {
             c={c}
           />
           <KpiCard
-            emoji="👤"
-            label="Activos únicos del período"
-            value={
-              periodLoading ? "…" : periodOverview.activeUsers.uniqueActiveInPeriod
-            }
-            sub={periodOverview.activeUsers.uniqueActiveNote || "SessionLog en el rango"}
-            colorKey="info"
-            c={c}
-          />
-          <KpiCard
             emoji="📝"
             label={`Publicaciones · ${periodOverview.period.shortLabel}`}
             value={periodLoading ? "…" : periodOverview.flow.posts.current}
@@ -1677,6 +1793,13 @@ const Analytics = () => {
             colorKey="accent"
             c={c}
           />
+        </div>
+
+        {/* Fila puente: asegura que retención ocupe la siguiente fila completa */}
+        <div
+          className="analytics-kpi-grid"
+          style={{ opacity: periodLoading ? 0.55 : 1, transition: "opacity 0.2s" }}
+        >
           <KpiCard
             emoji="❤️"
             label={`Interacciones · ${periodOverview.period.shortLabel}`}
@@ -1698,6 +1821,43 @@ const Analytics = () => {
             colorKey="accent"
             c={c}
           />
+          <KpiCard
+            emoji="👤"
+            label={`Usuarios activos · ${periodOverview.period.shortLabel}`}
+            value={
+              periodLoading
+                ? "…"
+                : periodOverview.activeUsers.uniqueActiveInPeriod
+            }
+            sub={
+              periodOverview.activeUsers.uniqueActiveNote ||
+              "únicos con SessionLog en el período"
+            }
+            colorKey="info"
+            c={c}
+          />
+          <KpiCard
+            emoji="✍️"
+            label={`Autores activos · ${periodOverview.period.shortLabel}`}
+            value={
+              periodLoading
+                ? "…"
+                : periodOverview.activeUsers.activeAuthorsInPeriod
+            }
+            sub={
+              periodOverview.activeUsers.activeAuthorsNote ||
+              "elegibles con ≥1 post LIVE en el período"
+            }
+            colorKey="accent"
+            c={c}
+          />
+        </div>
+
+        {/* Retención: fila completa de 4 columnas en escritorio */}
+        <div
+          className="analytics-kpi-grid analytics-retention-row"
+          style={{ opacity: periodLoading ? 0.55 : 1, transition: "opacity 0.2s" }}
+        >
           <KpiCard
             emoji="📈"
             label="Retención D1"
@@ -1805,18 +1965,33 @@ const Analytics = () => {
 
         <div className="analytics-grid">
 
-          {/* 1. Crecimiento (span 2) — sincronizado con filtro global */}
+          {/* 1. Crecimiento (span 2) — independiente del filtro global */}
           <div className="span-2">
             <SectionCard
               title="Crecimiento de la comunidad"
-              subtitle={`${periodOverview.period.label} · ${
-                periodOverview.growth.granularity === "day"
-                  ? "serie diaria"
-                  : "serie mensual"
-              }`}
+              subtitle="Evolución de usuarios y publicaciones · filtros propios del gráfico"
               c={c}
               action={
                 <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                  <TabChip
+                    label="Mes"
+                    active={growthPeriod === "month"}
+                    onClick={() => setGrowthPeriod("month")}
+                    c={c}
+                  />
+                  <TabChip
+                    label="Año"
+                    active={growthPeriod === "year"}
+                    onClick={() => setGrowthPeriod("year")}
+                    c={c}
+                  />
+                  <span
+                    style={{
+                      width: 1,
+                      background: c.border,
+                      margin: "0 2px",
+                    }}
+                  />
                   {Object.keys(METRIC_CONFIG).map((k) => (
                     <TabChip
                       key={k}
@@ -1829,21 +2004,6 @@ const Analytics = () => {
                 </div>
               }
             >
-              {periodLoading ? (
-                <div
-                  style={{
-                    height: 220,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: c.textMuted,
-                    fontSize: 13,
-                  }}
-                >
-                  Cargando crecimiento del período…
-                </div>
-              ) : (
-              <>
               <ResponsiveContainer width="100%" height={220}>
                 <AreaChart
                   data={dataForMonth}
@@ -1865,7 +2025,7 @@ const Analytics = () => {
                   </defs>
                   <CartesianGrid stroke={gridColor} vertical={false} />
                   <XAxis
-                    dataKey={periodOverview.growth.xKey || (growthPeriod === "month" ? "dia" : "mes")}
+                    dataKey={growthPeriod === "month" ? "dia" : "mes"}
                     tick={{ fill: tickColor, fontSize: 11 }}
                     tickLine={false}
                     axisLine={false}
@@ -1928,8 +2088,52 @@ const Analytics = () => {
                   ))}
                 </div>
               )}
-              </>
-              )}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px",
+                  flexWrap: "wrap",
+                  marginTop: "10px",
+                }}
+              >
+                <YearSelectBox
+                  selectedYear={selectedYear}
+                  onYearChange={setSelectedYear}
+                  c={c}
+                />
+                {growthPeriod === "month" && (
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: "12px",
+                        fontWeight: "600",
+                        color: c.textMuted,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      Mes:
+                    </span>
+                    <select
+                      className="select-control"
+                      value={selectedMonth}
+                      onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                    >
+                      {MONTH_OPTIONS.map((month, index) => (
+                        <option key={month} value={index + 1}>
+                          {month}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
               <div
                 style={{
                   display: "flex",
@@ -1939,43 +2143,46 @@ const Analytics = () => {
                 }}
               >
                 {renderGrowthMetric({
-                  label: "Total registros del período",
-                  value: formatGrowthNumber(periodOverview.growth.summary.totalUsers),
-                  sub: periodOverview.period.shortLabel,
-                  trend:
-                    periodOverview.growth.summary.usersChange === null
-                      ? undefined
-                      : periodOverview.growth.summary.usersChange ?? undefined,
+                  label: "Promedio actual",
+                  value: growthDailyAverageLabel,
+                  sub:
+                    growthPeriod === "month"
+                      ? "Según los días con registros del período"
+                      : "Según los días cursados del año",
                 })}
                 {renderGrowthMetric({
-                  label: "Promedio registros / día",
-                  value: `${formatGrowthNumber(periodOverview.growth.summary.avgUsersPerDay, 1)} /día`,
-                  sub: `${periodOverview.period.elapsedDays || 0} días transcurridos`,
-                })}
-                {renderGrowthMetric({
-                  label: "Total publicaciones del período",
-                  value: formatGrowthNumber(periodOverview.growth.summary.totalPosts),
-                  sub: periodOverview.period.shortLabel,
-                  trend:
-                    periodOverview.growth.summary.postsChange === null
-                      ? undefined
-                      : periodOverview.growth.summary.postsChange ?? undefined,
-                })}
-                {renderGrowthMetric({
-                  label: "Promedio publicaciones / día",
-                  value: `${formatGrowthNumber(periodOverview.growth.summary.avgPostsPerDay, 1)} /día`,
-                  sub: periodOverview.period.comparisonNote || "sobre días del período",
+                  label: growthFullPeriodLabel,
+                  value: growthFullPeriodAverageLabel,
+                  sub:
+                    growthPeriod === "month"
+                      ? "Divide entre todos los días del mes"
+                      : "Divide entre todos los días del año",
                   accent: c.text,
                 })}
-                {periodOverview.growth.summary.bestMonth &&
-                  renderGrowthMetric({
-                    label: "Mejor mes del período",
-                    value: formatGrowthNumber(
-                      periodOverview.growth.summary.bestMonth.usuarios,
-                    ),
-                    sub: periodOverview.growth.summary.bestMonth.label,
-                    accent: c.success,
-                  })}
+                {renderGrowthMetric({
+                  label: "Total mes seleccionado",
+                  value: formatGrowthNumber(growthSelectedMonthTotal),
+                  sub: "Comparado con el mes anterior",
+                  trend: growthMonthChange,
+                })}
+                {renderGrowthMetric({
+                  label: "Total año seleccionado",
+                  value: formatGrowthNumber(growthYearTotal),
+                  sub: "Comparado con el año anterior",
+                  trend: growthYearChange,
+                })}
+                {renderGrowthMetric({
+                  label:
+                    growthPeriod === "month"
+                      ? "Mejor promedio mensual"
+                      : "Mejor promedio anual",
+                  value: `${formatGrowthNumber(bestGrowthPeriod.average, 1)} ${growthUnit}`,
+                  sub:
+                    growthPeriod === "month"
+                      ? `${bestGrowthPeriod.label} ${bestGrowthPeriod.period} · Total ${formatGrowthNumber(bestGrowthPeriod.total)} ${growthTotalUnit}`
+                      : `Año ${bestGrowthPeriod.period} · Total ${formatGrowthNumber(bestGrowthPeriod.total)} ${growthTotalUnit}`,
+                  accent: c.success,
+                })}
               </div>
             </SectionCard>
           </div>
@@ -2028,6 +2235,22 @@ const Analytics = () => {
                     width={40}
                   />
                   <Tooltip content={<CustomTooltip c={c} />} />
+                  {(sessionAccess.averageUniqueUsersPerDay ?? 0) > 0 && (
+                    <ReferenceLine
+                      y={sessionAccess.averageUniqueUsersPerDay}
+                      stroke={c.success}
+                      strokeDasharray="4 4"
+                      strokeOpacity={0.55}
+                    />
+                  )}
+                  {(sessionAccess.averageSessionsPerDay ?? 0) > 0 && (
+                    <ReferenceLine
+                      y={sessionAccess.averageSessionsPerDay}
+                      stroke={c.accent}
+                      strokeDasharray="4 4"
+                      strokeOpacity={0.45}
+                    />
+                  )}
                   <Area
                     type="monotone"
                     dataKey="users"
@@ -2050,6 +2273,120 @@ const Analytics = () => {
                   />
                 </AreaChart>
               </ResponsiveContainer>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: 10,
+                  marginTop: 12,
+                }}
+                className="session-daily-averages"
+              >
+                <div
+                  style={{
+                    border: `1px solid ${c.border}`,
+                    borderRadius: 12,
+                    padding: "12px 14px",
+                    background: c.inputBackground,
+                    minWidth: 0,
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      marginBottom: 6,
+                    }}
+                  >
+                    <span style={{ fontSize: 16 }}>📱</span>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: c.textMuted,
+                        letterSpacing: "0.04em",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      Promedio de entradas / día
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 22,
+                      fontWeight: 800,
+                      color: c.accent,
+                      letterSpacing: "-0.02em",
+                    }}
+                  >
+                    {(sessionAccess.averageSessionsPerDay ?? 0).toLocaleString(
+                      "es-DO",
+                      { maximumFractionDigits: 1, minimumFractionDigits: 1 },
+                    )}
+                  </div>
+                  <div style={{ fontSize: 11, color: c.textMuted, marginTop: 4 }}>
+                    Últimos {sessionAccess.days || sessionAccessPeriod} días
+                    {sessionAccess.includesPartialToday
+                      ? " · incluye hoy (parcial)"
+                      : ""}
+                  </div>
+                </div>
+                <div
+                  style={{
+                    border: `1px solid ${c.border}`,
+                    borderRadius: 12,
+                    padding: "12px 14px",
+                    background: c.inputBackground,
+                    minWidth: 0,
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      marginBottom: 6,
+                    }}
+                  >
+                    <span style={{ fontSize: 16 }}>👥</span>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: c.textMuted,
+                        letterSpacing: "0.04em",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      Promedio de usuarios / día
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 22,
+                      fontWeight: 800,
+                      color: c.success,
+                      letterSpacing: "-0.02em",
+                    }}
+                  >
+                    {(
+                      sessionAccess.averageUniqueUsersPerDay ?? 0
+                    ).toLocaleString("es-DO", {
+                      maximumFractionDigits: 1,
+                      minimumFractionDigits: 1,
+                    })}
+                  </div>
+                  <div style={{ fontSize: 11, color: c.textMuted, marginTop: 4 }}>
+                    Únicos diarios ÷ {sessionAccess.days || sessionAccessPeriod}{" "}
+                    días
+                    {sessionAccess.includesPartialToday
+                      ? " · incluye hoy (parcial)"
+                      : ""}
+                  </div>
+                </div>
+              </div>
 
               <div
                 style={{
@@ -2267,6 +2604,22 @@ const Analytics = () => {
                     width={40}
                   />
                   <Tooltip content={<CustomTooltip c={c} />} />
+                  {(messageAnalytics.averageUniqueSendersPerDay ?? 0) > 0 && (
+                    <ReferenceLine
+                      y={messageAnalytics.averageUniqueSendersPerDay}
+                      stroke={c.success}
+                      strokeDasharray="4 4"
+                      strokeOpacity={0.55}
+                    />
+                  )}
+                  {(messageAnalytics.averageMessagesPerDay ?? 0) > 0 && (
+                    <ReferenceLine
+                      y={messageAnalytics.averageMessagesPerDay}
+                      stroke={c.accent}
+                      strokeDasharray="4 4"
+                      strokeOpacity={0.45}
+                    />
+                  )}
                   <Area
                     type="monotone"
                     dataKey="users"
@@ -2289,6 +2642,123 @@ const Analytics = () => {
                   />
                 </AreaChart>
               </ResponsiveContainer>
+
+              <div
+                className="session-daily-averages"
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: 10,
+                  marginTop: 12,
+                }}
+              >
+                <div
+                  style={{
+                    border: `1px solid ${c.border}`,
+                    borderRadius: 12,
+                    padding: "12px 14px",
+                    background: c.inputBackground,
+                    minWidth: 0,
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      marginBottom: 6,
+                    }}
+                  >
+                    <span style={{ fontSize: 16 }}>💬</span>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: c.textMuted,
+                        letterSpacing: "0.04em",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      Promedio de mensajes / día
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 22,
+                      fontWeight: 800,
+                      color: c.accent,
+                      letterSpacing: "-0.02em",
+                    }}
+                  >
+                    {(messageAnalytics.averageMessagesPerDay ?? 0).toLocaleString(
+                      "es-DO",
+                      { maximumFractionDigits: 1, minimumFractionDigits: 1 },
+                    )}
+                  </div>
+                  <div style={{ fontSize: 11, color: c.textMuted, marginTop: 4 }}>
+                    {messagePeriod === "all"
+                      ? `Histórico · ${messageAnalytics.averageDays || "—"} días`
+                      : `Últimos ${messageAnalytics.averageDays || messagePeriod} días`}
+                    {messageAnalytics.includesPartialToday
+                      ? " · incluye hoy (parcial)"
+                      : ""}
+                  </div>
+                </div>
+                <div
+                  style={{
+                    border: `1px solid ${c.border}`,
+                    borderRadius: 12,
+                    padding: "12px 14px",
+                    background: c.inputBackground,
+                    minWidth: 0,
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      marginBottom: 6,
+                    }}
+                  >
+                    <span style={{ fontSize: 16 }}>👥</span>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: c.textMuted,
+                        letterSpacing: "0.04em",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      Promedio de usuarios / día
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 22,
+                      fontWeight: 800,
+                      color: c.success,
+                      letterSpacing: "-0.02em",
+                    }}
+                  >
+                    {(
+                      messageAnalytics.averageUniqueSendersPerDay ?? 0
+                    ).toLocaleString("es-DO", {
+                      maximumFractionDigits: 1,
+                      minimumFractionDigits: 1,
+                    })}
+                  </div>
+                  <div style={{ fontSize: 11, color: c.textMuted, marginTop: 4 }}>
+                    Remitentes únicos diarios ÷{" "}
+                    {messageAnalytics.averageDays ||
+                      (messagePeriod === "all" ? "días" : messagePeriod)}
+                    {messageAnalytics.includesPartialToday
+                      ? " · incluye hoy (parcial)"
+                      : ""}
+                  </div>
+                </div>
+              </div>
 
               <div
                 style={{

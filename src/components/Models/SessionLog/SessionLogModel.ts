@@ -56,6 +56,10 @@ export interface SessionAccessAnalytics {
   totalSessions: number;
   uniqueUsers: number;
   averageSessionsPerUser: number;
+  averageSessionsPerDay?: number;
+  averageUniqueUsersPerDay?: number;
+  averagesNote?: string;
+  includesPartialToday?: boolean;
   series: Array<{
     day: string;
     label: string;
